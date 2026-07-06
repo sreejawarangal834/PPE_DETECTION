@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual Environments
+venv/
+env/
+.venv/
+
+# AI Models
+*.pt
+*.pth
+*.onnx
+*.engine
+
+# Datasets
+datasets/
+runs/
+output/
+
+# VS Code
+.vscode/
+
+# Node
+node_modules/
+
+# Environment Variables
+.env
+
+# OS
+.DS_Store
+Thumbs.db
