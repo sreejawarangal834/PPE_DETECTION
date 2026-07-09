@@ -2,28 +2,128 @@
 @tailwind components;
 @tailwind utilities;
 
-* {
-  box-sizing: border-box;
+/* ─── Design Tokens ─────────────────────────────────────── */
+:root {
+  --color-bg:           #12151A;
+  --color-panel:        #1B1F27;
+  --color-panel-alt:    #20242D;
+  --color-panel-hover:  #252A35;
+  --color-border:       #262B34;
+  --color-border-soft:  #21252D;
+  --color-border-focus: #4A8FA3;
+
+  --color-text-primary:   #E8EAF0;
+  --color-text-secondary: #9BA3B8;
+  --color-text-muted:     #5C6480;
+  --color-text-inverse:   #12151A;
+
+  --color-accent:         #4A8FA3;
+  --color-accent-hover:   #5AAEC4;
+  --color-accent-subtle:  rgba(74,143,163,0.12);
+
+  --color-status-ok:      #4F9E7C;
+  --color-status-warn:    #D9A441;
+  --color-status-danger:  #C25450;
+  --color-status-info:    #4A8FA3;
+
+  --color-severity-high:   #C25450;
+  --color-severity-medium: #D9A441;
+  --color-severity-low:    #C9B84A;
+  --color-severity-info:   #4A8FA3;
+
+  --color-alert-open:         #C25450;
+  --color-alert-acknowledged: #D9A441;
+  --color-alert-escalated:    #C25450;
+  --color-alert-resolved:     #4F9E7C;
+
+  --color-compliance-good: #4F9E7C;
+  --color-compliance-warn: #D9A441;
+  --color-compliance-bad:  #C25450;
+
+  --color-chart-1:          #4A8FA3;
+  --color-chart-2:          #4F9E7C;
+  --color-chart-3:          #D9A441;
+  --color-chart-4:          #C25450;
+  --color-chart-5:          #9B7EC8;
+  --color-chart-6:          #C9B84A;
+  --color-chart-bg:         rgba(74,143,163,0.08);
+  --color-chart-grid:       #21252D;
+  --color-chart-tick:       #5C6480;
+  --color-chart-tooltip-bg: #1B1F27;
+
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Fira Code', monospace;
 }
 
-html, body, #root {
-  height: 100%;
-  margin: 0;
-}
+/* ─── Reset ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
 
 body {
-  background-color: #12151A;
-  color: #FFFFFF;
-  font-family: 'IBM Plex Sans', sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-* {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+/* ─── Scrollbar ──────────────────────────────────────────── */
+* { scrollbar-width: thin; scrollbar-color: var(--color-border) transparent; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 4px; }
+
+/* ─── Print ──────────────────────────────────────────────── */
+@media print {
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  body { background: #fff; color: #000; }
 }
-::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
+.print-only { display: none; }
+
+/* ─── Animations ─────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg,
+    var(--color-panel) 25%,
+    var(--color-panel-alt) 50%,
+    var(--color-panel) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+
+@keyframes pulse-border {
+  0%, 100% { box-shadow: 0 0 0 0   rgba(194, 84, 80, 0.5); }
+  50%       { box-shadow: 0 0 0 6px rgba(194, 84, 80, 0);   }
+}
+.pulse-danger          { animation: pulse-border 1.8s ease-in-out infinite; }
+.zone-violation-pulse  { animation: pulse-border 1.8s ease-in-out infinite; }
+
+@keyframes fade-highlight {
+  0%   { background-color: rgba(74, 143, 163, 0.18); }
+  100% { background-color: transparent; }
+}
+.new-row-fade { animation: fade-highlight 3s ease-out forwards; }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Focus ring ─────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* ─── Reduced motion ─────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
