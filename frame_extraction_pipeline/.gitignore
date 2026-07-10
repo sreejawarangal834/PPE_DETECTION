@@ -1,0 +1,42 @@
+# Secrets
+.env
+kaggle.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual Environments
+venv/
+env/
+.venv/
+
+# AI Models
+*.pt
+*.pth
+*.onnx
+*.engine
+
+# Datasets / data outputs (large, regenerable — don't commit)
+data/
+datasets/
+runs/
+output/
+*.mp4
+*.jpg
+*.jpeg
+*.png
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# VS Code
+.vscode/
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
