@@ -1,4 +1,4 @@
- name: PPE Detection CI/CD
+name: PPE Detection CI/CD
 
 on:
   push:
