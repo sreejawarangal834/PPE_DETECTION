@@ -37,6 +37,12 @@ model = YOLO(str(MODEL_PATH))
 log.info("Model loaded. Classes: %s", model.names)
 
 
+@app.get("/api/health")
+async def health():
+    """Simple health check — lets the frontend know the backend is reachable."""
+    return {"status": "ok", "model": str(MODEL_PATH.name)}
+
+
 @app.get("/api/model/info")
 async def model_info():
     return {"classes": model.names}

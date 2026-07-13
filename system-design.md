@@ -393,8 +393,6 @@ Mobile-first roles use a bottom navigation bar instead of a sidebar:
 // Auth / narrow forms:
 <div className="max-w-md w-full mx-auto">
 ```
-
-
 ---
 
 ## 8. Responsive Behavior

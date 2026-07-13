@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
-import { detectionEvents as mockEvents, type DetectionEvent } from "../data/mockData";
+import { ALERTS as mockEvents } from "../data/mockData";
+import type { Alert as DetectionEvent } from "../types";
 import type { Detection, SocketState } from "../hooks/useDetectionSocket";
-import type { Severity } from "../data/mockData";
+import type { Severity } from "../constants/severity";
 
 export interface LiveCamera {
   id: string;

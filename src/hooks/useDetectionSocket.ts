@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Severity } from "../data/mockData";
+import type { Severity } from "../constants/severity";
 
 export interface Detection {
   label: string;
