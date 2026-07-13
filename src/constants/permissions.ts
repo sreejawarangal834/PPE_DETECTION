@@ -14,12 +14,11 @@ export const ROUTE_PERMISSIONS: Record<string, UserRole[]> = {
   [ROUTES.ADMIN_ZONES]:         ['admin'],
   [ROUTES.ADMIN_CAMERAS]:       ['admin'],
   [ROUTES.ADMIN_ALERT_CONFIG]:  ['admin'],
-  [ROUTES.ADMIN_SYSTEM_HEALTH]: ['admin'],
   [ROUTES.ADMIN_AUDIT_LOG]:     ['admin'],
 };
 
 export const ROLE_LANDING: Record<UserRole, string> = {
-  admin:           ROUTES.ADMIN_SYSTEM_HEALTH,
+  admin:           ROUTES.ADMIN_USERS,
   safety_officer:  ROUTES.MONITORING,
   site_supervisor: ROUTES.MONITORING,
   ehs_manager:     ROUTES.REPORTS,

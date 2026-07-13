@@ -10,12 +10,13 @@ import Card from '../../components/ui/Card';
 import { useQuery } from '@tanstack/react-query';
 import { getCameras } from '../../api/camerasApi';
 import type { Camera } from '../../types';
+import PageShell from '../../components/ui/PageShell';
 
 export default function MonitoringPage() {
   const user = useAuthStore(s => s.user);
   const [viewMode, setViewMode] = useState<ViewMode>(VIEW_MODE_DEFAULT as ViewMode);
   const [selectedCamera, setSelectedCamera] = useState<Camera | null>(null);
-  const [selectedZone, setSelectedZone] = useState<string | null>(null);
+  const [selectedZone] = useState<string | null>(null);
 
   // Initialize view mode from sessionStorage
   useEffect(() => {
@@ -57,15 +58,14 @@ export default function MonitoringPage() {
     }
   };
 
-  return (
-    <div className="flex h-full bg-[#0f1117]">
+  return (<PageShell noPadding><div className="flex h-full bg-gray-900">
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Page Header */}
-        <div className="px-8 py-6 border-b border-[#21252D] flex items-center justify-between bg-[#161a22]">
+        <div className="px-8 py-6 border-b border-gray-700 flex items-center justify-between bg-gray-800">
           <div>
-            <h1 className="text-4xl font-bold text-[#E8EAF0]">Live Monitoring</h1>
-            <p className="text-lg text-[#9BA3B8] mt-2">
+            <h1 className="text-3xl font-bold text-white">Live Monitoring</h1>
+            <p className="text-base text-gray-400 mt-2">
               Real-time camera feeds and violation tracking
               {user?.role === 'site_supervisor' && user.assignedZones?.length
                 ? ` · Zones: ${user.assignedZones.join(', ')}`
@@ -80,7 +80,7 @@ export default function MonitoringPage() {
         <div className="flex-1 overflow-auto p-8">
           {viewMode === 'grid' ? (
             <div>
-              <p className="text-base font-semibold uppercase tracking-wide text-[#9BA3B8] mb-5">Camera Grid</p>
+              <p className="text-sm font-semibold uppercase tracking-wide text-gray-400 mb-5">Camera Grid</p>
               <CameraGrid selectedZone={selectedZone} onCameraSelect={handleCameraSelect} />
             </div>
           ) : (
@@ -92,7 +92,7 @@ export default function MonitoringPage() {
                 mode="full"
               />
             ) : (
-              <div className="flex items-center justify-center h-full text-[#9BA3B8] text-lg">
+              <div className="flex items-center justify-center h-full text-gray-400 text-lg">
                 No cameras available
               </div>
             )
@@ -101,16 +101,17 @@ export default function MonitoringPage() {
       </div>
 
       {/* Right Side Panel */}
-      <div className="w-96 border-l border-[#21252D] flex flex-col bg-[#161a22]">
+      <div className="w-96 border-l border-gray-700 flex flex-col bg-gray-800">
         <div className="flex-1 overflow-auto p-5 space-y-5">
-          <Card header={<span className="text-sm font-semibold uppercase tracking-wide text-[#9BA3B8]">Recent Alerts</span>} padding={false}>
+          <Card header={<span className="text-sm font-semibold uppercase tracking-wide text-gray-400">Recent Alerts</span>} padding={false}>
             <AlertFeedWidget />
           </Card>
-          <Card header={<span className="text-sm font-semibold uppercase tracking-wide text-[#9BA3B8]">Live Workers</span>} padding={false}>
+          <Card header={<span className="text-sm font-semibold uppercase tracking-wide text-gray-400">Live Workers</span>} padding={false}>
             <LiveWorkerList selectedZone={selectedZone} />
           </Card>
         </div>
       </div>
     </div>
+    </PageShell>
   );
 }

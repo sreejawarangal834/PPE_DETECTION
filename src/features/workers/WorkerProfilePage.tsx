@@ -4,6 +4,7 @@ import { getWorkerById } from '../../api/workersApi';
 import { useAlertStore } from '../../lib/alerts/alertStore';
 import ComplianceHistoryChart from './ComplianceHistoryChart';
 import ZoneEntryExitLog from './ZoneEntryExitLog';
+import PageShell from '../../components/ui/PageShell';
 import Badge from '../../components/ui/Badge';
 import LoadingSkeleton from '../../components/ui/LoadingSkeleton';
 import { ROUTES } from '../../constants/routes';
@@ -22,11 +23,11 @@ export default function WorkerProfilePage() {
     .filter(a => a.workerId === workerId)
     .slice(0, 10);
 
-  if (isLoading) return <div className="p-6"><LoadingSkeleton variant="table" /></div>;
-  if (!worker) return <div className="p-6 text-status-danger">Worker not found.</div>;
+  if (isLoading) return <PageShell><LoadingSkeleton variant="table" /></PageShell>;
+  if (!worker) return <PageShell><p className="text-status-danger">Worker not found.</p></PageShell>;
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl">
+    <PageShell><div className="space-y-6 max-w-5xl">
       <button onClick={() => navigate(ROUTES.WORKERS)} className="text-sm text-accent hover:underline flex items-center gap-1">
         ← Back to workers
       </button>
@@ -79,5 +80,6 @@ export default function WorkerProfilePage() {
 
       <ZoneEntryExitLog workerId={worker.id} />
     </div>
+    </PageShell>
   );
 }

@@ -7,6 +7,7 @@ import Button from '../../components/ui/Button';
 import LoadingSkeleton from '../../components/ui/LoadingSkeleton';
 import type { AlertConfig } from '../../types';
 import toast from 'react-hot-toast';
+import PageShell from '../../components/ui/PageShell';
 
 export default function AlertConfigPage() {
   const qc = useQueryClient();
@@ -29,10 +30,11 @@ export default function AlertConfigPage() {
     setSaving(false);
   }
 
-  if (isLoading) return <div className="p-6"><LoadingSkeleton variant="table" /></div>;
+  if (isLoading) return <PageShell><LoadingSkeleton variant="table" /></PageShell>;
 
   return (
-    <div className="p-6 space-y-6">
+    <PageShell>
+      <div className="space-y-6">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-[#E8EAF0]">Alert Severity & Thresholds</h1>
         <p className="text-sm text-[#5C6480] mt-1">Configure detection confidence and escalation settings per zone</p>
@@ -61,5 +63,6 @@ export default function AlertConfigPage() {
         ))}
       </div>
     </div>
+    </PageShell>
   );
 }

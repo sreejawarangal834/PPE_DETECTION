@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState } from 'react';
 import LoadingSkeleton from '../../components/ui/LoadingSkeleton';
+import PageShell from '../../components/ui/PageShell';
 
 const DailyReport   = lazy(() => import('./DailyReport'));
 const WeeklyReport  = lazy(() => import('./WeeklyReport'));
@@ -19,20 +20,20 @@ export default function ReportsPage() {
   const [tab, setTab] = useState('daily');
 
   return (
-    <div className="p-6 space-y-5">
+    <PageShell><div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold text-text-primary">Reports &amp; Analytics</h1>
-        <p className="text-sm text-text-muted mt-1">Compliance reports, trends and data exports</p>
+        <h1 className="text-2xl font-semibold text-white">Reports &amp; Analytics</h1>
+        <p className="text-sm text-gray-400 mt-1">Compliance reports, trends and data exports</p>
       </div>
 
       {/* Tab bar */}
-      <div className="flex border-b border-border-soft gap-1">
+      <div className="flex border-b border-gray-700 gap-1">
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`px-4 py-2.5 text-sm font-medium transition-colors duration-150 border-b-2 -mb-px
               ${tab === t.id
-                ? 'border-accent text-accent'
-                : 'border-transparent text-text-muted hover:text-text-secondary hover:border-border'}`}>
+                ? 'border-blue-400 text-blue-400'
+                : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600'}`}>
             {t.label}
           </button>
         ))}
@@ -46,5 +47,6 @@ export default function ReportsPage() {
         {tab === 'adhoc'   && <AdHoc />}
       </Suspense>
     </div>
+    </PageShell>
   );
 }

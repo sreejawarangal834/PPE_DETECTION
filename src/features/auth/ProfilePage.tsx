@@ -5,6 +5,7 @@ import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import { ROLE_LABELS } from '../../constants/roles';
 import { Shield, User } from 'lucide-react';
+import PageShell from '../../components/ui/PageShell';
 import toast from 'react-hot-toast';
 
 export default function ProfilePage() {
@@ -40,7 +41,7 @@ export default function ProfilePage() {
   if (!user) return null;
 
   return (
-    <div className="p-6 max-w-2xl space-y-6">
+    <PageShell><div className="max-w-2xl space-y-6">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-[#E8EAF0]">My Profile</h1>
         <p className="text-sm text-[#5C6480] mt-1">Manage your account details and security settings</p>
@@ -106,5 +107,6 @@ export default function ProfilePage() {
         </form>
       </div>
     </div>
+    </PageShell>
   );
 }

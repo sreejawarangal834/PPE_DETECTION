@@ -12,6 +12,7 @@ import Select from '../../components/ui/Select';
 import type { Camera } from '../../types';
 import { formatRelative } from '../../lib/utils';
 import toast from 'react-hot-toast';
+import PageShell from '../../components/ui/PageShell';
 
 function CameraFormModal({ camera, zones, onSave, onClose }:
   { camera?: Camera; zones: { value: string; label: string }[]; onSave: (d: Partial<Camera>) => Promise<void>; onClose: () => void }) {
@@ -76,12 +77,12 @@ export default function CameraManagementPage() {
     { key: 'rtspUrl',  header: 'RTSP URL',   render: () => <span className="text-text-muted text-xs font-mono">rtsp://***</span> },
     { key: 'zoneName', header: 'Zone',       sortable: true },
     { key: 'status',   header: 'Status',     render: r => <Badge variant={r.status} /> },
-    { key: 'lastSeen', header: 'Last Seen',  render: r => formatRelative(r.lastSeen), className: 'text-xs' },
+    { key: 'lastSeen', header: 'Last Seen',  render: r => formatRelative(r.lastSeen), className: 'text-sm' },
     { key: 'id',       header: 'Actions',    render: r => <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); setEditCam(r); }}>Edit</Button> },
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <PageShell><div className="space-y-6">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-[#E8EAF0]">Camera Management</h1>
         <p className="text-sm text-[#5C6480] mt-1">Configure and monitor camera connections</p>
@@ -98,5 +99,6 @@ export default function CameraManagementPage() {
           onClose={() => { setCreateOpen(false); setEditCam(null); }} />
       )}
     </div>
+    </PageShell>
   );
 }

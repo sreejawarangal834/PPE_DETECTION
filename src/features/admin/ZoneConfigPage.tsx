@@ -10,6 +10,7 @@ import { PPE_TYPES } from '../../constants/ppeTypes';
 import type { Zone } from '../../types';
 import type { PpeTypeId } from '../../constants/ppeTypes';
 import toast from 'react-hot-toast';
+import PageShell from '../../components/ui/PageShell';
 
 function ZoneFormModal({ zone, onSave, onClose }:
   { zone?: Zone; onSave: (d: Partial<Zone>) => Promise<void>; onClose: () => void }) {
@@ -74,7 +75,7 @@ export default function ZoneConfigPage() {
 
   const cols: ColumnDef<Zone>[] = [
     { key: 'name',        header: 'Zone Name',   sortable: true },
-    { key: 'description', header: 'Description', className: 'text-xs text-text-muted' },
+    { key: 'description', header: 'Description', className: 'text-sm text-text-muted' },
     { key: 'requiredPpe', header: 'Required PPE', render: r => (
       <div className="flex flex-wrap gap-1">
         {r.requiredPpe.map(p => (
@@ -94,7 +95,7 @@ export default function ZoneConfigPage() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <PageShell><div className="space-y-6">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-[#E8EAF0]">Zone Configuration</h1>
         <p className="text-sm text-[#5C6480] mt-1">Define zones and required PPE for each area</p>
@@ -111,5 +112,6 @@ export default function ZoneConfigPage() {
           onClose={() => { setCreateOpen(false); setEditZone(null); }} />
       )}
     </div>
+    </PageShell>
   );
 }

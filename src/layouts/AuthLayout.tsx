@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-4">
+    <div className="h-full bg-bg flex flex-col items-center justify-center p-4 overflow-auto">
       {/* Subtle grid background */}
       <div
         className="fixed inset-0 pointer-events-none opacity-[0.03]"

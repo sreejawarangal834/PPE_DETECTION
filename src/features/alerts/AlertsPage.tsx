@@ -9,6 +9,8 @@ import { useAlertStore } from '../../lib/alerts/alertStore';
 import { PPE_LABEL } from '../../constants/ppeTypes';
 import { formatDate } from '../../lib/utils';
 
+import PageShell from '../../components/ui/PageShell';
+
 export default function AlertsPage() {
   const user       = useAuthStore(s => s.user);
   const allAlerts  = useAlertStore(s => s.alerts);
@@ -33,11 +35,11 @@ export default function AlertsPage() {
   }
 
   return (
-    <div className="p-6 space-y-5">
+    <PageShell>
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-text-primary">Alerts &amp; Violations</h1>
-        <p className="text-sm text-text-muted mt-1">Real-time violation feed — updates automatically</p>
+        <h1 className="text-2xl font-semibold text-white">Alerts &amp; Violations</h1>
+        <p className="text-sm text-gray-400 mt-1">Real-time violation feed — updates automatically</p>
       </div>
 
       <AlertFilters filters={filters} onChange={f => { setFilters(f); setPage(1); }} />
@@ -55,6 +57,6 @@ export default function AlertsPage() {
           onUpdate={updated => setSelected(updated)}
         />
       )}
-    </div>
+    </PageShell>
   );
 }

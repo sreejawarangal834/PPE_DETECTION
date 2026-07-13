@@ -1,5 +1,6 @@
 import { Monitor, AlertTriangle, HardHat, BarChart2, Settings, Bell, Wifi } from 'lucide-react';
 import type { ReactNode } from 'react';
+import PageShell from '../components/ui/PageShell';
 
 const SECTIONS: { icon: ReactNode; title: string; content: string }[] = [
   {
@@ -46,7 +47,7 @@ const SECTIONS: { icon: ReactNode; title: string; content: string }[] = [
 
 export default function HelpPage() {
   return (
-    <div className="p-6 max-w-3xl space-y-5">
+    <PageShell><div className="max-w-3xl space-y-5">
       <div>
         <h1 className="text-2xl font-semibold text-text-primary">Help &amp; Guide</h1>
         <p className="text-sm text-text-muted mt-1">A quick guide to each section of PPE Monitor</p>
@@ -64,5 +65,6 @@ export default function HelpPage() {
         </div>
       ))}
     </div>
+    </PageShell>
   );
 }

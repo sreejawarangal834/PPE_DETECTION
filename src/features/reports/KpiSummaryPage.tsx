@@ -5,6 +5,7 @@ import PlantLayoutWidget from '../../components/widgets/PlantLayoutWidget';
 import LoadingSkeleton from '../../components/ui/LoadingSkeleton';
 import { formatDuration } from '../../lib/utils';
 import { TrendingUp, AlertTriangle, MapPin, Users, Clock } from 'lucide-react';
+import PageShell from '../../components/ui/PageShell';
 
 export default function KpiSummaryPage() {
   const { data: kpi, isLoading } = useQuery({
@@ -16,7 +17,8 @@ export default function KpiSummaryPage() {
   const avgRt = kpi?.avgResponseTimeMs ? formatDuration(kpi.avgResponseTimeMs) : '—';
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl">
+    <PageShell>
+      <div className="space-y-6 max-w-5xl">
       {/* Page Header */}
       <div>
         <h1 className="text-2xl font-semibold text-text-primary">Safety Summary</h1>
@@ -93,5 +95,6 @@ export default function KpiSummaryPage() {
         )}
       </div>
     </div>
+    </PageShell>
   );
 }

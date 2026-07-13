@@ -57,9 +57,17 @@
 
 /* ─── Reset ──────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
-html, body, #root { height: 100%; margin: 0; }
+
+/* Lock the viewport — no browser-level scroll ever */
+html {
+  height: 100%;
+  overflow: hidden;     /* prevents html from creating scroll */
+}
 
 body {
+  height: 100%;
+  overflow: hidden;     /* prevents body from creating scroll */
+  margin: 0;
   background-color: var(--color-bg);
   color: var(--color-text-primary);
   font-family: var(--font-sans);
@@ -69,18 +77,71 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Root div must fill and contain the whole app */
+#root {
+  height: 100%;
+  overflow: hidden;     /* prevents #root from creating scroll */
+  display: flex;
+  flex-direction: column;
+}
+
 /* ─── Scrollbar ──────────────────────────────────────────── */
 * { scrollbar-width: thin; scrollbar-color: var(--color-border) transparent; }
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 4px; }
 
-/* ─── Print ──────────────────────────────────────────────── */
+/* ─── Print styles ───────────────────────────────────────── */
 @media print {
-  .no-print { display: none !important; }
-  .print-only { display: block !important; }
-  body { background: #fff; color: #000; }
+  /* Hide all app chrome — sidebar, header, nav, non-print content */
+  .no-print,
+  aside,
+  header,
+  nav,
+  [aria-label="Main navigation"],
+  [aria-label="Site navigation"] {
+    display: none !important;
+  }
+
+  /* Hide everything that is NOT the print template */
+  #main-content > *:not(.print-only),
+  #main-content > * > *:not(.print-only) {
+    display: none !important;
+  }
+
+  /* Show the print template */
+  .print-only {
+    display: block !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    z-index: 99999 !important;
+  }
+
+  /* Clean paper */
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 12pt !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  html, #root {
+    overflow: visible !important;
+    height: auto !important;
+    background: #fff !important;
+  }
+
+  @page {
+    size: A4;
+    margin: 12mm 10mm;
+  }
 }
+
 .print-only { display: none; }
 
 /* ─── Animations ─────────────────────────────────────────── */
@@ -112,6 +173,16 @@ body {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* Alert toast slide-in / out */
+@keyframes slideIn {
+  from { transform: translateX(110%); opacity: 0; }
+  to   { transform: translateX(0);   opacity: 1; }
+}
+@keyframes slideOut {
+  from { transform: translateX(0);   opacity: 1; }
+  to   { transform: translateX(110%); opacity: 0; }
 }
 
 /* ─── Focus ring ─────────────────────────────────────────── */

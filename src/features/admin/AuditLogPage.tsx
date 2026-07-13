@@ -7,6 +7,7 @@ import Button from '../../components/ui/Button';
 import type { AuditLogEntry } from '../../types';
 import { exportToCSV } from '../../lib/utils';
 import { PAGE_SIZE_AUDIT } from '../../constants/app';
+import PageShell from '../../components/ui/PageShell';
 
 export default function AuditLogPage() {
   const [search, setSearch] = useState('');
@@ -33,13 +34,13 @@ export default function AuditLogPage() {
     { key: 'timestamp',   header: 'Timestamp',   className: 'font-mono text-xs whitespace-nowrap' },
     { key: 'actor',       header: 'Actor',        sortable: true },
     { key: 'actionType',  header: 'Action',       sortable: true, className: 'font-mono text-xs' },
-    { key: 'entity',      header: 'Entity',       className: 'text-xs' },
-    { key: 'description', header: 'Description',  className: 'text-xs' },
+    { key: 'entity',      header: 'Entity',       className: 'text-sm' },
+    { key: 'description', header: 'Description',  className: 'text-sm' },
     { key: 'ipAddress',   header: 'IP',           className: 'font-mono text-xs text-text-muted' },
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <PageShell><div className="space-y-6">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-[#E8EAF0]">Audit Log</h1>
         <p className="text-sm text-[#5C6480] mt-1">Track all system actions and changes</p>
@@ -68,5 +69,6 @@ export default function AuditLogPage() {
         </div>
       )}
     </div>
+    </PageShell>
   );
 }

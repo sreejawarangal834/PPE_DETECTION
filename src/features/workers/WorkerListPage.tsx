@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getWorkers } from '../../api/workersApi';
 import { useAuthStore } from '../../lib/auth/authStore';
+import PageShell from '../../components/ui/PageShell';
 import DataTable, { type ColumnDef } from '../../components/ui/DataTable';
 import Badge from '../../components/ui/Badge';
 import Input from '../../components/ui/Input';
@@ -55,7 +56,7 @@ export default function WorkerListPage() {
   ];
 
   return (
-    <div className="p-6 space-y-5">
+    <PageShell>
       <div>
         <h1 className="text-2xl font-semibold text-text-primary">Workers</h1>
         <p className="text-sm text-text-muted mt-1">All detected workers and compliance status</p>
@@ -83,6 +84,6 @@ export default function WorkerListPage() {
         emptyMessage="No workers match the current filters."
         onRowClick={row => navigate(ROUTES.WORKER_PROFILE(row.id))}
       />
-    </div>
+    </PageShell>
   );
 }

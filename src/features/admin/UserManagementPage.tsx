@@ -13,6 +13,7 @@ import { ROLE_LABELS } from '../../constants/roles';
 import { ZONES } from '../../data/zones';
 import type { ManagedUser } from '../../types';
 import toast from 'react-hot-toast';
+import PageShell from '../../components/ui/PageShell';
 
 export default function UserManagementPage() {
   const qc    = useQueryClient();
@@ -55,7 +56,7 @@ export default function UserManagementPage() {
     { key: 'email',   header: 'Email',     sortable: true, className: 'text-text-muted text-xs' },
     { key: 'role',    header: 'Role',      render: r => <Badge variant={r.role === 'admin' ? 'high' : 'info'} label={ROLE_LABELS[r.role]} /> },
     { key: 'status',  header: 'Status',    render: r => <Badge variant={r.status} /> },
-    { key: 'lastLogin', header: 'Last Login', className: 'text-xs' },
+    { key: 'lastLogin', header: 'Last Login', className: 'text-sm' },
     { key: 'assignedZones', header: 'Assigned Zones', render: r => {
       if (r.role !== 'site_supervisor' || !r.assignedZones?.length) return <span className="text-text-muted">—</span>;
       const names = r.assignedZones.map(id => ZONES.find(z => z.id === id)?.name ?? id);
@@ -78,7 +79,7 @@ export default function UserManagementPage() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <PageShell><div className="space-y-6">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-[#E8EAF0]">User Management</h1>
         <p className="text-sm text-[#5C6480] mt-1">Manage user accounts, roles, and permissions</p>
@@ -109,5 +110,6 @@ export default function UserManagementPage() {
         </Dialog>
       )}
     </div>
+    </PageShell>
   );
 }

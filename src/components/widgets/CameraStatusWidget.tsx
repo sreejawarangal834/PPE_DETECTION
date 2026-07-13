@@ -14,11 +14,11 @@ export default function CameraStatusWidget({ assignedZones }: { assignedZones?: 
   const online = filteredCameras.filter(c => c.status === 'online').length;
 
   return (
-    <div className="bg-[#1B1F27] border border-[#21252D] rounded-2xl p-5 flex flex-col gap-4 hover:border-[#4A8FA3]/30 transition-all duration-300">
+    <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 flex flex-col gap-4 hover:shadow-[0_0_15px_rgba(59,130,246,0.4)] transition-all">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold uppercase tracking-wide text-[#9BA3B8]">Cameras</p>
-        <span className="text-sm font-mono text-[#E8EAF0] bg-[#20242D] px-3 py-1 rounded-lg">
-          <span className="text-[#4F9E7C] font-bold">{online}</span>/{filteredCameras.length} online
+        <p className="text-sm font-semibold uppercase tracking-wide text-gray-400">Cameras</p>
+        <span className="text-sm font-mono text-white bg-gray-700 px-3 py-1 rounded-lg">
+          <span className="text-green-400 font-bold">{online}</span>/{filteredCameras.length} online
         </span>
       </div>
 
@@ -26,14 +26,14 @@ export default function CameraStatusWidget({ assignedZones }: { assignedZones?: 
         {filteredCameras.map(c => {
           const isOnline  = c.status === 'online';
           const isError   = c.status === 'error';
-          const dotColor  = isOnline ? 'text-[#4F9E7C]' : isError ? 'text-[#D9A441]' : 'text-[#C25450]';
-          const textColor = isOnline ? 'text-[#E8EAF0]' : 'text-[#9BA3B8]';
+          const dotColor  = isOnline ? 'text-green-400' : isError ? 'text-yellow-400' : 'text-red-400';
+          const textColor = isOnline ? 'text-white' : 'text-gray-400';
           return (
             <button
               key={c.id}
               onClick={() => navigate(ROUTES.MONITORING)}
               aria-label={`${c.id} is ${c.status}`}
-              className="flex items-center gap-2 px-3 py-2 bg-[#20242D] rounded-lg text-sm font-mono hover:bg-[#252A35] hover:border-[#4A8FA3]/30 border border-transparent transition-all duration-300 text-left"
+              className="flex items-center gap-2 px-3 py-2 bg-gray-700 rounded-lg text-sm font-mono hover:bg-gray-600 border border-transparent transition-all duration-300 text-left"
             >
               <span className={`text-[12px] leading-none ${dotColor}`} aria-hidden="true">●</span>
               <span className={`truncate ${textColor}`}>{c.id}</span>

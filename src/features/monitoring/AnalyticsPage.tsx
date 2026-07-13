@@ -6,6 +6,7 @@ import WorkerStatusWidget from '../../components/widgets/WorkerStatusWidget';
 import CameraStatusWidget from '../../components/widgets/CameraStatusWidget';
 import TopViolatingZonesWidget from '../../components/widgets/TopViolatingZonesWidget';
 import ErrorBoundary from '../../components/ui/ErrorBoundary';
+import PageShell from '../../components/ui/PageShell';
 
 export default function AnalyticsPage() {
   const user = useAuthStore(s => s.user);
@@ -18,7 +19,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="p-8 space-y-8 bg-[#0f1117] min-h-full">
+    <PageShell className="bg-[#0f1117]"><div className="space-y-8">
       {/* Page Header */}
       <div>
         <h1 className="text-4xl font-bold text-[#E8EAF0]">Analytics</h1>
@@ -56,5 +57,6 @@ export default function AnalyticsPage() {
         <ZoneGrid selectedZone={selectedZone} onZoneSelect={handleZoneClick} assignedZones={assignedZones} />
       </ErrorBoundary>
     </div>
+    </PageShell>
   );
 }

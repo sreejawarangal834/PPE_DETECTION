@@ -4,16 +4,16 @@ type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type Size    = 'sm' | 'md' | 'lg';
 
 const VARIANT_CLASSES: Record<Variant, string> = {
-  primary:   'bg-accent text-white hover:bg-accent-hover focus-visible:ring-accent',
-  secondary: 'bg-panel-alt text-text-primary border border-border hover:bg-panel focus-visible:ring-accent',
-  ghost:     'text-text-secondary hover:text-text-primary hover:bg-panel-alt focus-visible:ring-accent',
-  danger:    'bg-status-danger/20 text-status-danger border border-status-danger/40 hover:bg-status-danger/30 focus-visible:ring-status-danger',
+  primary:   'bg-blue-600 hover:bg-blue-700 text-white focus-visible:ring-blue-500 transition-colors',
+  secondary: 'bg-gray-700 hover:bg-gray-600 text-white border border-gray-600 focus-visible:ring-blue-500 transition-colors',
+  ghost:     'text-gray-300 hover:text-white hover:bg-gray-800 focus-visible:ring-blue-500 transition-colors duration-200',
+  danger:    'bg-red-600 hover:bg-red-700 text-white focus-visible:ring-red-500 transition-colors',
 };
 
 const SIZE_CLASSES: Record<Size, string> = {
-  sm: 'px-2.5 py-1.5 text-xs',
+  sm: 'px-3 py-1.5 text-xs',
   md: 'px-4 py-2 text-sm',
-  lg: 'px-5 py-2.5 text-base',
+  lg: 'px-6 py-3 text-base',
 };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -33,8 +33,8 @@ export default function Button({
       {...rest}
       disabled={disabled || loading}
       className={`
-        inline-flex items-center gap-2 rounded-md font-medium transition-colors
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-bg
+        inline-flex items-center gap-2 rounded-lg font-medium transition-colors
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900
         disabled:opacity-50 disabled:cursor-not-allowed
         ${VARIANT_CLASSES[variant]} ${SIZE_CLASSES[size]} ${className}
       `}

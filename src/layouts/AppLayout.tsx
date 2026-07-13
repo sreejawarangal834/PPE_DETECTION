@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   Monitor, AlertTriangle, HardHat, BarChart2, TrendingUp,
@@ -16,11 +16,15 @@ import { ROUTES } from '../constants/routes';
 import { ROLE_LABELS, ROLE_BADGE_COLOR } from '../constants/roles';
 import { NOTIFICATION_MAX, APP_NAME } from '../constants/app';
 import NotificationCenterDrawer from '../components/widgets/NotificationCenterDrawer';
-import AlertPopup from '../components/widgets/AlertPopup';
 import Tooltip from '../components/ui/Tooltip';
 
-/* ── Nav sections with group labels ─────────────────────── */
-const NAV_SECTIONS = [
+/* ── Nav sections ──────────────────────────────────────── */
+import { type LucideIcon } from 'lucide-react';
+
+interface NavItemDef { path: string; label: string; Icon: LucideIcon; }
+interface NavSection  { label: string; items: NavItemDef[]; }
+
+const NAV_SECTIONS: NavSection[] = [
   {
     label: 'Operations',
     items: [
@@ -39,27 +43,29 @@ const NAV_SECTIONS = [
   },
   {
     label: 'System',
-    items: [
-      { path: ROUTES.ADMIN, label: 'Admin Console', Icon: Settings },
-    ],
+    items: [{ path: ROUTES.ADMIN, label: 'Admin Console', Icon: Settings }],
   },
 ];
 
-const SIDEBAR_KEY = 'ppe_sidebar_collapsed';
+const SIDEBAR_KEY  = 'ppe_sidebar_collapsed';
+const SIDEBAR_W_KEY = 'ppe_sidebar_width';
+const MIN_W = 180;
+const MAX_W = 380;
+const DEF_W = 220;
 
-/* ── WS Status Banner ───────────────────────────────────── */
+/* ── WS Status Banner ──────────────────────────────────── */
 function WsStatusBanner() {
   const status = useWsStore(s => s.status);
   if (status === 'connected') return (
-    <div className="flex items-center gap-1.5" role="status" aria-live="polite" aria-label="Live feed connected">
-      <span className="w-2 h-2 rounded-full bg-status-ok" aria-hidden="true" />
+    <div className="flex items-center gap-1.5" role="status" aria-live="polite">
+      <span className="w-2 h-2 rounded-full bg-status-ok" />
       <span className="text-xs font-mono text-status-ok">Live</span>
     </div>
   );
   if (status === 'reconnecting') return (
-    <div className="flex items-center gap-1.5" role="status" aria-live="polite" aria-label="Reconnecting">
-      <span className="w-2 h-2 rounded-full bg-status-warn animate-pulse" aria-hidden="true" />
-      <svg className="w-3 h-3 text-status-warn animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <div className="flex items-center gap-1.5" role="status" aria-live="polite">
+      <span className="w-2 h-2 rounded-full bg-status-warn animate-pulse" />
+      <svg className="w-3 h-3 text-status-warn animate-spin" viewBox="0 0 24 24" fill="none">
         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
       </svg>
@@ -67,31 +73,30 @@ function WsStatusBanner() {
     </div>
   );
   return (
-    <div className="flex items-center gap-1.5" role="status" aria-live="polite" aria-label="Disconnected">
-      <span className="w-2 h-2 rounded-full bg-status-danger" aria-hidden="true" />
+    <div className="flex items-center gap-1.5" role="status" aria-live="polite">
+      <span className="w-2 h-2 rounded-full bg-status-danger" />
       <span className="text-xs font-mono text-status-danger">Disconnected</span>
       <button className="text-xs text-accent hover:underline ml-1">Retry</button>
     </div>
   );
 }
 
-/* ── Single nav item ────────────────────────────────────── */
+/* ── Nav Item ──────────────────────────────────────────── */
 function NavItem({ path, label, Icon, collapsed, alertCount }: {
   path: string; label: string; Icon: React.ElementType;
   collapsed: boolean; alertCount?: number;
 }) {
+  const base = 'transition-all duration-200 relative';
   if (collapsed) return (
     <Tooltip content={label}>
-      <NavLink to={path}
-        className={({ isActive }) =>
-          `relative flex items-center justify-center w-10 h-10 mx-auto rounded-xl transition-all duration-200
-           ${isActive
-             ? 'bg-gradient-to-br from-accent/30 to-accent/10 text-accent shadow-inner border border-accent/20'
-             : 'text-text-muted hover:bg-panel-hover hover:text-text-primary'}`
-        }>
+      <NavLink to={path} className={({ isActive }) =>
+        `${base} flex items-center justify-center w-10 h-10 mx-auto rounded-xl
+         ${isActive
+           ? 'bg-accent/20 text-accent border border-accent/30 shadow-sm shadow-accent/20'
+           : 'text-text-muted hover:bg-panel-hover hover:text-text-primary'}`}>
         <Icon className="w-[18px] h-[18px]" aria-hidden="true" />
         <span className="sr-only">{label}</span>
-        {alertCount && alertCount > 0 && (
+        {!!alertCount && alertCount > 0 && (
           <span className="absolute -top-1 -right-1 w-4 h-4 bg-status-danger text-white text-[9px] font-bold rounded-full flex items-center justify-center">
             {alertCount > 9 ? '9+' : alertCount}
           </span>
@@ -101,26 +106,18 @@ function NavItem({ path, label, Icon, collapsed, alertCount }: {
   );
 
   return (
-    <NavLink to={path}
-      className={({ isActive }) =>
-        `relative flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-300 group
-         ${isActive
-           ? 'bg-gradient-to-r from-accent/20 to-accent/5 text-accent border border-accent/15 shadow-lg shadow-accent/10'
-           : 'text-text-secondary hover:bg-panel-hover hover:text-text-primary hover:border-accent/20 border border-transparent'}`}>
+    <NavLink to={path} className={({ isActive }) =>
+      `${base} flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+       ${isActive
+         ? 'bg-accent/15 text-accent border border-accent/20 shadow-sm'
+         : 'text-text-secondary hover:bg-panel-hover hover:text-text-primary border border-transparent'}`}>
       {({ isActive }) => (
         <>
-          {/* Icon with subtle glow on active */}
-          <span className={`shrink-0 transition-all duration-300 group-hover:scale-110 ${isActive ? 'drop-shadow-[0_0_8px_rgba(74,143,163,0.7)]' : ''}`}>
-            <Icon className="w-[18px] h-[18px]" aria-hidden="true" />
-          </span>
-          <span className="truncate font-semibold">{label}</span>
-          {/* Active left-accent line */}
-          {isActive && (
-            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-accent rounded-r-full shadow-lg shadow-accent/50" aria-hidden="true" />
-          )}
-          {/* Alert count badge */}
-          {alertCount && alertCount > 0 && (
-            <span className="ml-auto shrink-0 min-w-[22px] h-6 bg-status-danger text-white text-[11px] font-bold rounded-full flex items-center justify-center px-1.5 shadow-lg shadow-status-danger/30 animate-pulse">
+          {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-accent rounded-r-full" />}
+          <Icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? 'drop-shadow-[0_0_5px_rgba(74,143,163,0.5)]' : ''}`} aria-hidden="true" />
+          <span className="truncate">{label}</span>
+          {!!alertCount && alertCount > 0 && (
+            <span className="ml-auto shrink-0 min-w-[20px] h-5 bg-status-danger text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1.5">
               {alertCount > 99 ? '99+' : alertCount}
             </span>
           )}
@@ -130,20 +127,60 @@ function NavItem({ path, label, Icon, collapsed, alertCount }: {
   );
 }
 
-/* ── Main Layout ────────────────────────────────────────── */
+/* ── Logout Confirmation Dialog ────────────────────────── */
+function LogoutDialog({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-bg/80 backdrop-blur-sm"
+      role="dialog" aria-modal="true" aria-labelledby="logout-title">
+      <div className="bg-panel border border-border rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-full bg-status-danger/15 flex items-center justify-center">
+            <LogOut className="w-5 h-5 text-status-danger" aria-hidden="true" />
+          </div>
+          <h3 id="logout-title" className="text-lg font-bold text-text-primary">Sign out?</h3>
+        </div>
+        <p className="text-sm text-text-secondary mb-6 leading-relaxed">
+          You'll be signed out of PPE Monitor and will need to sign in again to access the system.
+        </p>
+        <div className="flex gap-3">
+          <button onClick={onCancel}
+            className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-text-secondary bg-panel-alt border border-border hover:bg-panel-hover transition-all duration-200">
+            Cancel
+          </button>
+          <button onClick={onConfirm}
+            className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-status-danger hover:bg-status-danger/85 shadow-lg shadow-status-danger/20 transition-all duration-200">
+            Sign out
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Main Layout ───────────────────────────────────────── */
 export default function AppLayout() {
   const { user, logout }  = useAuthStore();
   const openDrawer        = useNotificationStore(s => s.openDrawer);
   const unreadCount       = useNotificationStore(s => s.unreadCount);
-  const activeAlertCount  = useAlertStore(s => s.alerts.filter(a => a.status === 'open' || a.status === 'escalated').length);
+  const activeAlertCount  = useAlertStore(s =>
+    s.alerts.filter(a => a.status === 'open' || a.status === 'escalated').length
+  );
   const navigate          = useNavigate();
   const location          = useLocation();
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
+  const [profileOpen, setProfileOpen]       = useState(false);
+  const [logoutOpen,  setLogoutOpen]        = useState(false);
+
+  // Sidebar collapse
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     try { return localStorage.getItem(SIDEBAR_KEY) === 'true'; } catch { return false; }
   });
+
+  // Sidebar resizable width
+  const [sidebarW, setSidebarW] = useState<number>(() => {
+    try { return parseInt(localStorage.getItem(SIDEBAR_W_KEY) ?? String(DEF_W), 10); } catch { return DEF_W; }
+  });
+  const isResizing = useRef(false);
 
   function toggleSidebar() {
     setCollapsed(v => {
@@ -153,9 +190,34 @@ export default function AppLayout() {
     });
   }
 
+  // Resize drag handlers
+  function onResizeStart(e: React.MouseEvent) {
+    e.preventDefault();
+    isResizing.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    function onMove(ev: MouseEvent) {
+      if (!isResizing.current) return;
+      const w = Math.min(MAX_W, Math.max(MIN_W, ev.clientX));
+      setSidebarW(w);
+      try { localStorage.setItem(SIDEBAR_W_KEY, String(w)); } catch { /* noop */ }
+    }
+    function onUp() {
+      isResizing.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }
+
   useWebSocket();
   useEffect(() => { startEscalationInterval(() => {}); return () => stopEscalationInterval(); }, []);
 
+  // Close profile on outside click
   useEffect(() => {
     if (!profileOpen) return;
     const h = (e: MouseEvent) => {
@@ -165,80 +227,86 @@ export default function AppLayout() {
     return () => document.removeEventListener('mousedown', h);
   }, [profileOpen]);
 
-  function handleLogout() { setLogoutConfirmOpen(true); }
-  
-  function confirmLogout() {
-    logout();
-    navigate(ROUTES.LOGIN);
-    setLogoutConfirmOpen(false);
-  }
+  function confirmLogout() { logout(); navigate(ROUTES.LOGIN); }
 
-  const allowedRoutes = new Set(
-    user ? NAV_SECTIONS.flatMap(s => s.items).filter(item => {
-      const perms = ROUTE_PERMISSIONS[item.path];
-      return !perms || perms.includes(user.role);
-    }).map(i => i.path) : []
+  const allowedPaths = new Set<string>(
+    user
+      ? (NAV_SECTIONS as NavSection[]).flatMap(s => s.items)
+          .filter(i => { const p = ROUTE_PERMISSIONS[i.path]; return !p || p.includes(user.role); })
+          .map(i => i.path)
+      : []
   );
 
   const badge    = Math.min(unreadCount, NOTIFICATION_MAX);
-  const initials = user?.name?.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase() ?? '?';
+  const initials = user?.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() ?? '?';
+  const currentRoute: NavItemDef | undefined = (NAV_SECTIONS as NavSection[])
+    .flatMap(s => s.items)
+    .find(i => location.pathname.startsWith(i.path));
 
-  // Compute current page label for header breadcrumb
-  const currentRoute = NAV_SECTIONS.flatMap(s => s.items).find(i => location.pathname.startsWith(i.path));
+  /* ── effective sidebar width ─────────────────────────── */
+  const effectiveW = collapsed ? 72 : sidebarW;
 
   return (
-    <div className="h-screen w-screen flex bg-bg text-text-primary overflow-hidden">
+    /* ROOT — fixed h-screen, flex-row, no overflow at root */
+    <div className="h-screen w-screen flex flex-row overflow-hidden bg-bg text-text-primary">
 
-      {/* ── Sidebar ─────────────────────────────────────── */}
+      {/* ═══════════════════════════════════════════════════
+          SIDEBAR
+      ══════════════════════════════════════════════════════ */}
       <aside
-        className={`${collapsed ? 'w-[72px]' : 'w-[220px]'} shrink-0 flex flex-col transition-all duration-250 no-print`}
-        style={{ background: 'linear-gradient(180deg, #1B1F27 0%, #161a20 100%)', borderRight: '1px solid #21252D' }}
+        style={{
+          width: `${effectiveW}px`,
+          minWidth: `${effectiveW}px`,
+          maxWidth: `${effectiveW}px`,
+          background: 'linear-gradient(180deg,#1B1F27 0%,#161a20 100%)',
+          borderRight: '1px solid #21252D',
+          transition: collapsed ? 'width 0.2s ease, min-width 0.2s ease, max-width 0.2s ease' : 'none',
+        }}
+        className="flex flex-col shrink-0 relative no-print"
         aria-label="Main navigation"
       >
         {/* Logo row */}
-        <div className={`h-14 flex items-center shrink-0 px-4 ${collapsed ? 'justify-center' : 'justify-between'}`}
-          style={{ borderBottom: '1px solid #21252D' }}>
+        <div
+          className={`h-14 shrink-0 flex items-center px-4 ${collapsed ? 'justify-center' : 'justify-between'}`}
+          style={{ borderBottom: '1px solid #21252D' }}
+        >
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-accent/30 to-accent/10 flex items-center justify-center shrink-0 border border-accent/20">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-accent/40 to-accent/10 border border-accent/25 flex items-center justify-center shrink-0">
               <Shield className="w-4 h-4 text-accent" aria-hidden="true" />
             </div>
             {!collapsed && (
               <div className="min-w-0">
                 <p className="text-sm font-bold text-text-primary truncate leading-tight">{APP_NAME}</p>
-                <p className="text-[10px] text-text-muted leading-tight truncate">Monitoring System</p>
+                <p className="text-[10px] text-text-muted truncate leading-tight">Monitoring System</p>
               </div>
             )}
           </div>
-          {!collapsed && (
-            <button onClick={toggleSidebar} aria-label="Collapse sidebar"
-              className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-panel-hover transition-colors shrink-0">
-              <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" />
-            </button>
-          )}
-          {collapsed && (
-            <button onClick={toggleSidebar} aria-label="Expand sidebar"
-              className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-panel border border-border rounded-full flex items-center justify-center text-text-muted hover:text-accent hover:border-accent/50 transition-colors shadow-lg z-10">
-              <ChevronRight className="w-3 h-3" aria-hidden="true" />
-            </button>
-          )}
+          <button
+            onClick={toggleSidebar}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-panel-hover transition-colors shrink-0"
+          >
+            {collapsed
+              ? <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
+              : <ChevronLeft  className="w-3.5 h-3.5" aria-hidden="true" />}
+          </button>
         </div>
 
-        {/* Nav sections */}
+        {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-3" aria-label="Site navigation">
           {NAV_SECTIONS.map(section => {
-            const visibleItems = section.items.filter(i => allowedRoutes.has(i.path));
-            if (visibleItems.length === 0) return null;
+            const visible = section.items.filter(i => allowedPaths.has(i.path));
+            if (!visible.length) return null;
             return (
-              <div key={section.label} className={`mb-1 ${collapsed ? 'px-2' : 'px-3'}`}>
-                {/* Section label — hidden when collapsed */}
+              <div key={section.label} className={`mb-2 ${collapsed ? 'px-2' : 'px-3'}`}>
                 {!collapsed && (
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-text-muted/60 px-3 py-1.5 mb-0.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-text-muted/50 px-3 py-1 mb-0.5 select-none">
                     {section.label}
                   </p>
                 )}
                 {collapsed && <div className="w-8 h-px bg-border-soft mx-auto my-2" aria-hidden="true" />}
                 <div className={`flex flex-col ${collapsed ? 'items-center gap-1' : 'gap-0.5'}`}>
-                  {visibleItems.map(({ path, label, Icon }) => (
+                  {visible.map(({ path, label, Icon }) => (
                     <NavItem
                       key={path} path={path} label={label} Icon={Icon}
                       collapsed={collapsed}
@@ -251,12 +319,15 @@ export default function AppLayout() {
           })}
         </nav>
 
-        {/* Sidebar footer */}
-        <div className={`py-3 ${collapsed ? 'px-2' : 'px-3'}`} style={{ borderTop: '1px solid #21252D' }}>
-          {/* User info block — expanded only */}
+        {/* Footer — User card only, always at bottom */}
+        <div
+          className={`shrink-0 ${collapsed ? 'px-2 py-3' : 'px-3 py-3'}`}
+          style={{ borderTop: '1px solid #21252D' }}
+        >
+          {/* Expanded: full user card */}
           {!collapsed && user && (
-            <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-panel-alt border border-border-soft mb-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent/30 to-accent/10 flex items-center justify-center text-sm font-bold text-accent shrink-0 border border-accent/20">
+            <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-panel-alt border border-border-soft">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent/30 to-accent/10 border border-accent/20 flex items-center justify-center text-sm font-bold text-accent shrink-0 select-none">
                 {initials}
               </div>
               <div className="min-w-0 flex-1">
@@ -268,87 +339,71 @@ export default function AppLayout() {
             </div>
           )}
 
-          {/* Profile & Logout */}
-          {collapsed ? (
-            <>
-              <Tooltip content="Profile">
-                <NavLink to={ROUTES.PROFILE}
-                  className={({ isActive }) =>
-                    `flex items-center justify-center w-10 h-10 mx-auto rounded-xl transition-all duration-200
-                     ${isActive ? 'bg-accent/20 text-accent border border-accent/20' : 'text-text-muted hover:bg-panel-hover hover:text-text-primary'}`}>
-                  <User className="w-[18px] h-[18px]" aria-hidden="true" />
-                  <span className="sr-only">Profile</span>
-                </NavLink>
-              </Tooltip>
-              <Tooltip content="Logout">
-                <button onClick={handleLogout} aria-label="Logout"
-                  className="flex items-center justify-center w-10 h-10 mx-auto rounded-xl mt-1 text-text-muted hover:bg-status-danger/15 hover:text-status-danger transition-all duration-200">
-                  <LogOut className="w-[18px] h-[18px]" aria-hidden="true" />
-                </button>
-              </Tooltip>
-            </>
-          ) : (
-            <div className="flex flex-col gap-0.5">
-              <NavLink to={ROUTES.PROFILE}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200
-                   ${isActive ? 'bg-accent/15 text-accent border border-accent/15' : 'text-text-secondary hover:bg-panel-hover hover:text-text-primary'}`}>
-                <User className="w-[18px] h-[18px] shrink-0" aria-hidden="true" />
-                <span className="font-medium">Profile</span>
-              </NavLink>
-              <NavLink to={ROUTES.HELP}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200
-                   ${isActive ? 'bg-accent/15 text-accent border border-accent/15' : 'text-text-secondary hover:bg-panel-hover hover:text-text-primary'}`}>
-                <BookOpen className="w-[18px] h-[18px] shrink-0" aria-hidden="true" />
-                <span className="font-medium">Help</span>
-              </NavLink>
-              <button onClick={handleLogout} aria-label="Logout"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-text-secondary hover:bg-status-danger/10 hover:text-status-danger transition-all duration-200 mt-0.5">
-                <LogOut className="w-[18px] h-[18px] shrink-0" aria-hidden="true" />
-                <span className="font-medium">Logout</span>
-              </button>
-            </div>
+          {/* Collapsed: avatar icon only */}
+          {collapsed && user && (
+            <Tooltip content={`${user.name} · ${ROLE_LABELS[user.role]}`}>
+              <div className="w-10 h-10 mx-auto rounded-xl bg-gradient-to-br from-accent/30 to-accent/10 border border-accent/20 flex items-center justify-center text-sm font-bold text-accent select-none cursor-default">
+                {initials}
+              </div>
+            </Tooltip>
           )}
         </div>
+
+        {/* Resize handle — only when expanded */}
+        {!collapsed && (
+          <div
+            onMouseDown={onResizeStart}
+            title="Drag to resize sidebar"
+            className="absolute top-0 right-0 bottom-0 w-1 cursor-col-resize group z-20"
+            aria-hidden="true"
+          >
+            <div className="absolute inset-y-0 right-0 w-1 bg-transparent group-hover:bg-accent/40 transition-colors duration-150" />
+          </div>
+        )}
       </aside>
 
-      {/* ── Main ────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* ═══════════════════════════════════════════════════
+          MAIN COLUMN  (header + scrollable content)
+      ══════════════════════════════════════════════════════ */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
-        {/* Header */}
-        <header className="h-14 shrink-0 bg-panel border-b border-border-soft flex items-center px-6 gap-4 no-print">
-          {/* Breadcrumb */}
-          {currentRoute && (
-            <div className="flex items-center gap-2 text-text-muted mr-2">
-              <currentRoute.Icon className="w-4 h-4" aria-hidden="true" />
-              <span className="text-sm text-text-secondary font-medium">{currentRoute.label}</span>
-            </div>
-          )}
+        {/* Header — fixed 56px */}
+        <header className="h-14 shrink-0 bg-panel border-b border-border-soft flex items-center px-6 gap-4 no-print z-10">
+          {/* Current-page breadcrumb */}
+          {currentRoute && (() => {
+            const RouteIcon = currentRoute.Icon;
+            return (
+              <div className="flex items-center gap-2 text-text-muted">
+                <RouteIcon className="w-4 h-4" aria-hidden="true" />
+                <span className="text-sm font-medium text-text-secondary">{currentRoute.label}</span>
+              </div>
+            );
+          })()}
           <div className="flex-1" />
+
           <WsStatusBanner />
           <div className="w-px h-5 bg-border-soft" aria-hidden="true" />
 
-          {/* Notification bell */}
+          {/* Bell */}
           <Tooltip content="Notifications">
             <button onClick={openDrawer}
               aria-label={`Notifications — ${badge} unread`}
-              className="relative p-2 rounded-md text-text-muted hover:text-text-primary hover:bg-panel-hover transition-colors duration-200">
+              className="relative p-2 rounded-md text-text-muted hover:text-text-primary hover:bg-panel-hover transition-colors">
               <Bell className="w-5 h-5" aria-hidden="true" />
               {badge > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-status-danger text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 leading-none">
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-status-danger text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
                   {badge > 99 ? '99+' : badge}
                 </span>
               )}
             </button>
           </Tooltip>
 
-          {/* Avatar dropdown */}
+          {/* Avatar */}
           <div className="relative" data-profile-menu>
-            <button onClick={() => setProfileOpen(v => !v)} aria-label="User menu"
-              aria-expanded={profileOpen} aria-haspopup="menu"
-              className="flex items-center gap-2.5 pl-2 pr-1 py-1.5 rounded-md hover:bg-panel-hover transition-colors duration-200">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent/30 to-accent/10 border border-accent/20 flex items-center justify-center text-sm font-bold text-accent select-none">
+            <button onClick={() => setProfileOpen(v => !v)}
+              aria-label="User menu" aria-expanded={profileOpen} aria-haspopup="menu"
+              className="flex items-center gap-2.5 pl-2 pr-1 py-1.5 rounded-md hover:bg-panel-hover transition-colors">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent/40 to-accent/10 border border-accent/25 flex items-center justify-center text-sm font-bold text-accent select-none">
                 {initials}
               </div>
               <div className="text-left hidden lg:block leading-tight">
@@ -367,52 +422,34 @@ export default function AppLayout() {
                 </div>
                 <NavLink to={ROUTES.PROFILE} role="menuitem" onClick={() => setProfileOpen(false)}
                   className="flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:bg-panel-hover hover:text-text-primary transition-colors">
-                  <User className="w-4 h-4" aria-hidden="true" /> My Profile
+                  <User className="w-4 h-4" /> My Profile
                 </NavLink>
                 <NavLink to={ROUTES.HELP} role="menuitem" onClick={() => setProfileOpen(false)}
                   className="flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:bg-panel-hover hover:text-text-primary transition-colors">
-                  <BookOpen className="w-4 h-4" aria-hidden="true" /> Help
+                  <BookOpen className="w-4 h-4" /> Help
                 </NavLink>
                 <div className="my-1 mx-3 h-px bg-border-soft" role="separator" />
-                <button role="menuitem" onClick={handleLogout}
+                <button role="menuitem" onClick={() => { setProfileOpen(false); setLogoutOpen(true); }}
                   className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-status-danger hover:bg-panel-hover transition-colors">
-                  <LogOut className="w-4 h-4" aria-hidden="true" /> Logout
+                  <LogOut className="w-4 h-4" /> Logout
                 </button>
               </div>
             )}
           </div>
         </header>
 
-        <main id="main-content" className="flex-1 overflow-auto bg-bg">
+        {/* Page content */}
+        <main id="main-content" className="flex-1 overflow-hidden bg-bg">
           <Outlet />
         </main>
       </div>
 
+      {/* ── Portals ─────────────────────────────────────── */}
       <NotificationCenterDrawer />
-      <AlertPopup />
-      
-      {/* Logout Confirmation Dialog */}
-      {logoutConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" role="dialog" aria-modal="true">
-          <div className="bg-[#1B1F27] border border-[#21252D] rounded-2xl p-6 w-full max-w-md shadow-2xl">
-            <h3 className="text-xl font-bold text-[#E8EAF0] mb-2">Confirm Logout</h3>
-            <p className="text-base text-[#9BA3B8] mb-6">Are you sure you want to log out? You will need to sign in again to access the system.</p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setLogoutConfirmOpen(false)}
-                className="px-5 py-2.5 rounded-xl text-sm font-semibold text-[#9BA3B8] bg-[#20242D] hover:bg-[#252A35] border border-[#262B34] transition-all duration-200"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmLogout}
-                className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-status-danger hover:bg-status-danger/90 shadow-lg shadow-status-danger/20 transition-all duration-200"
-              >
-                Yes, Logout
-              </button>
-            </div>
-          </div>
-        </div>
+
+      {/* Logout confirmation */}
+      {logoutOpen && (
+        <LogoutDialog onConfirm={confirmLogout} onCancel={() => setLogoutOpen(false)} />
       )}
     </div>
   );
