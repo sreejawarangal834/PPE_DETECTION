@@ -1,0 +1,12 @@
+# Trained weights: committed directly despite the root *.pt rule (under
+# GitHub's 100MB limit, needed for the app to run without a separate fetch step).
+!models/best.pt
+
+# Uploaded video files (runtime data, not source)
+uploads/*
+!uploads/.gitkeep
+
+# Python
+.venv/
+__pycache__/
+*.pyc
