@@ -1,4 +1,4 @@
-name: PPE Detection CI/CD
+ name: PPE Detection CI/CD
 
 on:
   push:
@@ -30,6 +30,15 @@ jobs:
         run: |
           pip install flake8
           flake8 app/ --max-line-length=120
+
+      - name: Debug - inspect working directory
+        run: |
+          pwd
+          ls -la
+          echo "--- pytest.ini contents ---"
+          cat pytest.ini
+          echo "--- app directory ---"
+          ls -la app/
 
       - name: Run tests
         run: pytest tests/ -v
