@@ -25,12 +25,14 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
+
 class Detection(Base):
     __tablename__ = "detections"
     id = Column(Integer, primary_key=True, index=True)
     class_name = Column(String)
     confidence = Column(Float)
     timestamp = Column(DateTime, default=datetime.utcnow)
+
 
 Base.metadata.create_all(bind=engine)
 
