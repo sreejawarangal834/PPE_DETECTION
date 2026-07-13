@@ -18,6 +18,7 @@ REQUIRED_PPE: dict[str, list[str]] = {
     "head": ["helmet"],
     "hands": ["gloves"],
     "foot": ["shoes"],
+    "face": ["mask"],
 }
 
 OVERLAP_THRESHOLD = 0.1
@@ -54,6 +55,9 @@ def evaluate_compliance(detections: list[dict]) -> tuple[str, list[str]]:
 
     if "person" in by_label and "safety-vest" not in by_label:
         violations.append("no-safety-vest")
+
+    if "person" in by_label and "glasses" not in by_label:
+       violations.append("no-eye-protection")
 
     if not violations:
         severity = "ok"

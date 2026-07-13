@@ -23,7 +23,7 @@ regular file since it's under GitHub's 100MB per-file limit.
 ## Run
 
 ```bash
-uvicorn main:app --reload --port 8001
+uvicorn main:app --reload --port 8000
 ```
 
 - `GET /api/model/info` — returns the model's class names (read from the
