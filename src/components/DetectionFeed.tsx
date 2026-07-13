@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { detectionEvents, type Severity } from "../data/mockData";
+import { type Severity } from "../data/mockData";
+import { useDetectionStore } from "../state/DetectionStore";
 
 const severityStyles: Record<Severity, string> = {
   ok: "text-status-ok",
@@ -15,9 +16,9 @@ const filters: { id: Severity | "all"; label: string }[] = [
 ];
 
 export default function DetectionFeed() {
+  const { events } = useDetectionStore();
   const [filter, setFilter] = useState<Severity | "all">("all");
-  const rows =
-    filter === "all" ? detectionEvents : detectionEvents.filter((e) => e.severity === filter);
+  const rows = filter === "all" ? events : events.filter((e) => e.severity === filter);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
