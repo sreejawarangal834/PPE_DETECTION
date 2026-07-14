@@ -31,12 +31,13 @@ from fastapi import FastAPI, File, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from ultralytics import YOLO
 
-from compliance import evaluate_compliance
+from compliance import evaluate_compliance, reset_session_state
 from frame_source import FileVideoSource
 from config import (
     CONF_THRESHOLD, IOU_THRESHOLD, IMAGE_SIZE,
     JPEG_QUALITY, MAX_SEND_WIDTH,
     INFER_QUEUE_SIZE, SEND_QUEUE_SIZE, FRAME_SKIP,
+    OVERLAP_THRESHOLD,
 )
 
 # ─── Logging ──────────────────────────────────────────────────────────────────
@@ -68,6 +69,7 @@ log.info("  Device        : %s", "GPU (cuda:0)" if _cuda_available else "CPU")
 log.info("  FP16 Enabled  : %s", _fp16)
 log.info("  Conf Threshold: %.2f", CONF_THRESHOLD)
 log.info("  IoU  Threshold: %.2f", IOU_THRESHOLD)
+log.info("  Overlap Thresh: %.2f", OVERLAP_THRESHOLD)
 log.info("  Image Size    : %d", IMAGE_SIZE)
 log.info("  JPEG Quality  : %d", JPEG_QUALITY)
 log.info("  Frame Skip    : %d (process 1 in %d)", FRAME_SKIP, FRAME_SKIP + 1)
@@ -116,13 +118,19 @@ def _encode_jpeg(frame: np.ndarray, quality: int = JPEG_QUALITY) -> Optional[byt
     return bytes(buf) if ok else None
 
 
-def _run_inference(frame: np.ndarray) -> list[dict]:
+def _run_inference(frame: np.ndarray, tracker_state: dict) -> list[dict]:
     """
-    Synchronous inference — called via asyncio.to_thread so it
-    doesn't block the event loop.
+    Synchronous tracking + inference — called via asyncio.to_thread.
+
+    Uses model.track() with persist=True when the session has started,
+    falling back to model.predict() on the first frame to initialise.
+    Tracker IDs are collected internally but NOT sent to the frontend
+    (contract unchanged — only `compliant` is new in each detection).
+
+    tracker_state is a mutable dict shared across calls within one session:
+        {"initialised": bool}  — set True after first successful track call
     """
-    results = model.predict(
-        frame,
+    common_kwargs = dict(
         conf=CONF_THRESHOLD,
         iou=IOU_THRESHOLD,
         imgsz=IMAGE_SIZE,
@@ -130,6 +138,21 @@ def _run_inference(frame: np.ndarray) -> list[dict]:
         half=_fp16,
         verbose=False,
     )
+
+    try:
+        # model.track() with persist=True maintains object IDs across frames
+        results = model.track(
+            frame,
+            persist=True,
+            tracker="bytetrack.yaml",   # ByteTrack — reduces flicker
+            **common_kwargs,
+        )
+        tracker_state["initialised"] = True
+    except Exception as track_exc:
+        # Graceful fallback: if tracker isn't available, use predict
+        log.debug("model.track() failed (%s), falling back to predict", track_exc)
+        results = model.predict(frame, **common_kwargs)
+
     result = results[0]
     h, w   = frame.shape[:2]
     detections: list[dict] = []
@@ -137,11 +160,20 @@ def _run_inference(frame: np.ndarray) -> list[dict]:
         x1, y1, x2, y2 = box.xyxy[0].tolist()
         conf   = float(box.conf[0])
         cls_id = int(box.cls[0])
+        # Extract tracker ID if available (model.track sets box.id)
+        track_id: int | None = None
+        if hasattr(box, "id") and box.id is not None:
+            try:
+                track_id = int(box.id[0])
+            except (TypeError, IndexError):
+                track_id = None
         detections.append({
-            "label": model.names[cls_id],
-            "conf":  conf,
-            # Normalized 0..1 — frontend scales to canvas dimensions
-            "box": [x1 / w, y1 / h, x2 / w, y2 / h],
+            "label":      model.names[cls_id],
+            "conf":       conf,
+            # Normalised 0..1 — frontend scales to canvas dimensions
+            "box":        [x1 / w, y1 / h, x2 / w, y2 / h],
+            # Internal tracker ID — used by compliance engine, NOT sent to frontend
+            "_track_id":  track_id,
         })
     return detections
 
@@ -209,9 +241,14 @@ async def detect_ws(websocket: WebSocket, video_id: str):
         "frames_inferred": 0,
         "frames_sent":     0,
         "frames_dropped":  0,
-        "infer_times":     [],      # list of seconds
+        "infer_times":     [],
         "session_start":   time.monotonic(),
     }
+
+    # ── Per-session tracker state (reset each new WebSocket session) ─
+    tracker_state: dict = {"initialised": False}
+    # Reset temporal smoothing state for this new session
+    reset_session_state()
 
     # ── Two queues decouple the three pipeline stages ───────────────
     #  reader  ──[infer_q]──▶  inference worker  ──[send_q]──▶  sender
@@ -255,12 +292,19 @@ async def detect_ws(websocket: WebSocket, video_id: str):
             frame_idx, frame = item
             try:
                 t0 = time.monotonic()
-                detections = await asyncio.to_thread(_run_inference, frame)
+                detections = await asyncio.to_thread(_run_inference, frame, tracker_state)
                 infer_ms = (time.monotonic() - t0) * 1000
                 stats["infer_times"].append(infer_ms)
                 stats["frames_inferred"] += 1
 
                 severity, violations = evaluate_compliance(detections)
+
+                # Strip internal fields before sending to frontend
+                # (_track_id is used by compliance engine only)
+                public_detections = [
+                    {k: v for k, v in d.items() if not k.startswith("_")}
+                    for d in detections
+                ]
 
                 # Resize for WebSocket transmission (may differ from inference size)
                 send_frame = _resize_keep_aspect(frame, MAX_SEND_WIDTH)
@@ -273,7 +317,7 @@ async def detect_ws(websocket: WebSocket, video_id: str):
                     "type":       "frame",
                     "frameIndex": frame_idx,
                     "jpeg":       base64.b64encode(jpeg_bytes).decode("ascii"),
-                    "detections": detections,
+                    "detections": public_detections,
                     "severity":   severity,
                     "violations": violations,
                 }

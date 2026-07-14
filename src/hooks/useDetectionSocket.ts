@@ -5,6 +5,8 @@ export interface Detection {
   label: string;
   conf: number;
   box: [number, number, number, number];
+  /** Set by backend compliance engine — true for PPE items and compliant body parts */
+  compliant?: boolean;
 }
 
 export interface FrameMessage {
