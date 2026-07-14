@@ -396,25 +396,39 @@ export default function CameraDetailPanel({
       <div
         ref={feedRef}
         className={`relative rounded-2xl border overflow-hidden ${feedHeight} ${
-          isOnline || isLiveActive ? 'border-border-soft' : 'border-border-soft bg-panel-alt'
+          isLiveActive ? 'border-accent/30 bg-bg' :
+          isOnline ? 'border-border-soft' : 'border-border-soft bg-panel-alt'
         }`}
         style={(!isLiveActive && isOnline) ? {
           backgroundImage: 'repeating-linear-gradient(115deg,#20242D 0,#20242D 2px,#12151A 2px,#12151A 4px)',
         } : {}}
       >
-        {isLiveActive && liveCamera?.jpeg ? (
-          /* Real feed — LiveFeed and canvas are memoised for performance */
-          <LiveFeed
-            jpeg={liveCamera.jpeg}
-            frameIndex={liveCamera.frameIndex}
-            detections={liveCamera.detections}
-            violations={liveCamera.violations}
-            severity={liveCamera.severity}
-            containerW={containerSize.w}
-            containerH={containerSize.h}
-            cameraId={selectedCamera.id}
-            zoneName={selectedCamera.zoneName}
-          />
+        {/* Priority: 1) live stream  2) mock feed  3) offline */}
+        {isLiveActive ? (
+          liveCamera?.jpeg ? (
+            /* Real JPEG frame from YOLO26 — LiveFeed is memoised */
+            <LiveFeed
+              jpeg={liveCamera.jpeg}
+              frameIndex={liveCamera.frameIndex}
+              detections={liveCamera.detections}
+              violations={liveCamera.violations}
+              severity={liveCamera.severity}
+              containerW={containerSize.w}
+              containerH={containerSize.h}
+              cameraId={selectedCamera.id}
+              zoneName={selectedCamera.zoneName}
+            />
+          ) : (
+            /* Live session started but first frame not yet received */
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+              <svg className="w-8 h-8 text-accent animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+              </svg>
+              <p className="text-sm text-accent font-mono">Receiving stream…</p>
+              <p className="text-xs text-text-muted font-mono">YOLO26 · {selectedCamera.id}</p>
+            </div>
+          )
         ) : isOnline ? (
           /* Mock feed */
           <>

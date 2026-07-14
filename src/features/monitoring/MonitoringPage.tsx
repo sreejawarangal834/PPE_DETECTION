@@ -73,6 +73,30 @@ export default function MonitoringPage() {
     }
   }, [viewMode, selectedCamera, filteredCameras]);
 
+  /* ── Auto-select first camera on initial load ── */
+  useEffect(() => {
+    if (!selectedCamera && filteredCameras.length > 0) {
+      setSelectedCamera(filteredCameras[0]);
+    }
+  }, [filteredCameras, selectedCamera]);
+
+  /* ── Set liveCamera to 'streaming' as soon as socket connects ── */
+  useEffect(() => {
+    if (socketState === 'streaming' && !latest) {
+      // Mark camera as live even before first frame arrives
+      setLiveCamera(prev => prev ? prev : {
+        id:         selectedCamera?.id ?? 'live',
+        name:       selectedCamera?.name ?? 'Live Feed',
+        status:     'streaming',
+        jpeg:       undefined,
+        detections: [],
+        severity:   'info' as const,
+        violations: [],
+        frameIndex: 0,
+      });
+    }
+  }, [socketState, latest, selectedCamera, setLiveCamera]);
+
   /* ── Push each arriving frame into DetectionStore ── */
   useEffect(() => {
     if (!latest) return;
@@ -102,9 +126,12 @@ export default function MonitoringPage() {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    // Reset input so the same file can be re-uploaded
     e.target.value = '';
     start(file);
+    // Ensure a camera is selected so CameraDetailPanel renders
+    if (!selectedCamera && filteredCameras.length > 0) {
+      setSelectedCamera(filteredCameras[0]);
+    }
     // Switch to Single View so the live feed is immediately visible
     setViewMode('single');
     sessionStorage.setItem(VIEW_MODE_STORAGE_KEY, 'single');
