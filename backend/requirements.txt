@@ -1,0 +1,8 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+ultralytics>=8.3.0
+opencv-python-headless>=4.9.0
+python-multipart>=0.0.9
+websockets>=12.0
+torch>=2.2.0          # CUDA auto-detection; install the GPU build from pytorch.org for CUDA support
+numpy>=1.26.0
