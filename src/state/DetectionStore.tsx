@@ -1,6 +1,4 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
-import { ALERTS as mockEvents } from "../data/mockData";
-import type { Alert as DetectionEvent } from "../types";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import type { Detection, SocketState } from "../hooks/useDetectionSocket";
 import type { Severity } from "../constants/severity";
 
@@ -9,44 +7,86 @@ export interface LiveCamera {
   name: string;
   status: SocketState;
   jpeg?: string;
+  /** Set for browser-webcam sessions — rendered directly via <video>, no jpeg round-trip */
+  stream?: MediaStream;
   detections: Detection[];
   severity: Severity;
   violations: string[];
   frameIndex: number;
 }
 
+/** One concurrently-running detection session — an uploaded video or the browser webcam. */
+export interface LiveSession extends LiveCamera {
+  kind: "video" | "webcam";
+}
+
+const SEVERITY_RANK: Record<Severity, number> = { info: 0, low: 1, medium: 2, high: 3 };
+
+function worstSeverity(severities: Severity[]): Severity {
+  return severities.reduce<Severity>(
+    (worst, s) => (SEVERITY_RANK[s] > SEVERITY_RANK[worst] ? s : worst),
+    "info",
+  );
+}
+
 interface DetectionStoreValue {
+  /** All active sessions (videos + webcam), keyed by session id. */
+  sessions: LiveSession[];
+  /**
+   * Backward-compat single-camera view for widgets that only care about "is
+   * something live and what does it show": null when nothing is running, the
+   * session itself when exactly one is active, or a merged read-only summary
+   * (detections/violations/severity pooled across sessions) when several are
+   * running at once — those widgets don't render jpeg/stream directly, so a
+   * merged view is enough for them.
+   */
   liveCamera: LiveCamera | null;
-  events: DetectionEvent[];
-  setLiveCamera: (updater: (prev: LiveCamera | null) => LiveCamera | null) => void;
-  pushLiveEvent: (event: DetectionEvent) => void;
-  resetLiveCamera: () => void;
+  upsertSession: (id: string, updater: (prev: LiveSession | undefined) => LiveSession) => void;
+  removeSession: (id: string) => void;
+  removeAllSessions: () => void;
 }
 
 const DetectionStoreContext = createContext<DetectionStoreValue | null>(null);
 
 export function DetectionStoreProvider({ children }: { children: ReactNode }) {
-  const [liveCamera, setLiveCameraState] = useState<LiveCamera | null>(null);
-  const [liveEvents, setLiveEvents] = useState<DetectionEvent[]>([]);
+  const [sessionMap, setSessionMap] = useState<Record<string, LiveSession>>({});
 
-  const setLiveCamera = useCallback((updater: (prev: LiveCamera | null) => LiveCamera | null) => {
-    setLiveCameraState(updater);
+  const upsertSession = useCallback((id: string, updater: (prev: LiveSession | undefined) => LiveSession) => {
+    setSessionMap((prev) => ({ ...prev, [id]: updater(prev[id]) }));
   }, []);
 
-  const pushLiveEvent = useCallback((event: DetectionEvent) => {
-    setLiveEvents((prev) => [event, ...prev].slice(0, 200));
+  const removeSession = useCallback((id: string) => {
+    setSessionMap((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   }, []);
 
-  const resetLiveCamera = useCallback(() => {
-    setLiveCameraState(null);
-    setLiveEvents([]);
+  const removeAllSessions = useCallback(() => {
+    setSessionMap({});
   }, []);
 
-  const events = [...liveEvents, ...mockEvents];
+  const sessions = useMemo(() => Object.values(sessionMap), [sessionMap]);
+
+  const liveCamera = useMemo<LiveCamera | null>(() => {
+    if (sessions.length === 0) return null;
+    if (sessions.length === 1) return sessions[0];
+    return {
+      id:         "aggregate",
+      name:       `${sessions.length} Live Sessions`,
+      status:     "streaming",
+      detections: sessions.flatMap((s) => s.detections),
+      violations: [...new Set(sessions.flatMap((s) => s.violations))],
+      severity:   worstSeverity(sessions.map((s) => s.severity)),
+      frameIndex: Math.max(...sessions.map((s) => s.frameIndex)),
+    };
+  }, [sessions]);
 
   return (
     <DetectionStoreContext.Provider
-      value={{ liveCamera, events, setLiveCamera, pushLiveEvent, resetLiveCamera }}
+      value={{ sessions, liveCamera, upsertSession, removeSession, removeAllSessions }}
     >
       {children}
     </DetectionStoreContext.Provider>

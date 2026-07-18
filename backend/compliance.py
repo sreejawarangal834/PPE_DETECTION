@@ -179,22 +179,23 @@ class _WorkerState:
         return self.violation_active[part]
 
 
-# ─── Module-level worker-state registry ────────────────────────────────────────
-# Keyed by tracker_id (int) or -1 for fallback (no tracking).
-# Populated by evaluate_compliance(); reset by reset_session_state().
-_worker_states: dict[int, _WorkerState] = {}
+# ─── Per-session worker-state registry ─────────────────────────────────────────
+# Keyed by tracker_id (int) or -1 for fallback (no tracking). Each concurrent
+# WebSocket session owns its own dict (created via new_session_state()) so
+# temporal state from one video/webcam session never bleeds into another.
+WorkerStates = dict[int, _WorkerState]
 
 
-def reset_session_state() -> None:
-    """Call once per WebSocket session to clear temporal state."""
-    _worker_states.clear()
-    log.info("Temporal state reset for new session.")
+def new_session_state() -> WorkerStates:
+    """Call once per WebSocket session to get a fresh, isolated temporal-state dict."""
+    log.info("Temporal state initialised for new session.")
+    return {}
 
 
-def _get_worker_state(worker_id: int) -> _WorkerState:
-    if worker_id not in _worker_states:
-        _worker_states[worker_id] = _WorkerState()
-    return _worker_states[worker_id]
+def _get_worker_state(worker_id: int, worker_states: WorkerStates) -> _WorkerState:
+    if worker_id not in worker_states:
+        worker_states[worker_id] = _WorkerState()
+    return worker_states[worker_id]
 
 
 # ─── Worker grouping ───────────────────────────────────────────────────────────
@@ -254,6 +255,7 @@ def _evaluate_worker(
     worker_id:    int,
     worker_dets:  list[dict],
     frame_violations: list[str],
+    worker_states: WorkerStates,
 ) -> None:
     """
     Evaluate PPE compliance for a single tracked worker.
@@ -262,7 +264,7 @@ def _evaluate_worker(
     - Each detection in worker_dets gets `compliant: bool`
     - Appends to frame_violations if temporal threshold is met
     """
-    state = _get_worker_state(worker_id)
+    state = _get_worker_state(worker_id, worker_states)
 
     by_label: dict[str, list[tuple[int, Box]]] = defaultdict(list)
     for idx, d in enumerate(worker_dets):
@@ -406,12 +408,19 @@ def _evaluate_worker(
 
 # ─── Public API ────────────────────────────────────────────────────────────────
 
-def evaluate_compliance(detections: list[dict]) -> tuple[str, list[str]]:
+def evaluate_compliance(
+    detections: list[dict],
+    worker_states: WorkerStates,
+) -> tuple[str, list[str]]:
     """
     Evaluate PPE compliance for a single frame.
 
     Mutates each dict in `detections` by adding ``compliant: bool``.
     Returns (severity, violations) — same contract as v1/v2.
+
+    `worker_states` is the calling session's own state dict (from
+    new_session_state()) — passing a session-scoped dict instead of a shared
+    global is what makes concurrent sessions safe to run side by side.
 
     severity:   "ok" | "medium" | "high"
     violations: list of human-readable violation strings
@@ -429,7 +438,7 @@ def evaluate_compliance(detections: list[dict]) -> tuple[str, list[str]]:
     frame_violations: list[str] = []
 
     for worker_id, worker_dets in worker_groups.items():
-        _evaluate_worker(worker_id, worker_dets, frame_violations)
+        _evaluate_worker(worker_id, worker_dets, frame_violations, worker_states)
 
     # Default for any detection still without compliant key
     for d in detections:

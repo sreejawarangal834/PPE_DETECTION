@@ -29,7 +29,7 @@ def _bool(key: str, default: bool) -> bool:
 # ── Inference ──────────────────────────────────────────────────────────────────
 CONF_THRESHOLD: float = _float("PPE_CONF_THRESHOLD", 0.35)
 IOU_THRESHOLD:  float = _float("PPE_IOU_THRESHOLD",  0.45)
-IMAGE_SIZE:     int   = _int("PPE_IMAGE_SIZE",        960)
+IMAGE_SIZE:     int   = _int("PPE_IMAGE_SIZE",        640)
 
 # ── Streaming ──────────────────────────────────────────────────────────────────
 JPEG_QUALITY:   int = _int("PPE_JPEG_QUALITY",   75)

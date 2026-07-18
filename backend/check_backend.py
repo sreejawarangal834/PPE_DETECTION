@@ -2,7 +2,7 @@ import ast
 
 checks = [
     ("main.py",       ["_run_inference","detect_ws","health","upload_video"]),
-    ("compliance.py", ["evaluate_compliance","_associate_ppe","_iou"]),
+    ("compliance.py", ["evaluate_compliance","_association_score","_evaluate_worker","_iou"]),
     ("config.py",     []),
 ]
 
@@ -16,7 +16,6 @@ for fname, funcs in checks:
 
     flags = []
     if fname == "main.py":
-        flags.append("tracker_state=" + str("tracker_state" in src))
         flags.append("model.track=" + str("model.track" in src))
     if fname == "compliance.py":
         flags.append("compliant_field=" + str('"compliant"' in src))

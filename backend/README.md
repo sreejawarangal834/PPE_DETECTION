@@ -23,8 +23,15 @@ regular file since it's under GitHub's 100MB per-file limit.
 ## Run
 
 ```bash
-uvicorn main:app --reload --port 8000
+uvicorn main:app --reload --port 8000 --reload-exclude 'venv/*' --reload-exclude 'uploads/*'
 ```
+
+The `--reload-exclude` flags matter: without them, `--reload` watches every
+`.py` file under the working directory, including everything inside `venv/`.
+Ultralytics/torch occasionally touch `.py` mtimes in site-packages (e.g. on
+first use of a code path), which triggers a full server restart mid-session
+and drops every active WebSocket — this looks like "the backend randomly
+goes offline" from the frontend.
 
 - `GET /api/model/info` — returns the model's class names (read from the
   checkpoint itself, not hardcoded).
