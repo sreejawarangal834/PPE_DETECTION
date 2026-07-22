@@ -29,7 +29,7 @@ export default function PageShell({ children, noPadding = false, className = '' 
   return (
     <div
       className={`
-        h-full w-full overflow-y-auto overflow-x-hidden
+        h-full w-full overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]
         ${noPadding ? '' : 'p-6'}
         ${className}
       `}

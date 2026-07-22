@@ -4,14 +4,16 @@ import { WORKERS } from '../../data/workers';
 import { mockWsService } from '../../lib/websocket/mockWebSocketService';
 import type { WsEvent } from '../../types';
 
-interface Counts { total: number; compliant: number; nonCompliant: number; }
+interface Counts { total: number; compliant: number; nonCompliant: number; unknown: number; }
 
 function computeCounts(zones?: string[]): Counts {
-  const ws = WORKERS.filter(w => w.currentZoneId && (!zones?.length || zones.includes(w.currentZoneId)));
+  const ws = WORKERS.filter(w => !zones?.length || (w.currentZoneId && zones.includes(w.currentZoneId)));
+  const tracked = ws.filter(w => w.currentZoneId);
   return {
     total:        ws.length,
-    compliant:    ws.filter(w => w.complianceRate >= 80).length,
-    nonCompliant: ws.filter(w => w.complianceRate < 80).length,
+    compliant:    tracked.filter(w => w.complianceRate >= 80).length,
+    nonCompliant: tracked.filter(w => w.complianceRate < 80).length,
+    unknown:      ws.filter(w => !w.currentZoneId).length,
   };
 }
 
@@ -27,49 +29,59 @@ export default function WorkerStatusWidget({ assignedZones }: { assignedZones?: 
   }, [assignedZones]);
 
   const data = [
-    { name: 'Compliant',     value: counts.compliant,    color: '#22c55e' },
-    { name: 'Non-Compliant', value: counts.nonCompliant, color: '#ef4444'  },
+    { name: 'Compliant',     value: counts.compliant,    color: 'var(--color-compliance-good)' },
+    { name: 'Non-Compliant', value: counts.nonCompliant, color: 'var(--color-compliance-bad)'  },
+    { name: 'Unknown',       value: counts.unknown,      color: 'var(--color-text-muted)'      },
   ].filter(d => d.value > 0);
 
   return (
-    <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 flex flex-col gap-4 hover:shadow-[0_0_15px_rgba(59,130,246,0.4)] transition-all">
+    <div className="bg-panel border border-border-soft rounded-xl p-4 flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold uppercase tracking-wide text-gray-400">Workers On-Site</p>
-        <span className="text-sm font-mono text-white bg-gray-700 px-3 py-1 rounded-lg">{counts.total} detected</span>
-      </div>
+      <p className="text-xs font-medium uppercase tracking-wide text-text-muted mb-3">Worker Status</p>
 
       {/* Donut + legend */}
-      <div className="flex items-center gap-6">
-        <div className="relative w-[120px] h-[120px] shrink-0">
+      <div className="flex items-center gap-4">
+        <div className="relative w-[88px] h-[88px] shrink-0">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie data={data.length ? data : [{ name: 'None', value: 1, color: '#374151' }]}
+              <Pie data={data.length ? data : [{ name: 'None', value: 1, color: 'var(--color-panel-alt)' }]}
                 dataKey="value" cx="50%" cy="50%"
-                innerRadius={32} outerRadius={58} strokeWidth={0}>
-                {(data.length ? data : [{ color: '#374151' }]).map((d, i) => (
+                innerRadius={26} outerRadius={44} strokeWidth={0}>
+                {(data.length ? data : [{ color: 'var(--color-panel-alt)' }]).map((d, i) => (
                   <Cell key={i} fill={d.color} />
                 ))}
               </Pie>
             </PieChart>
           </ResponsiveContainer>
           {/* Centre count */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className="text-2xl font-bold text-white">{counts.total}</span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span className="text-lg font-bold text-text-primary leading-none">{counts.total}</span>
+            <span className="text-[9px] text-text-muted mt-0.5">total</span>
           </div>
         </div>
 
         {/* Legend */}
-        <div className="flex flex-col gap-3 text-sm">
-          <div className="flex items-center gap-3">
-            <span className="w-3 h-3 rounded-full shrink-0 bg-green-500 animate-pulse" />
-            <span className="text-gray-300 font-medium">Compliant</span>
-            <span className="font-mono font-bold text-green-400 ml-auto">{counts.compliant}</span>
+        <div className="flex flex-col gap-2 flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2 text-xs">
+            <span className="flex items-center gap-1.5 text-text-secondary min-w-0">
+              <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: 'var(--color-compliance-good)' }} />
+              <span className="whitespace-nowrap">Compliant</span>
+            </span>
+            <span className="font-mono font-semibold text-text-primary">{counts.compliant}</span>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="w-3 h-3 rounded-full shrink-0 bg-red-500" />
-            <span className="text-gray-300 font-medium">Non-compliant</span>
-            <span className="font-mono font-bold text-red-400 ml-auto">{counts.nonCompliant}</span>
+          <div className="flex items-center justify-between gap-2 text-xs">
+            <span className="flex items-center gap-1.5 text-text-secondary min-w-0">
+              <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: 'var(--color-compliance-bad)' }} />
+              <span className="whitespace-nowrap">Non-Compliant</span>
+            </span>
+            <span className="font-mono font-semibold text-text-primary">{counts.nonCompliant}</span>
+          </div>
+          <div className="flex items-center justify-between gap-2 text-xs">
+            <span className="flex items-center gap-1.5 text-text-secondary min-w-0">
+              <span className="w-2 h-2 rounded-sm shrink-0 bg-text-muted" />
+              <span className="whitespace-nowrap">Unknown</span>
+            </span>
+            <span className="font-mono font-semibold text-text-primary">{counts.unknown}</span>
           </div>
         </div>
       </div>

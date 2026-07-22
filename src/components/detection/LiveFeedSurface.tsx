@@ -32,6 +32,10 @@ export const BoundingBoxCanvas = memo(function BoundingBoxCanvas({
 }: BBCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Resizes the drawing buffer only when the container's actual size
+  // changes — NOT on every detection frame. Resetting canvas.width/height
+  // clears the buffer and (pre-fix) was doing so on every WebSocket frame,
+  // which visually read as the feed "resizing" whenever boxes appeared.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || containerW === 0 || containerH === 0) return;
@@ -47,6 +51,14 @@ export const BoundingBoxCanvas = memo(function BoundingBoxCanvas({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.scale(dpr, dpr);
+  }, [containerW, containerH]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || containerW === 0 || containerH === 0) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
     ctx.clearRect(0, 0, containerW, containerH);
 
     const W = containerW;
@@ -65,6 +77,12 @@ export const BoundingBoxCanvas = memo(function BoundingBoxCanvas({
 
       const col = detectionClassColor(det.label);
 
+      // Ghost boxes (last-known position while briefly undetected — see
+      // backend's GHOST_GRACE_SECONDS) render dashed and faded so they read
+      // as "last seen here," not a fresh detection.
+      ctx.globalAlpha = det.ghost ? 0.55 : 1;
+      ctx.setLineDash(det.ghost ? [6, 4] : []);
+
       // Box outline with slight shadow for contrast over any background
       ctx.shadowColor   = 'rgba(0,0,0,0.6)';
       ctx.shadowBlur    = 3;
@@ -72,6 +90,7 @@ export const BoundingBoxCanvas = memo(function BoundingBoxCanvas({
       ctx.lineWidth     = 2;
       ctx.strokeRect(bx, by, bw, bh);
       ctx.shadowBlur    = 0;
+      ctx.setLineDash([]);
 
       // Non-compliant detections get an extra dashed red "attention" ring,
       // offset outside the box — compliance signal layered on the class color
@@ -111,6 +130,8 @@ export const BoundingBoxCanvas = memo(function BoundingBoxCanvas({
       // Label text
       ctx.fillStyle = '#ffffff';
       ctx.fillText(labelText, bx + 5, pillY + 13);
+
+      ctx.globalAlpha = 1;
     });
   }, [detections, containerW, containerH]);
 

@@ -6,6 +6,9 @@ export interface Detection {
   box: [number, number, number, number];
   /** Set by backend compliance engine — true for PPE items and compliant body parts */
   compliant?: boolean;
+  /** Synthesized from the last real sighting while this tracked person is
+   *  briefly undetected (e.g. poor lighting) — not a fresh detection. */
+  ghost?: boolean;
 }
 
 export interface FrameMessage {

@@ -84,8 +84,8 @@ export default function CameraManagementPage() {
   return (
     <PageShell><div className="space-y-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-[#E8EAF0]">Camera Management</h1>
-        <p className="text-sm text-[#5C6480] mt-1">Configure and monitor camera connections</p>
+        <h1 className="text-2xl font-semibold text-text-primary">Camera Management</h1>
+        <p className="text-sm text-text-muted mt-1">Configure and monitor camera connections</p>
       </div>
       <div className="flex items-center justify-between">
         <Button size="sm" onClick={() => setCreateOpen(true)}>Add Camera</Button>

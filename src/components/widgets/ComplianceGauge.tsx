@@ -7,9 +7,9 @@ interface ComplianceGaugeProps {
 }
 
 function complianceColor(v: number) {
-  if (v >= 80) return '#22c55e';
-  if (v >= 60) return '#eab308';
-  return '#ef4444';
+  if (v >= 80) return 'var(--color-compliance-good)';
+  if (v >= 60) return 'var(--color-compliance-warn)';
+  return 'var(--color-compliance-bad)';
 }
 
 export default function ComplianceGauge({ value, size = 160, label = 'Compliance' }: ComplianceGaugeProps) {
@@ -19,7 +19,7 @@ export default function ComplianceGauge({ value, size = 160, label = 'Compliance
   return (
     <div className="flex flex-col items-center gap-1">
       {label && (
-        <p className="text-xs font-medium uppercase tracking-wide text-gray-400">{label}</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-text-muted">{label}</p>
       )}
       <div className="relative" style={{ width: size, height: halfH }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -33,7 +33,7 @@ export default function ComplianceGauge({ value, size = 160, label = 'Compliance
             <RadialBar
               dataKey="value"
               cornerRadius={6}
-              background={{ fill: '#374151' }}
+              background={{ fill: 'var(--color-panel-alt)' }}
             />
           </RadialBarChart>
         </ResponsiveContainer>

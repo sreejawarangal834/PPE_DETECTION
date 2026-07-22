@@ -19,11 +19,11 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <PageShell className="bg-[#0f1117]"><div className="space-y-8">
+    <PageShell><div className="space-y-4">
       {/* Page Header */}
-      <div>
-        <h1 className="text-4xl font-bold text-[#E8EAF0]">Analytics</h1>
-        <p className="text-lg text-[#9BA3B8] mt-2">
+      <div className="mb-2">
+        <h1 className="text-4xl font-bold text-text-primary">Analytics</h1>
+        <p className="text-lg text-text-secondary mt-2">
           Compliance statistics, zone performance, and violation trends
           {user?.role === 'site_supervisor' && user.assignedZones?.length
             ? ` · Zones: ${user.assignedZones.join(', ')}`
@@ -38,7 +38,7 @@ export default function AnalyticsPage() {
       </ErrorBoundary>
 
       {/* Row 2 — Workers | Cameras | Top Violating Zones */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <ErrorBoundary>
           <WorkerStatusWidget assignedZones={assignedZones} />
         </ErrorBoundary>

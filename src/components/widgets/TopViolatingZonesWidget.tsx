@@ -57,57 +57,53 @@ export default function TopViolatingZonesWidget({ onZoneClick, assignedZones }: 
   const hasAny = zones.some(z => z.violations > 0);
 
   return (
-    <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 flex flex-col gap-4">
+    <div className="bg-panel border border-border-soft rounded-xl p-4 flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
           Top Violating Zones
         </p>
         <select
           value={window_}
           onChange={e => setWindow(e.target.value as Window)}
           aria-label="Time window"
-          className="text-xs bg-gray-700 border border-gray-600 rounded px-2 py-1 text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="text-xs bg-panel-alt border border-border rounded px-2 py-1 text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent"
         >
           {WINDOWS.map(w => <option key={w.id} value={w.id}>{w.label}</option>)}
         </select>
       </div>
 
       {!hasAny ? (
-        <p className="text-xs text-gray-400 py-6 text-center">
+        <p className="text-xs text-text-muted py-6 text-center">
           No violations detected in the selected time period.
         </p>
       ) : (
-        <div>
-          {zones.map((z, idx) => {
-            const pct        = (z.violations / maxV) * 100;
+        <div className="flex flex-col gap-2.5">
+          {zones.map(z => {
+            const pct          = (z.violations / maxV) * 100;
             const hasViolation = z.violations > 0;
             return (
               <button
                 key={z.zoneId}
                 onClick={() => onZoneClick(z.zoneId)}
-                className={`w-full flex items-center gap-3 py-2.5 border-b border-gray-700 last:border-0 hover:bg-gray-700/50 transition-colors duration-150 rounded-sm text-left px-1 ${idx === 0 ? 'pt-1' : ''}`}
+                className="w-full flex items-center gap-3 text-left hover:opacity-85 transition-opacity"
               >
-                {/* Rank */}
-                <span className="text-xs font-mono text-gray-500 w-4 shrink-0 text-right">
-                  {idx + 1}
-                </span>
                 {/* Zone name */}
-                <span className={`text-sm flex-1 truncate ${hasViolation ? 'text-white' : 'text-gray-400'}`}>
+                <span className="text-sm text-text-primary w-[120px] shrink-0 truncate">
                   {z.zoneName}
                 </span>
                 {/* Bar */}
-                <div className="flex-1 h-1 bg-gray-700 rounded-full overflow-hidden mx-3">
+                <div className="flex-1 h-2 bg-panel-alt rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{
                       width: `${pct}%`,
-                      background: hasViolation ? '#ef4444' : '#374151',
+                      background: hasViolation ? 'var(--color-status-danger)' : 'var(--color-panel-alt)',
                     }}
                   />
                 </div>
                 {/* Count */}
-                <span className={`text-sm font-mono font-bold w-6 text-right shrink-0 ${hasViolation ? 'text-red-400' : 'text-gray-400'}`}>
+                <span className="text-xs font-mono text-text-secondary w-6 text-right shrink-0">
                   {z.violations}
                 </span>
               </button>

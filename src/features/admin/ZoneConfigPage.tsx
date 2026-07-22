@@ -97,8 +97,8 @@ export default function ZoneConfigPage() {
   return (
     <PageShell><div className="space-y-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-[#E8EAF0]">Zone Configuration</h1>
-        <p className="text-sm text-[#5C6480] mt-1">Define zones and required PPE for each area</p>
+        <h1 className="text-2xl font-semibold text-text-primary">Zone Configuration</h1>
+        <p className="text-sm text-text-muted mt-1">Define zones and required PPE for each area</p>
       </div>
       <div className="flex items-center justify-between">
         <Button size="sm" onClick={() => setCreateOpen(true)}>Create Zone</Button>

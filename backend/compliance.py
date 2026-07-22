@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import logging
 import math
-from collections import defaultdict
+from collections import defaultdict, deque
 
 from config import (
     CONF_THRESHOLD,
@@ -26,8 +26,12 @@ from config import (
     ASSOC_W_DIST,
     ASSOC_W_IOU,
     ASSOC_W_VPOS,
-    VIOLATION_FRAMES,
-    CLEAR_FRAMES,
+    VIOLATION_WINDOW_SECONDS,
+    VIOLATION_RAISE_FRACTION,
+    VIOLATION_CLEAR_FRACTION,
+    MIN_EVIDENCE_SECONDS,
+    MIN_EVIDENCE_SAMPLES,
+    MAX_SAMPLE_GAP_SECONDS,
     MIN_BODY_PART_AREA,
     DEBUG_ASSOCIATION,
 )
@@ -146,37 +150,90 @@ def _association_score(
 
 # ─── Per-worker temporal state ─────────────────────────────────────────────────
 
-class _WorkerState:
-    """Tracks consecutive missing/present counts for each body part per worker."""
+class _PartTimeline:
+    """Duration-weighted missing/present sample history for ONE body part of
+    ONE tracked worker, spanning the last VIOLATION_WINDOW_SECONDS of real
+    time (not a frame/call count)."""
+    __slots__ = ("samples", "violation_active", "first_seen_ts", "last_fraction_missing")
 
     def __init__(self) -> None:
-        # part_label → consecutive frames missing PPE
-        self.missing_count:  dict[str, int] = defaultdict(int)
-        # part_label → consecutive frames PPE present
-        self.present_count:  dict[str, int] = defaultdict(int)
-        # part_label → whether violation is currently "active" (latched)
-        self.violation_active: dict[str, bool] = defaultdict(bool)
+        # (timestamp, covered) — strictly non-decreasing timestamps, oldest-first
+        self.samples: deque[tuple[float, bool]] = deque()
+        self.violation_active: bool = False
+        self.first_seen_ts: float | None = None
+        self.last_fraction_missing: float = 0.0
 
-    def update(self, part: str, covered: bool) -> bool:
+
+class _WorkerState:
+    """Tracks duration-weighted missing/present history for each body part
+    of one tracked worker — see _PartTimeline.update()."""
+
+    def __init__(self) -> None:
+        self._parts: dict[str, _PartTimeline] = {}
+
+    def _timeline(self, part: str) -> _PartTimeline:
+        tl = self._parts.get(part)
+        if tl is None:
+            tl = self._parts[part] = _PartTimeline()
+        return tl
+
+    def update(self, part: str, covered: bool, now: float) -> bool:
         """
-        Update state for one body part; return True if violation should be raised.
+        Record one (now, covered) sample for `part` and return True if a
+        violation should be (or remain) raised.
 
-        Hysteresis:
-        - Raise violation only after VIOLATION_FRAMES consecutive missing frames.
-        - Clear violation only after CLEAR_FRAMES consecutive present frames.
+        Duration-weighted sliding window, not frame-count hysteresis:
+        - Only the last VIOLATION_WINDOW_SECONDS of real time are considered.
+        - The missing/total ratio is a time integral over sample gaps (each
+          capped at MAX_SAMPLE_GAP_SECONDS), so sparse or bursty sampling
+          doesn't skew the result the way a plain per-call counter would.
+        - Raise once fraction_missing >= VIOLATION_RAISE_FRACTION; clear once
+          it drops to <= VIOLATION_CLEAR_FRACTION (Schmitt-trigger band in
+          between prevents chattering at the boundary).
+        - No decision is made at all until MIN_EVIDENCE_SECONDS/_SAMPLES of
+          real observation exist, so a single cold-start sample (or the
+          first sample after a big gap) can't instantly flip state.
         """
-        if covered:
-            self.missing_count[part] = 0
-            self.present_count[part] += 1
-            if self.present_count[part] >= CLEAR_FRAMES:
-                self.violation_active[part] = False
-        else:
-            self.present_count[part] = 0
-            self.missing_count[part] += 1
-            if self.missing_count[part] >= VIOLATION_FRAMES:
-                self.violation_active[part] = True
+        tl = self._timeline(part)
 
-        return self.violation_active[part]
+        if tl.first_seen_ts is None:
+            tl.first_seen_ts = now
+
+        tl.samples.append((now, covered))
+
+        window_start = now - VIOLATION_WINDOW_SECONDS
+        while len(tl.samples) > 1 and tl.samples[1][0] < window_start:
+            tl.samples.popleft()
+
+        missing_time = 0.0
+        total_time = 0.0
+        samples = tl.samples
+        for i in range(1, len(samples)):
+            t_prev, covered_prev = samples[i - 1]
+            t_cur, _ = samples[i]
+            seg = min(t_cur - t_prev, MAX_SAMPLE_GAP_SECONDS)
+            if seg <= 0:
+                continue
+            total_time += seg
+            if not covered_prev:
+                missing_time += seg
+
+        fraction_missing = (missing_time / total_time) if total_time > 0 else (0.0 if covered else 1.0)
+        tl.last_fraction_missing = fraction_missing
+
+        evidence_ok = (
+            (now - tl.first_seen_ts) >= MIN_EVIDENCE_SECONDS
+            and len(samples) >= MIN_EVIDENCE_SAMPLES
+        )
+
+        if evidence_ok:
+            if fraction_missing >= VIOLATION_RAISE_FRACTION:
+                tl.violation_active = True
+            elif fraction_missing <= VIOLATION_CLEAR_FRACTION:
+                tl.violation_active = False
+            # else: inside the hysteresis band — leave state unchanged
+
+        return tl.violation_active
 
 
 # ─── Per-session worker-state registry ─────────────────────────────────────────
@@ -256,6 +313,7 @@ def _evaluate_worker(
     worker_dets:  list[dict],
     frame_violations: list[str],
     worker_states: WorkerStates,
+    now: float,
 ) -> None:
     """
     Evaluate PPE compliance for a single tracked worker.
@@ -282,7 +340,7 @@ def _evaluate_worker(
         part_entries = by_label.get(part, [])
         if not part_entries:
             # Body part not visible — do NOT raise a violation (Req 5)
-            state.update(part, covered=True)  # treat invisible as OK
+            state.update(part, covered=True, now=now)  # treat invisible as OK
             continue
 
         # Filter out tiny body-part detections (Req 6)
@@ -291,7 +349,7 @@ def _evaluate_worker(
             if _area(box) >= MIN_BODY_PART_AREA
         ]
         if not valid_part_entries:
-            state.update(part, covered=True)
+            state.update(part, covered=True, now=now)
             continue
 
         # Collect unclaimed PPE candidates for this part
@@ -364,14 +422,14 @@ def _evaluate_worker(
             worker_dets[det_idx]["compliant"] = coverage.get(pi, False)
 
         # Temporal update
-        raise_violation = state.update(part, covered=all_covered)
+        raise_violation = state.update(part, covered=all_covered, now=now)
         if raise_violation:
             frame_violations.append(f"no-{part}-protection")
             if DEBUG_ASSOCIATION:
                 log.debug(
-                    "[W%d] VIOLATION raised: no-%s-protection (missing %d/%d frames)",
+                    "[W%d] VIOLATION raised: no-%s-protection (missing %.0f%% of last %.1fs)",
                     worker_id, part,
-                    state.missing_count[part], VIOLATION_FRAMES,
+                    state._timeline(part).last_fraction_missing * 100, VIOLATION_WINDOW_SECONDS,
                 )
 
     # Person-level vest / eye checks (Req 5 — only if person is detected)
@@ -389,16 +447,16 @@ def _evaluate_worker(
         )
         if not has_vest:
             # Also apply temporal smoothing to vest
-            if state.update("vest", covered=False):
+            if state.update("vest", covered=False, now=now):
                 frame_violations.append("no-safety-vest")
         else:
-            state.update("vest", covered=True)
+            state.update("vest", covered=True, now=now)
 
         if not has_eye:
-            if state.update("eye", covered=False):
+            if state.update("eye", covered=False, now=now):
                 frame_violations.append("no-eye-protection")
         else:
-            state.update("eye", covered=True)
+            state.update("eye", covered=True, now=now)
 
     # Default compliant=True for any detection not yet marked
     for d in worker_dets:
@@ -411,6 +469,7 @@ def _evaluate_worker(
 def evaluate_compliance(
     detections: list[dict],
     worker_states: WorkerStates,
+    now: float,
 ) -> tuple[str, list[str]]:
     """
     Evaluate PPE compliance for a single frame.
@@ -421,6 +480,12 @@ def evaluate_compliance(
     `worker_states` is the calling session's own state dict (from
     new_session_state()) — passing a session-scoped dict instead of a shared
     global is what makes concurrent sessions safe to run side by side.
+
+    `now` is the caller's `time.monotonic()` at the moment this frame's
+    detections were produced — the duration-weighted temporal window in
+    _WorkerState.update() is anchored to this, not to how many times this
+    function has been called, so it stays correct regardless of frame skip,
+    inference speed, or dropped/bursty frames.
 
     severity:   "ok" | "medium" | "high"
     violations: list of human-readable violation strings
@@ -438,7 +503,7 @@ def evaluate_compliance(
     frame_violations: list[str] = []
 
     for worker_id, worker_dets in worker_groups.items():
-        _evaluate_worker(worker_id, worker_dets, frame_violations, worker_states)
+        _evaluate_worker(worker_id, worker_dets, frame_violations, worker_states, now)
 
     # Default for any detection still without compliant key
     for d in detections:

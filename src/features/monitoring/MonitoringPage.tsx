@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuthStore } from '../../lib/auth/authStore';
 import { VIEW_MODE_STORAGE_KEY, VIEW_MODE_DEFAULT } from '../../constants/app';
 import { ViewModeToggle, type ViewMode } from '../../components/widgets/ViewModeToggle';
@@ -16,6 +16,11 @@ import PageShell from '../../components/ui/PageShell';
 import { useLiveSessions, WEBCAM_SESSION_ID } from '../../hooks/useLiveSessions';
 import { useDetectionStore } from '../../state/DetectionStore';
 import { Upload, Video, WifiOff, Play, Square } from 'lucide-react';
+import DetectionClassFilter from '../../components/widgets/DetectionClassFilter';
+import {
+  ALL_DETECTION_CLASS_IDS,
+  DETECTION_FILTER_STORAGE_KEY,
+} from '../../constants/detectionClasses';
 
 const HEALTH_CHECK_INTERVAL_MS = 5000;
 
@@ -41,6 +46,29 @@ export default function MonitoringPage() {
   const [backendOnline, setBackendOnline] = useState<boolean | null>(null); // null = checking
   const fileInputRef                    = useRef<HTMLInputElement>(null);
   const consecutiveFailuresRef          = useRef(0);
+
+  // ── Detection class filter — which classes get drawn/listed, shared by
+  // every view mode (mock camera, single live session, session grid) so it's
+  // one page-wide preference instead of only working in whichever view it
+  // happened to be wired into.
+  const [visibleClasses, setVisibleClasses] = useState<Set<string>>(() => {
+    try {
+      const stored = sessionStorage.getItem(DETECTION_FILTER_STORAGE_KEY);
+      if (stored) return new Set(JSON.parse(stored) as string[]);
+    } catch {
+      // fall through to default
+    }
+    return new Set(ALL_DETECTION_CLASS_IDS);
+  });
+
+  const handleVisibleClassesChange = useCallback((next: Set<string>) => {
+    setVisibleClasses(next);
+    try {
+      sessionStorage.setItem(DETECTION_FILTER_STORAGE_KEY, JSON.stringify([...next]));
+    } catch {
+      // sessionStorage unavailable — filter still works in-memory
+    }
+  }, []);
 
   // Backend detection pipeline — supports any number of concurrent sessions
   // (multiple uploaded videos + one browser webcam), each independent.
@@ -138,16 +166,16 @@ export default function MonitoringPage() {
 
   return (
     <PageShell noPadding>
-      <div className="flex h-full bg-gray-900">
+      <div className="flex h-full bg-bg">
 
         {/* ── Main Content ──────────────────────────────── */}
         <div className="flex-1 flex flex-col overflow-hidden">
 
           {/* Page Header */}
-          <div className="px-8 py-5 border-b border-gray-700 flex items-center justify-between bg-gray-800 shrink-0">
+          <div className="px-8 py-5 border-b border-border-soft flex items-center justify-between bg-panel shrink-0">
             <div>
-              <h1 className="text-3xl font-bold text-white">Live Monitoring</h1>
-              <p className="text-base text-gray-400 mt-1">
+              <h1 className="text-3xl font-bold text-text-primary">Live Monitoring</h1>
+              <p className="text-base text-text-muted mt-1">
                 Real-time camera feeds and violation tracking
                 {user?.role === 'site_supervisor' && user.assignedZones?.length
                   ? ` · Zones: ${user.assignedZones.join(', ')}`
@@ -220,6 +248,11 @@ export default function MonitoringPage() {
                 </>
               )}
 
+              <DetectionClassFilter
+                selected={visibleClasses}
+                onChange={handleVisibleClassesChange}
+              />
+
               <ViewModeToggle viewMode={viewMode} onViewModeChange={handleViewModeChange} />
             </div>
           </div>
@@ -240,19 +273,19 @@ export default function MonitoringPage() {
           )}
 
           {/* Camera View */}
-          <div className="flex-1 overflow-auto p-6">
+          <div className="flex-1 overflow-auto p-6 [scrollbar-gutter:stable]">
             {viewMode === 'grid' ? (
               <div className="space-y-8">
                 {sessions.length > 0 && (
                   <div>
-                    <p className="text-sm font-semibold uppercase tracking-wide text-gray-400 mb-4">
+                    <p className="text-sm font-semibold uppercase tracking-wide text-text-muted mb-4">
                       Live Detection Sessions
                     </p>
-                    <LiveSessionsGrid sessions={sessions} onStop={stopSession} />
+                    <LiveSessionsGrid sessions={sessions} onStop={stopSession} visibleClasses={visibleClasses} />
                   </div>
                 )}
                 <div>
-                  <p className="text-sm font-semibold uppercase tracking-wide text-gray-400 mb-4">Camera Grid</p>
+                  <p className="text-sm font-semibold uppercase tracking-wide text-text-muted mb-4">Camera Grid</p>
                   <CameraGrid selectedZone={selectedZone} onCameraSelect={handleCameraSelect} />
                 </div>
               </div>
@@ -262,6 +295,7 @@ export default function MonitoringPage() {
                 selectedId={selectedSessionId ?? sessions[0].id}
                 onSelect={setSelectedSessionId}
                 onStop={stopSession}
+                visibleClasses={visibleClasses}
               />
             ) : selectedCamera ? (
               <CameraDetailPanel
@@ -269,6 +303,7 @@ export default function MonitoringPage() {
                 cameras={filteredCameras}
                 onCameraChange={handleCameraSelect}
                 mode="full"
+                visibleClasses={visibleClasses}
               />
             ) : (
               <div className="flex flex-col items-center justify-center h-full gap-4 text-text-muted">
@@ -283,8 +318,8 @@ export default function MonitoringPage() {
         </div>
 
         {/* ── Right Side Panel ──────────────────────────── */}
-        <div className="w-96 border-l border-gray-700 flex flex-col bg-gray-800 shrink-0">
-          <div className="flex-1 overflow-auto p-4 space-y-4">
+        <div className="w-96 border-l border-border-soft flex flex-col bg-panel shrink-0">
+          <div className="flex-1 overflow-auto p-4 space-y-4 [scrollbar-gutter:stable]">
 
             {/* Stop-all button when any session is active */}
             {sessions.length > 0 && (
@@ -298,14 +333,14 @@ export default function MonitoringPage() {
             )}
 
             <Card
-              header={<span className="text-sm font-semibold uppercase tracking-wide text-gray-400">Recent Alerts</span>}
+              header={<span className="text-sm font-semibold uppercase tracking-wide text-text-muted">Recent Alerts</span>}
               padding={false}
             >
               <AlertFeedWidget />
             </Card>
 
             <Card
-              header={<span className="text-sm font-semibold uppercase tracking-wide text-gray-400">Live Workers</span>}
+              header={<span className="text-sm font-semibold uppercase tracking-wide text-text-muted">Live Workers</span>}
               padding={false}
             >
               <LiveWorkerList selectedZone={selectedZone} />

@@ -2,7 +2,7 @@
 Backend configuration — all values overridable via environment variables.
 
     export PPE_CONF_THRESHOLD=0.40
-    export PPE_VIOLATION_FRAMES=3
+    export PPE_VIOLATION_WINDOW_SECONDS=2.0
     uvicorn main:app --reload
 """
 
@@ -41,6 +41,11 @@ SEND_QUEUE_SIZE:  int = _int("PPE_SEND_QUEUE_SIZE",  4)
 
 # ── Frame skip ─────────────────────────────────────────────────────────────────
 FRAME_SKIP: int = _int("PPE_FRAME_SKIP", 0)
+
+# ── Uploaded-video playback ────────────────────────────────────────────────────
+LOOP_VIDEO: bool = _bool("PPE_LOOP_VIDEO", True)
+PACE_TO_SOURCE_FPS: bool = _bool("PPE_PACE_TO_SOURCE_FPS", True)
+FALLBACK_FPS: float = _float("PPE_FALLBACK_FPS", 25.0)
 
 # ── Compliance — global overlap threshold (legacy / fallback) ─────────────────
 OVERLAP_THRESHOLD: float = _float("PPE_OVERLAP_THRESHOLD", 0.10)
@@ -82,11 +87,40 @@ ASSOC_W_DIST: float = _float("PPE_ASSOC_W_DIST", 0.50)
 ASSOC_W_IOU:  float = _float("PPE_ASSOC_W_IOU",  0.30)
 ASSOC_W_VPOS: float = _float("PPE_ASSOC_W_VPOS", 0.20)
 
-# ── Temporal smoothing (Req 3) ─────────────────────────────────────────────────
-# Frames a body part must be missing PPE before raising a violation
-VIOLATION_FRAMES: int = _int("PPE_VIOLATION_FRAMES", 5)
-# Frames PPE must be present before clearing a previously raised violation
-CLEAR_FRAMES:     int = _int("PPE_CLEAR_FRAMES",     3)
+# ── Temporal smoothing (Req 3) — duration-based, not frame-count-based ────────
+# Real-time window (seconds) of recent history used to judge sustained
+# non-compliance, so the decision doesn't depend on how many frames were
+# actually inferred (FRAME_SKIP, GPU load, and queue drops all vary that).
+VIOLATION_WINDOW_SECONDS: float = _float("PPE_VIOLATION_WINDOW_SECONDS", 3.0)
+# Fraction of the window's time that must be "missing" to RAISE a violation.
+VIOLATION_RAISE_FRACTION: float = _float("PPE_VIOLATION_RAISE_FRACTION", 0.6)
+# Fraction of the window's time that must be "missing" (or below) to CLEAR
+# an already-raised violation. Must stay below VIOLATION_RAISE_FRACTION —
+# the gap between the two is a Schmitt-trigger band that stops chattering.
+VIOLATION_CLEAR_FRACTION: float = _float("PPE_VIOLATION_CLEAR_FRACTION", 0.3)
+# Minimum real seconds of observation for a given worker+part before ANY
+# raise/clear decision is allowed — guards cold starts / sparse sampling.
+MIN_EVIDENCE_SECONDS: float = _float("PPE_MIN_EVIDENCE_SECONDS", 1.0)
+# Minimum sample count for a given worker+part before ANY raise/clear
+# decision is allowed (secondary guard alongside MIN_EVIDENCE_SECONDS).
+MIN_EVIDENCE_SAMPLES: int = _int("PPE_MIN_EVIDENCE_SAMPLES", 2)
+# Cap on any single inter-sample gap's contribution to the window's time
+# integral, so one stall/drop/pause can't dominate or instantly flip state.
+MAX_SAMPLE_GAP_SECONDS: float = _float("PPE_MAX_SAMPLE_GAP_SECONDS", 2.0)
+
+# ── Ghost boxes — rendering/identity continuity through brief detection loss ──
+# How long (seconds) a track's last-known box keeps rendering after it stops
+# being really detected, before its ghost cache entry expires. Purely a
+# rendering-continuity knob — never fed into compliance evidence. Matches
+# MAX_SAMPLE_GAP_SECONDS's default so compliance's gap-bridging and the UI's
+# gap-bridging tell a consistent story.
+GHOST_GRACE_SECONDS: float = _float("PPE_GHOST_GRACE_SECONDS", 2.0)
+# Ghosting is scoped to person-class detections only (see _apply_ghost_boxes).
+# If a REAL person detection this frame overlaps a ghost's cached box by at
+# least this much IoU, the person is visibly present — suppress the ghost
+# instead of rendering a stale box alongside a fresh one for the same person
+# (can happen when ByteTrack reassigns a new tracker ID mid-stream).
+GHOST_SUPPRESS_IOU: float = _float("PPE_GHOST_SUPPRESS_IOU", 0.3)
 
 # ── False-positive filters (Req 6) ────────────────────────────────────────────
 # Body-part detections smaller than this fraction of frame area are ignored

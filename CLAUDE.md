@@ -43,7 +43,7 @@ Runtime behavior (thresholds, queue sizes, frame skip, etc.) is entirely control
 
 ```bash
 export PPE_CONF_THRESHOLD=0.40
-export PPE_VIOLATION_FRAMES=3
+export PPE_VIOLATION_WINDOW_SECONDS=2.0
 ```
 
 ### `app/` (ONNX service — what CI and Docker build)
@@ -69,7 +69,7 @@ Only exercises `app/` + `tests/`: installs root `requirements.txt`, runs `flake8
 - **Two streaming endpoints** in `backend/main.py`: `/ws/detect/live` (browser pushes webcam JPEGs, frame-by-frame, server replies with detections only — no jpeg round-trip) and `/ws/detect/{video_id}` (server reads an uploaded video and streams back frames + jpegs). `/ws/detect/live` **must** stay registered before `/ws/detect/{video_id}` since Starlette matches routes in registration order and the parameterized route would otherwise swallow `"live"` as a `video_id`.
 - **Per-session model isolation**: every WebSocket session creates its own `YOLO` instance via `_new_model()` rather than sharing a global one, because `model.track(persist=True)` keeps ByteTrack state on the model/predictor object — sharing one model across concurrent sessions would corrupt tracker IDs (and therefore per-worker compliance state) across sessions.
 - **Producer→queue→consumer pipeline** for uploaded videos (`_run_detection_session`): `frame_reader` → `infer_q` → `inference_worker` → `send_q` → `ws_sender`, run concurrently via `asyncio.gather`. Both queues drop the *oldest* item on overflow (not the newest) so playback tracks roughly where the video currently is instead of stalling. `_run_inference` is synchronous and offloaded via `asyncio.to_thread` so inference never blocks the event loop.
-- **Compliance engine** (`backend/compliance.py`): groups detections by tracker ID (falling back to nearest-person association if tracking is unavailable), then per worker computes a hybrid association score (`ASSOC_W_DIST/IOU/VPOS`, configured in `config.py`) to match body parts (`head`/`hands`/`foot`/`face`) to required PPE, with per-PPE adaptive IoU thresholds. Violations use temporal hysteresis (`VIOLATION_FRAMES` to raise, `CLEAR_FRAMES` to clear) so a single flickery frame doesn't trigger a false violation. Tracker IDs (`_track_id`) are internal-only and stripped before sending detections to the frontend (`_strip_internal`).
+- **Compliance engine** (`backend/compliance.py`): groups detections by tracker ID (falling back to nearest-person association if tracking is unavailable), then per worker computes a hybrid association score (`ASSOC_W_DIST/IOU/VPOS`, configured in `config.py`) to match body parts (`head`/`hands`/`foot`/`face`) to required PPE, with per-PPE adaptive IoU thresholds. Violations use a duration-weighted sliding time window (`VIOLATION_WINDOW_SECONDS`, `VIOLATION_RAISE_FRACTION`/`VIOLATION_CLEAR_FRACTION`) rather than a frame-count hysteresis, so the raise/clear decision stays anchored to real elapsed time — and tolerant of an occasional missed detection — regardless of frame skip, inference speed, or dropped/bursty frames. Tracker IDs (`_track_id`) are internal-only and stripped before sending detections to the frontend (`_strip_internal`).
 
 ### Frontend structure (`src/`)
 

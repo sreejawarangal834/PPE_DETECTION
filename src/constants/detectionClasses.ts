@@ -55,7 +55,7 @@ function normaliseLabel(label: string): string {
 }
 
 /** Fallback palette for any label not in the registry (keeps rendering stable) */
-const FALLBACK_COLOR = '#9BA3B8';
+const FALLBACK_COLOR = '#A8A296';
 
 export function getDetectionClass(label: string): DetectionClassDef | undefined {
   return BY_ID[normaliseLabel(label)];

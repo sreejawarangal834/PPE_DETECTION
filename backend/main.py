@@ -31,13 +31,15 @@ from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSock
 from fastapi.middleware.cors import CORSMiddleware
 from ultralytics import YOLO
 
-from compliance import evaluate_compliance, new_session_state
+from compliance import evaluate_compliance, new_session_state, _iou, Box
 from frame_source import FileVideoSource
 from config import (
     CONF_THRESHOLD, IOU_THRESHOLD, IMAGE_SIZE,
     JPEG_QUALITY, MAX_SEND_WIDTH,
     INFER_QUEUE_SIZE, SEND_QUEUE_SIZE, FRAME_SKIP,
-    OVERLAP_THRESHOLD,
+    OVERLAP_THRESHOLD, LOOP_VIDEO,
+    PACE_TO_SOURCE_FPS, FALLBACK_FPS,
+    GHOST_GRACE_SECONDS, GHOST_SUPPRESS_IOU,
 )
 
 # ─── Logging ──────────────────────────────────────────────────────────────────
@@ -67,6 +69,7 @@ BASE_DIR   = Path(__file__).parent
 MODEL_PATH = BASE_DIR / "models" / "best.pt"
 UPLOAD_DIR = BASE_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
+TRACKER_CONFIG_PATH = BASE_DIR / "tracker_config.yaml"
 
 # ─── Load model ───────────────────────────────────────────────────────────────
 log.info("──────────────────────────────────────────")
@@ -168,6 +171,80 @@ def _strip_internal(detections: list[dict]) -> list[dict]:
     ]
 
 
+GhostCache = dict[int, dict]
+
+
+def _new_ghost_cache() -> GhostCache:
+    """Call once per session (parallel to new_session_state()) for a fresh, isolated ghost cache."""
+    return {}
+
+
+def _apply_ghost_boxes(detections: list[dict], ghost_cache: GhostCache, now: float) -> list[dict]:
+    """
+    Rendering/identity-continuity layer ONLY — must run AFTER evaluate_compliance()
+    and BEFORE _strip_internal(). Ghost output must never be fed back into
+    evaluate_compliance(); a synthesized box is not real evidence.
+
+    When a tracked PERSON produces zero detections for a stretch (e.g. poor
+    lighting), this keeps their last-known box rendering for up to
+    GHOST_GRACE_SECONDS instead of it vanishing instantly, so their tracker
+    ID also has a chance to be re-associated by ByteTrack when they reappear
+    rather than silently starting a brand-new (empty) compliance history.
+
+    Scoped to `label == "person"` only — every detected class gets its own
+    _track_id (helmet, gloves, vest, ...), and ghosting each independently
+    would flicker a disembodied PPE-item box any time its own track blips,
+    even while the wearer is plainly, continuously visible. Only the
+    person's own box persists through a gap.
+
+    Also suppressed if a REAL person detection this frame already overlaps
+    the ghost's cached position (IoU >= GHOST_SUPPRESS_IOU) — that means the
+    person is visibly present, just possibly under a new tracker ID after a
+    ByteTrack ID switch, so there's no gap to bridge and no ghost should render.
+    """
+    seen_ids: set[int] = set()
+    real_person_boxes: list[Box] = []
+    for d in detections:
+        tid = d.get("_track_id")
+        if tid is not None:
+            seen_ids.add(tid)
+        if d["label"] != "person":
+            continue
+        real_person_boxes.append(tuple(d["box"]))
+        if tid is not None:
+            ghost_cache[tid] = {
+                "label":     d["label"],
+                "conf":      d["conf"],
+                "box":       d["box"],
+                "compliant": d.get("compliant", True),
+                "last_seen": now,
+            }
+
+    ghosts: list[dict] = []
+    expired: list[int] = []
+    for tid, cached in ghost_cache.items():
+        if tid in seen_ids:
+            continue  # a real detection covered this track id this frame
+        if now - cached["last_seen"] > GHOST_GRACE_SECONDS:
+            expired.append(tid)
+            continue
+        cached_box: Box = tuple(cached["box"])
+        if any(_iou(cached_box, rb) >= GHOST_SUPPRESS_IOU for rb in real_person_boxes):
+            continue  # person is visibly present (likely under a new id) — no ghost needed
+        ghosts.append({
+            "label":     cached["label"],
+            "conf":      cached["conf"],
+            "box":       cached["box"],
+            "compliant": cached["compliant"],
+            "ghost":     True,   # not underscore-prefixed -> survives _strip_internal
+            "_track_id": tid,    # internal-only, stripped like every other detection
+        })
+    for tid in expired:
+        del ghost_cache[tid]
+
+    return detections + ghosts
+
+
 def _put_sentinel(queue: "asyncio.Queue") -> None:
     """
     Push a None shutdown-sentinel without ever blocking.
@@ -217,7 +294,7 @@ def _run_inference(frame: np.ndarray, model: YOLO) -> list[dict]:
         results = model.track(
             frame,
             persist=True,
-            tracker="bytetrack.yaml",   # ByteTrack — reduces flicker
+            tracker=str(TRACKER_CONFIG_PATH),   # ByteTrack — reduces flicker
             **common_kwargs,
         )
     except Exception as track_exc:
@@ -312,6 +389,7 @@ async def detect_live_ws(websocket: WebSocket):
     # of other concurrent video/webcam sessions (see _new_model docstring).
     model = await asyncio.to_thread(_new_model)
     worker_states = new_session_state()
+    ghost_cache   = _new_ghost_cache()
     frame_idx = 0
     closed = False
     session_start = time.monotonic()
@@ -329,7 +407,9 @@ async def detect_live_ws(websocket: WebSocket):
             t0 = time.monotonic()
             detections = await asyncio.to_thread(_run_inference, resized, model)
             infer_times.append((time.monotonic() - t0) * 1000)
-            severity, violations = evaluate_compliance(detections, worker_states)
+            now = time.monotonic()
+            severity, violations = evaluate_compliance(detections, worker_states, now)
+            detections = _apply_ghost_boxes(detections, ghost_cache, now)
             public_detections = _strip_internal(detections)
 
             try:
@@ -382,7 +462,9 @@ async def detect_ws(websocket: WebSocket, video_id: str):
         await websocket.close()
         return
 
-    await _run_detection_session(websocket, video_id, FileVideoSource(video_path))
+    await _run_detection_session(
+        websocket, video_id, FileVideoSource(video_path, loop=LOOP_VIDEO)
+    )
 
 
 async def _run_detection_session(websocket: WebSocket, session_id: str, source: FileVideoSource) -> None:
@@ -401,6 +483,20 @@ async def _run_detection_session(websocket: WebSocket, session_id: str, source: 
     # see _new_model()'s docstring for why sharing one model is unsafe.
     model = await asyncio.to_thread(_new_model)
     worker_states = new_session_state()
+    ghost_cache   = _new_ghost_cache()
+
+    # Reset ByteTrack + compliance hysteresis state at each loop restart so a
+    # track ID alive near the end of the video can't silently merge with a new
+    # detection at the replayed start. `predictor = None` forces Ultralytics to
+    # rebuild just the predictor/tracker on the next .track() call — no weight
+    # reload, unlike _new_model(). A lingering ghost box must not carry across
+    # the loop seam either, so its cache resets here too.
+    def _on_loop_restart() -> None:
+        nonlocal worker_states, ghost_cache
+        model.predictor = None
+        worker_states = new_session_state()
+        ghost_cache   = _new_ghost_cache()
+    source.on_loop = _on_loop_restart
 
     # ── Two queues decouple the three pipeline stages ───────────────
     #  reader  ──[infer_q]──▶  inference worker  ──[send_q]──▶  sender
@@ -412,15 +508,35 @@ async def _run_detection_session(websocket: WebSocket, session_id: str, source: 
     async def frame_reader() -> None:
         try:
             raw_idx = 0
+            next_frame_time = time.monotonic()
             for frame in source.frames():
                 if _stop.is_set():
                     break
                 stats["frames_read"] += 1
+
+                # Pace decode to the source video's real FPS so playback speed
+                # matches the recording instead of running as fast as
+                # decode+inference allow. This `await` doubles as the
+                # per-frame event-loop yield — `for frame in source.frames()`
+                # never awaits internally (cv2.VideoCapture.read() is a
+                # blocking C call), so without it the reader would monopolize
+                # the event loop for the whole video's decode time, starving
+                # the inference worker, the WebSocket sender, every other
+                # concurrent session, and even unrelated requests like
+                # /api/health. asyncio.sleep always yields once even with a
+                # 0/negative delay, so this holds whether or not pacing (the
+                # `if` below) is enabled.
+                if PACE_TO_SOURCE_FPS:
+                    fps = source.fps if source.fps and source.fps > 0 else FALLBACK_FPS
+                    frame_interval = 1.0 / fps
+                    await asyncio.sleep(max(0.0, next_frame_time - time.monotonic()))
+                    next_frame_time = max(time.monotonic(), next_frame_time) + frame_interval
+                else:
+                    await asyncio.sleep(0)
+
                 # Frame-skip: only infer every (FRAME_SKIP+1)-th frame
                 if FRAME_SKIP > 0 and (raw_idx % (FRAME_SKIP + 1) != 0):
                     raw_idx += 1
-                    # Still yield — see note below.
-                    await asyncio.sleep(0)
                     continue
                 raw_idx += 1
                 # Resize for inference
@@ -441,15 +557,6 @@ async def _run_detection_session(websocket: WebSocket, session_id: str, source: 
                     infer_q.put_nowait((stats["frames_inferred"], resized))
                     stats["frames_dropped"] += 1
                     log.debug("[%s] infer_q full — dropped oldest queued frame", session_id)
-                # `for frame in source.frames()` never awaits internally
-                # (cv2.VideoCapture.read() is a blocking C call), so without
-                # this yield the reader would monopolize the event loop for
-                # the whole video's decode time — starving the inference
-                # worker, the WebSocket sender, every other concurrent
-                # session, and even unrelated requests like /api/health
-                # (which is exactly what made the backend look "offline"
-                # while a video was being read).
-                await asyncio.sleep(0)
         except Exception as exc:
             log.error("[%s] Frame reader error: %s", session_id, exc)
         finally:
@@ -470,7 +577,9 @@ async def _run_detection_session(websocket: WebSocket, session_id: str, source: 
                 stats["infer_times"].append(infer_ms)
                 stats["frames_inferred"] += 1
 
-                severity, violations = evaluate_compliance(detections, worker_states)
+                now = time.monotonic()
+                severity, violations = evaluate_compliance(detections, worker_states, now)
+                detections = _apply_ghost_boxes(detections, ghost_cache, now)
                 public_detections = _strip_internal(detections)
 
                 # Resize for WebSocket transmission (may differ from inference size)

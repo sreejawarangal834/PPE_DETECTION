@@ -14,33 +14,31 @@ export default function CameraStatusWidget({ assignedZones }: { assignedZones?: 
   const online = filteredCameras.filter(c => c.status === 'online').length;
 
   return (
-    <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 flex flex-col gap-4 hover:shadow-[0_0_15px_rgba(59,130,246,0.4)] transition-all">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold uppercase tracking-wide text-gray-400">Cameras</p>
-        <span className="text-sm font-mono text-white bg-gray-700 px-3 py-1 rounded-lg">
-          <span className="text-green-400 font-bold">{online}</span>/{filteredCameras.length} online
-        </span>
-      </div>
+    <div className="bg-panel border border-border-soft rounded-xl p-4 flex flex-col">
+      <p className="text-xs font-medium uppercase tracking-wide text-text-muted mb-3">Camera Status</p>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-4 gap-2">
         {filteredCameras.map(c => {
-          const isOnline  = c.status === 'online';
-          const isError   = c.status === 'error';
-          const dotColor  = isOnline ? 'text-green-400' : isError ? 'text-yellow-400' : 'text-red-400';
-          const textColor = isOnline ? 'text-white' : 'text-gray-400';
+          const isOnline = c.status === 'online';
+          const isError  = c.status === 'error';
+          const dotColor = isOnline ? 'bg-status-ok' : isError ? 'bg-status-warn' : 'bg-status-danger';
           return (
             <button
               key={c.id}
               onClick={() => navigate(ROUTES.MONITORING)}
               aria-label={`${c.id} is ${c.status}`}
-              className="flex items-center gap-2 px-3 py-2 bg-gray-700 rounded-lg text-sm font-mono hover:bg-gray-600 border border-transparent transition-all duration-300 text-left"
+              title={`${c.name} — ${c.status}`}
+              className="aspect-square rounded-lg bg-panel-alt border border-border flex flex-col items-center justify-center gap-1 hover:border-border-focus transition-colors"
             >
-              <span className={`text-[12px] leading-none ${dotColor}`} aria-hidden="true">●</span>
-              <span className={`truncate ${textColor}`}>{c.id}</span>
+              <span className={`w-2 h-2 rounded-full ${dotColor}`} aria-hidden="true" />
+              <span className="text-[10px] font-mono text-text-secondary">{c.id}</span>
             </button>
           );
         })}
       </div>
+      <p className="text-[11px] text-text-muted mt-2">
+        <span className="text-status-ok font-semibold">{online}</span>/{filteredCameras.length} online
+      </p>
     </div>
   );
 }

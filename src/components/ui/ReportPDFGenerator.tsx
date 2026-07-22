@@ -38,7 +38,7 @@ function StatusPill({ status }: { status: string }) {
     escalated:    '#C25450',
     resolved:     '#4F9E7C',
   };
-  const color = colors[status] ?? '#9BA3B8';
+  const color = colors[status] ?? '#A8A296';
   return (
     <span style={{
       display: 'inline-block',
@@ -69,8 +69,8 @@ function CctvSnapshot({ alertId, severity }: { alertId: string; severity: string
       {/* Diagonal stripe background */}
       <defs>
         <pattern id={`stripe-${alertId}`} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <rect width="3" height="6" fill="#20242D" />
-          <rect x="3" width="3" height="6" fill="#12151A" />
+          <rect width="3" height="6" fill="#24211C" />
+          <rect x="3" width="3" height="6" fill="#15130F" />
         </pattern>
       </defs>
       <rect width="320" height="180" fill={`url(#stripe-${alertId})`} />
@@ -86,10 +86,10 @@ function CctvSnapshot({ alertId, severity }: { alertId: string; severity: string
       <text x="104" y="41" fill="white" fontSize="9" fontFamily="monospace">NO-PPE 0.91</text>
 
       {/* Worker bounding box */}
-      <rect x="195" y="55" width="55" height="80" rx="2" fill="none" stroke="#4A8FA3" strokeWidth="1.5" />
+      <rect x="195" y="55" width="55" height="80" rx="2" fill="none" stroke="#9C4A4F" strokeWidth="1.5" />
 
       {/* Timestamp watermark */}
-      <text x="10" y="170" fill="#9BA3B8" fontSize="9" fontFamily="monospace" opacity="0.7">
+      <text x="10" y="170" fill="#A8A296" fontSize="9" fontFamily="monospace" opacity="0.7">
         CCTV CAPTURE — {new Date().toLocaleTimeString('en-GB')}
       </text>
     </svg>
@@ -118,7 +118,7 @@ export default function ReportPDFGenerator({ report, date, reportId }: Props) {
       }}
     >
       {/* ── Header ─────────────────────────────────────── */}
-      <div style={{ borderBottom: '2px solid #1B1F27', paddingBottom: 16, marginBottom: 20 }}>
+      <div style={{ borderBottom: '2px solid #1D1A16', paddingBottom: 16, marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <p style={{ fontSize: 10, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>

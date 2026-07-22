@@ -22,32 +22,32 @@ interface KPICardProps {
 export default function KPICard({ title, value, trend, sparklineData, icon, isLoading, className = '' }: KPICardProps) {
   if (isLoading) {
     return (
-      <div className={`bg-gray-800/50 rounded-xl p-6 border border-gray-700 flex flex-col gap-3 ${className}`}>
+      <div className={`bg-panel rounded-xl p-6 border border-border-soft flex flex-col gap-3 ${className}`}>
         <LoadingSkeleton variant="kpi" count={1} />
       </div>
     );
   }
 
   // Determine trend colour
-  let trendColorClass = 'text-gray-400';
+  let trendColorClass = 'text-text-muted';
   if (trend && trend.direction !== 'neutral') {
     const good = (trend.positive && trend.direction === 'up') || (!trend.positive && trend.direction === 'down');
-    trendColorClass = good ? 'text-green-400' : 'text-red-400';
+    trendColorClass = good ? 'text-status-ok' : 'text-status-danger';
   }
 
   const TrendIcon = trend?.direction === 'up' ? TrendingUp : trend?.direction === 'down' ? TrendingDown : Minus;
 
   return (
-    <div className={`bg-gray-800/50 rounded-xl p-6 border border-gray-700 hover:shadow-[0_0_15px_rgba(59,130,246,0.4)] transition-all flex flex-col gap-3 ${className}`}>
+    <div className={`bg-panel rounded-xl p-6 border border-border-soft hover:shadow-[0_0_15px_var(--color-accent-subtle)] transition-all flex flex-col gap-3 ${className}`}>
       {/* Title row */}
       <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-medium text-gray-400">{title}</p>
-        {icon && <div className="p-3 rounded-lg bg-gray-700 shrink-0">{icon}</div>}
+        <p className="text-sm font-medium text-text-muted">{title}</p>
+        {icon && <div className="p-3 rounded-lg bg-panel-alt shrink-0">{icon}</div>}
       </div>
 
       {/* Value + trend */}
       <div className="flex items-end justify-between gap-2">
-        <p className="text-2xl font-bold text-white">{value}</p>
+        <p className="text-2xl font-bold text-text-primary">{value}</p>
         {trend && (
           <div className={`flex items-center gap-1 shrink-0 ${trendColorClass}`}>
             <TrendIcon className="w-4 h-4" aria-hidden="true" />
@@ -63,7 +63,7 @@ export default function KPICard({ title, value, trend, sparklineData, icon, isLo
             <LineChart data={sparklineData.map((v, i) => ({ i, v }))}>
               <Line
                 type="monotone" dataKey="v"
-                stroke="#3b82f6" strokeWidth={1.5}
+                stroke="var(--color-accent)" strokeWidth={1.5}
                 dot={false} isAnimationActive={false}
               />
             </LineChart>

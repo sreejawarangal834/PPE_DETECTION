@@ -81,8 +81,8 @@ export default function UserManagementPage() {
   return (
     <PageShell><div className="space-y-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-[#E8EAF0]">User Management</h1>
-        <p className="text-sm text-[#5C6480] mt-1">Manage user accounts, roles, and permissions</p>
+        <h1 className="text-2xl font-semibold text-text-primary">User Management</h1>
+        <p className="text-sm text-text-muted mt-1">Manage user accounts, roles, and permissions</p>
       </div>
       <div className="flex items-center justify-between">
         <Button size="sm" onClick={() => setCreateOpen(true)}>Create User</Button>

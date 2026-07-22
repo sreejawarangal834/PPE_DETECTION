@@ -39,7 +39,7 @@ export default function AlertsPage() {
       {/* Page Header */}
       <div>
         <h1 className="text-2xl font-semibold text-white">Alerts &amp; Violations</h1>
-        <p className="text-sm text-gray-400 mt-1">Real-time violation feed — updates automatically</p>
+        <p className="text-sm text-text-muted mt-1">Real-time violation feed — updates automatically</p>
       </div>
 
       <AlertFilters filters={filters} onChange={f => { setFilters(f); setPage(1); }} />

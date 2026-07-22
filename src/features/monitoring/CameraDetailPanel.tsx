@@ -26,15 +26,17 @@ import { useDetectionStore } from '../../state/DetectionStore';
 import type { Camera } from '../../types';
 import { Wifi, WifiOff, Clock, Users, AlertTriangle, Activity } from 'lucide-react';
 import type { Detection } from '../../hooks/useDetectionSocket';
-import DetectionClassFilter from '../../components/widgets/DetectionClassFilter';
 import {
   ALL_DETECTION_CLASS_IDS,
-  DETECTION_FILTER_STORAGE_KEY,
   detectionClassColor,
   detectionClassLabel,
   isDetectionClassVisible,
 } from '../../constants/detectionClasses';
 import { BoundingBoxCanvas, VideoFeed, FeedImage, isViolationDetection } from '../../components/detection/LiveFeedSurface';
+
+// Stable default so the fallback (when no visibleClasses prop is passed,
+// e.g. CameraGrid.tsx's drawer-mode usage) isn't a new Set() every render.
+const ALL_DETECTION_CLASS_IDS_SET = new Set(ALL_DETECTION_CLASS_IDS);
 
 // ── LiveFeed ─────────────────────────────────────────────────────────────────
 // Memoised on jpeg/stream + frameIndex — the most frequently updating part.
@@ -65,13 +67,11 @@ const LiveFeed = memo(function LiveFeed({
       ) : null}
 
       {/* Bounding boxes — only re-renders when detections or size changes */}
-      {detections.length > 0 && (
-        <BoundingBoxCanvas
-          detections={detections}
-          containerW={containerW}
-          containerH={containerH}
-        />
-      )}
+      <BoundingBoxCanvas
+        detections={detections}
+        containerW={containerW}
+        containerH={containerH}
+      />
 
       {/* Overlay badges — stable unless violations/severity change */}
       {/* LIVE badge */}
@@ -230,10 +230,16 @@ interface Props {
   onClose?: () => void;
   onCameraChange?: (camera: Camera) => void;
   mode?: 'drawer' | 'full';
+  /** Shared, page-wide detection-class filter — owned by MonitoringPage so
+   *  it's one preference across every view, not a copy per component.
+   *  Optional so CameraGrid.tsx's drawer-mode usage (no filter UI there
+   *  anyway) keeps working unchanged when it isn't passed. */
+  visibleClasses?: Set<string>;
 }
 
 export default function CameraDetailPanel({
   camera, cameras, onClose, onCameraChange, mode = 'drawer',
+  visibleClasses = ALL_DETECTION_CLASS_IDS_SET,
 }: Props) {
   const [selectedCamera, setSelectedCamera] = useState(camera);
   const recentAlerts = useAlertStore(s => s.alerts)
@@ -244,26 +250,6 @@ export default function CameraDetailPanel({
   const isLiveActive = liveCamera !== null && (
     liveCamera.status === 'streaming' || liveCamera.jpeg !== undefined
   );
-
-  // ── Detection class filter — which classes get drawn/listed ──────
-  const [visibleClasses, setVisibleClasses] = useState<Set<string>>(() => {
-    try {
-      const stored = sessionStorage.getItem(DETECTION_FILTER_STORAGE_KEY);
-      if (stored) return new Set(JSON.parse(stored) as string[]);
-    } catch {
-      // fall through to default
-    }
-    return new Set(ALL_DETECTION_CLASS_IDS);
-  });
-
-  const handleVisibleClassesChange = useCallback((next: Set<string>) => {
-    setVisibleClasses(next);
-    try {
-      sessionStorage.setItem(DETECTION_FILTER_STORAGE_KEY, JSON.stringify([...next]));
-    } catch {
-      // sessionStorage unavailable — filter still works in-memory
-    }
-  }, []);
 
   const filteredDetections = (liveCamera?.detections ?? [])
     .filter(d => isDetectionClassVisible(d.label, visibleClasses));
@@ -298,20 +284,19 @@ export default function CameraDetailPanel({
     ? 'h-[calc(100vh-280px)] min-h-[360px]'
     : 'h-48 mx-4 mt-4';
 
-  const content = (
-    <div className="flex flex-col gap-4">
-
-      {/* Camera selector + detection-class filter */}
+  // Feed area is kept structurally separate from everything below it (its own
+  // sibling box, not a shared scroll container) so a scrollbar toggling on
+  // detailsSection — e.g. when DetectionList mounts — can never shrink the
+  // feed's width, regardless of scrollbar-gutter browser support.
+  const feedSection = (
+    <>
+      {/* Camera selector — detection-class filter now lives once, page-wide, in MonitoringPage's header */}
       {mode === 'full' && (
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <CameraSelector
             cameras={cameras}
             selectedId={selectedCamera.id}
             onSelect={handleCameraSelect}
-          />
-          <DetectionClassFilter
-            selected={visibleClasses}
-            onChange={handleVisibleClassesChange}
           />
         </div>
       )}
@@ -323,7 +308,7 @@ export default function CameraDetailPanel({
           isOnline || isLiveActive ? 'border-border-soft' : 'border-border-soft bg-panel-alt'
         }`}
         style={(!isLiveActive && isOnline) ? {
-          backgroundImage: 'repeating-linear-gradient(115deg,#20242D 0,#20242D 2px,#12151A 2px,#12151A 4px)',
+          backgroundImage: 'repeating-linear-gradient(115deg,#24211C 0,#24211C 2px,#15130F 2px,#15130F 4px)',
         } : {}}
       >
         {isLiveActive && (liveCamera?.jpeg || liveCamera?.stream) ? (
@@ -364,7 +349,7 @@ export default function CameraDetailPanel({
             <div className="absolute border-2 rounded-sm opacity-70"
               style={{ left:'57%', top:'28%', width:'16%', height:'44%', borderColor:'var(--color-accent)' }} />
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <span className="text-[#5C6480]/40 text-sm font-medium select-none">PPE Monitoring Feed</span>
+              <span className="text-text-muted/40 text-sm font-medium select-none">PPE Monitoring Feed</span>
             </div>
           </>
         ) : (
@@ -375,7 +360,11 @@ export default function CameraDetailPanel({
           </div>
         )}
       </div>
+    </>
+  );
 
+  const detailsSection = (
+    <>
       {/* Stat strip — memoised */}
       <StatStrip
         zoneName={selectedCamera.zoneName}
@@ -418,20 +407,26 @@ export default function CameraDetailPanel({
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 
   if (mode === 'drawer') {
     return (
       <Drawer open onClose={onClose!} title={selectedCamera.name} width="w-[440px]">
-        <div className="p-4">{content}</div>
+        <div className="p-4 flex flex-col gap-4">
+          {feedSection}
+          {detailsSection}
+        </div>
       </Drawer>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4 h-full overflow-auto">
-      {content}
+    <div className="flex flex-col gap-4 h-full">
+      {feedSection}
+      <div className="flex-1 min-h-0 overflow-auto [scrollbar-gutter:stable] flex flex-col gap-4">
+        {detailsSection}
+      </div>
     </div>
   );
 }

@@ -60,7 +60,7 @@ export default function ComplianceStats() {
   }, []);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr_1.4fr] gap-4">
 
       {/* Card 1 — Compliance Gauge */}
       <div className="bg-panel border border-border-soft rounded-xl p-4 flex flex-col">

@@ -33,7 +33,7 @@ export default function AlertPopup() {
       {visibleAlerts.map(alert => (
         <div
           key={alert.id}
-          className="pointer-events-auto bg-[#1B1F27] border border-[#21252D] rounded-2xl p-5 w-[380px] shadow-2xl shadow-black/50 animate-in slide-in-from-right duration-300"
+          className="pointer-events-auto bg-panel border border-border-soft rounded-2xl p-5 w-[380px] shadow-2xl shadow-black/50 animate-in slide-in-from-right duration-300"
           style={{
             animation: 'slideIn 0.3s ease-out',
             borderLeft: `4px solid ${alert.severity === 'high' ? '#C25450' : '#D9A441'}`
@@ -50,17 +50,17 @@ export default function AlertPopup() {
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm font-bold text-[#E8EAF0] capitalize">
+                <p className="text-sm font-bold text-text-primary capitalize">
                   {alert.severity} Alert
                 </p>
-                <p className="text-xs text-[#9BA3B8] font-mono">
+                <p className="text-xs text-text-secondary font-mono">
                   {alert.cameraId} · {alert.zoneId}
                 </p>
               </div>
             </div>
             <button
               onClick={() => setVisibleAlerts(prev => prev.filter(a => a.id !== alert.id))}
-              className="text-[#5C6480] hover:text-[#E8EAF0] transition-colors p-1 rounded-lg hover:bg-[#20242D]"
+              className="text-text-muted hover:text-text-primary transition-colors p-1 rounded-lg hover:bg-panel-alt"
               aria-label="Dismiss alert"
             >
               <X className="w-4 h-4" />
@@ -69,10 +69,10 @@ export default function AlertPopup() {
 
           {/* Content */}
           <div className="mb-3">
-            <p className="text-sm text-[#E8EAF0] font-medium mb-1">
+            <p className="text-sm text-text-primary font-medium mb-1">
               Missing PPE: {alert.missingPpe.join(', ')}
             </p>
-            <p className="text-xs text-[#9BA3B8]">
+            <p className="text-xs text-text-secondary">
               Worker: {alert.workerName}
             </p>
           </div>
@@ -84,7 +84,7 @@ export default function AlertPopup() {
                 useAlertStore.getState().updateStatus(alert.id, 'acknowledged');
                 setVisibleAlerts(prev => prev.filter(a => a.id !== alert.id));
               }}
-              className="flex-1 px-3 py-2 rounded-lg text-xs font-semibold text-[#E8EAF0] bg-[#4A8FA3] hover:bg-[#4A8FA3]/90 transition-colors flex items-center justify-center gap-1.5"
+              className="flex-1 px-3 py-2 rounded-lg text-xs font-semibold text-text-primary bg-accent hover:bg-accent-hover transition-colors flex items-center justify-center gap-1.5"
             >
               <Shield className="w-3.5 h-3.5" />
               Acknowledge
@@ -94,7 +94,7 @@ export default function AlertPopup() {
                 useAlertStore.getState().updateStatus(alert.id, 'resolved');
                 setVisibleAlerts(prev => prev.filter(a => a.id !== alert.id));
               }}
-              className="flex-1 px-3 py-2 rounded-lg text-xs font-semibold text-[#E8EAF0] bg-[#4F9E7C] hover:bg-[#4F9E7C]/90 transition-colors"
+              className="flex-1 px-3 py-2 rounded-lg text-xs font-semibold text-text-primary bg-status-ok hover:bg-status-ok/90 transition-colors"
             >
               Resolve
             </button>

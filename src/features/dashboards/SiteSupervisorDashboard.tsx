@@ -33,11 +33,11 @@ export default function SiteSupervisorDashboard() {
   return (
     <div className="space-y-6">
       {/* Scope indicator */}
-      <div className="flex items-center gap-2 text-xs text-[#5C6480]">
+      <div className="flex items-center gap-2 text-xs text-text-muted">
         <Lock className="w-3.5 h-3.5" aria-hidden="true" />
         <span>Showing your assigned zones:</span>
         {assignedZones.map(z => (
-          <span key={z} className="bg-[rgba(74,143,163,0.15)] text-[#4A8FA3] px-2 py-0.5 rounded-full">{z}</span>
+          <span key={z} className="bg-accent/15 text-accent px-2 py-0.5 rounded-full">{z}</span>
         ))}
       </div>
 
@@ -69,12 +69,12 @@ export default function SiteSupervisorDashboard() {
       {/* Row 4 — cameras + alerts + workers (all scoped) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-[#5C6480]">Camera Grid</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-text-muted">Camera Grid</p>
           <ErrorBoundary><CameraGrid selectedZone={selectedZone} /></ErrorBoundary>
         </div>
         <div className="space-y-4">
           <ErrorBoundary><AlertFeedWidget assignedZones={assignedZones} /></ErrorBoundary>
-          <Card header={<span className="text-xs font-medium uppercase tracking-wide text-[#5C6480]">Live Workers</span>} padding={false}>
+          <Card header={<span className="text-xs font-medium uppercase tracking-wide text-text-muted">Live Workers</span>} padding={false}>
             <ErrorBoundary>
               <LiveWorkerList selectedZone={selectedZone} assignedZones={assignedZones} />
             </ErrorBoundary>

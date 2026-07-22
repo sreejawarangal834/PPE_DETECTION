@@ -26,13 +26,13 @@ export function ViewModeToggle({ viewMode, onViewModeChange }: ViewModeTogglePro
   };
 
   return (
-    <div className="flex items-center bg-[#20242D] rounded-xl p-1.5 border border-[#262B34] shadow-lg">
+    <div className="flex items-center bg-panel-alt rounded-xl p-1.5 border border-border shadow-lg">
       <button
         onClick={() => handleModeChange('grid')}
         className={`flex items-center gap-2.5 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 transform hover:scale-105 ${
           viewMode === 'grid'
-            ? 'bg-[#4A8FA3] text-white shadow-lg shadow-[#4A8FA3]/30'
-            : 'text-[#9BA3B8] hover:text-[#E8EAF0] hover:bg-[#252A35]'
+            ? 'bg-accent text-white shadow-lg shadow-accent/30'
+            : 'text-text-secondary hover:text-text-primary hover:bg-panel-hover'
         }`}
         aria-label="Grid View"
         aria-pressed={viewMode === 'grid'}
@@ -44,8 +44,8 @@ export function ViewModeToggle({ viewMode, onViewModeChange }: ViewModeTogglePro
         onClick={() => handleModeChange('single')}
         className={`flex items-center gap-2.5 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 transform hover:scale-105 ${
           viewMode === 'single'
-            ? 'bg-[#4A8FA3] text-white shadow-lg shadow-[#4A8FA3]/30'
-            : 'text-[#9BA3B8] hover:text-[#E8EAF0] hover:bg-[#252A35]'
+            ? 'bg-accent text-white shadow-lg shadow-accent/30'
+            : 'text-text-secondary hover:text-text-primary hover:bg-panel-hover'
         }`}
         aria-label="Single View"
         aria-pressed={viewMode === 'single'}

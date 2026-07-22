@@ -11,21 +11,32 @@ import { Video, FileVideo, Square, Activity, AlertTriangle, Users, Wifi } from '
 import Badge from '../../components/ui/Badge';
 import type { LiveSession } from '../../state/DetectionStore';
 import { BoundingBoxCanvas, VideoFeed, FeedImage, isViolationDetection } from '../../components/detection/LiveFeedSurface';
-import { detectionClassColor, detectionClassLabel } from '../../constants/detectionClasses';
+import {
+  ALL_DETECTION_CLASS_IDS,
+  detectionClassColor,
+  detectionClassLabel,
+  isDetectionClassVisible,
+} from '../../constants/detectionClasses';
 
 const STATUS_LABEL: Record<LiveSession['status'], string> = {
   idle: 'Idle', uploading: 'Uploading…', connecting: 'Connecting…',
   streaming: 'Streaming', done: 'Complete', error: 'Error',
 };
 
+const ALL_DETECTION_CLASS_IDS_SET = new Set(ALL_DETECTION_CLASS_IDS);
+
 interface Props {
   sessions: LiveSession[];
   selectedId: string;
   onSelect: (id: string) => void;
   onStop: (id: string) => void;
+  /** Shared, page-wide detection-class filter — owned by MonitoringPage. */
+  visibleClasses?: Set<string>;
 }
 
-export default function LiveSessionDetail({ sessions, selectedId, onSelect, onStop }: Props) {
+export default function LiveSessionDetail({
+  sessions, selectedId, onSelect, onStop, visibleClasses = ALL_DETECTION_CLASS_IDS_SET,
+}: Props) {
   const session = sessions.find(s => s.id === selectedId) ?? sessions[0];
   const feedRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -45,10 +56,11 @@ export default function LiveSessionDetail({ sessions, selectedId, onSelect, onSt
   if (!session) return null;
 
   const hasFeed = Boolean(session.stream || session.jpeg);
-  const personCount = session.detections.filter(d => d.label.toLowerCase() === 'person').length;
+  const filteredDetections = session.detections.filter(d => isDetectionClassVisible(d.label, visibleClasses));
+  const personCount = filteredDetections.filter(d => d.label.toLowerCase() === 'person').length;
 
   return (
-    <div className="flex flex-col gap-4 h-full overflow-auto">
+    <div className="flex flex-col gap-4 h-full">
       {/* Session switcher — only worth showing when there's more than one */}
       {sessions.length > 1 && (
         <div className="flex items-center gap-2 flex-wrap">
@@ -74,9 +86,7 @@ export default function LiveSessionDetail({ sessions, selectedId, onSelect, onSt
         {hasFeed ? (
           <>
             {session.stream ? <VideoFeed stream={session.stream} /> : <FeedImage jpeg={session.jpeg!} />}
-            {session.detections.length > 0 && (
-              <BoundingBoxCanvas detections={session.detections} containerW={size.w} containerH={size.h} />
-            )}
+            <BoundingBoxCanvas detections={filteredDetections} containerW={size.w} containerH={size.h} />
 
             <div className="absolute top-3 left-3 flex items-center gap-1.5 text-xs font-semibold text-status-ok bg-bg/85 px-3 py-1.5 rounded-lg font-mono backdrop-blur-sm border border-status-ok/20">
               <span className="w-2 h-2 rounded-full bg-status-ok animate-pulse" />
@@ -114,6 +124,11 @@ export default function LiveSessionDetail({ sessions, selectedId, onSelect, onSt
         )}
       </div>
 
+      {/* Everything below the feed scrolls in its own region — kept out of
+          the feed's flex box so a scrollbar appearing/disappearing here
+          (e.g. when the detection list mounts) can never shrink the feed. */}
+      <div className="flex-1 min-h-0 overflow-auto [scrollbar-gutter:stable] flex flex-col gap-4">
+
       {/* Stat strip */}
       <div className="grid grid-cols-4 gap-2">
         {[
@@ -135,7 +150,7 @@ export default function LiveSessionDetail({ sessions, selectedId, onSelect, onSt
       </div>
 
       {/* Detection list */}
-      {session.detections.length > 0 && (
+      {filteredDetections.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-2">
             <Activity className="w-3.5 h-3.5 text-text-muted" />
@@ -144,7 +159,7 @@ export default function LiveSessionDetail({ sessions, selectedId, onSelect, onSt
             </p>
           </div>
           <div className="space-y-1">
-            {session.detections.map((det, i) => {
+            {filteredDetections.map((det, i) => {
               const isViol = isViolationDetection(det);
               return (
                 <div key={i} className={`flex items-center gap-3 py-2 px-3 rounded-lg bg-panel-alt border ${isViol ? 'border-status-danger/40' : 'border-border-soft'}`}>
@@ -168,6 +183,7 @@ export default function LiveSessionDetail({ sessions, selectedId, onSelect, onSt
         <Square className="w-3.5 h-3.5" />
         Stop This Session
       </button>
+      </div>
     </div>
   );
 }

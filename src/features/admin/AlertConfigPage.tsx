@@ -36,8 +36,8 @@ export default function AlertConfigPage() {
     <PageShell>
       <div className="space-y-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-[#E8EAF0]">Alert Severity & Thresholds</h1>
-        <p className="text-sm text-[#5C6480] mt-1">Configure detection confidence and escalation settings per zone</p>
+        <h1 className="text-2xl font-semibold text-text-primary">Alert Severity & Thresholds</h1>
+        <p className="text-sm text-text-muted mt-1">Configure detection confidence and escalation settings per zone</p>
       </div>
       <div className="flex items-center justify-between">
         <Button size="sm" loading={saving} onClick={handleSave}>Save Changes</Button>

@@ -9,6 +9,9 @@ import { Video, FileVideo, Square, Activity, AlertTriangle } from 'lucide-react'
 import Badge from '../../components/ui/Badge';
 import type { LiveSession } from '../../state/DetectionStore';
 import { BoundingBoxCanvas, VideoFeed, FeedImage } from '../../components/detection/LiveFeedSurface';
+import { ALL_DETECTION_CLASS_IDS, isDetectionClassVisible } from '../../constants/detectionClasses';
+
+const ALL_DETECTION_CLASS_IDS_SET = new Set(ALL_DETECTION_CLASS_IDS);
 
 const STATUS_LABEL: Record<LiveSession['status'], string> = {
   idle:       'Idle',
@@ -22,11 +25,13 @@ const STATUS_LABEL: Record<LiveSession['status'], string> = {
 interface CardProps {
   session: LiveSession;
   onStop: (id: string) => void;
+  visibleClasses: Set<string>;
 }
 
-const SessionCard = memo(function SessionCard({ session, onStop }: CardProps) {
+const SessionCard = memo(function SessionCard({ session, onStop, visibleClasses }: CardProps) {
   const feedRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
+  const filteredDetections = session.detections.filter(d => isDetectionClassVisible(d.label, visibleClasses));
 
   useEffect(() => {
     const el = feedRef.current;
@@ -49,9 +54,7 @@ const SessionCard = memo(function SessionCard({ session, onStop }: CardProps) {
         {hasFeed ? (
           <>
             {session.stream ? <VideoFeed stream={session.stream} /> : <FeedImage jpeg={session.jpeg!} />}
-            {session.detections.length > 0 && (
-              <BoundingBoxCanvas detections={session.detections} containerW={size.w} containerH={size.h} />
-            )}
+            <BoundingBoxCanvas detections={filteredDetections} containerW={size.w} containerH={size.h} />
           </>
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-text-muted">
@@ -108,14 +111,16 @@ const SessionCard = memo(function SessionCard({ session, onStop }: CardProps) {
 interface Props {
   sessions: LiveSession[];
   onStop: (id: string) => void;
+  /** Shared, page-wide detection-class filter — owned by MonitoringPage. */
+  visibleClasses?: Set<string>;
 }
 
-export default function LiveSessionsGrid({ sessions, onStop }: Props) {
+export default function LiveSessionsGrid({ sessions, onStop, visibleClasses = ALL_DETECTION_CLASS_IDS_SET }: Props) {
   if (sessions.length === 0) return null;
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
       {sessions.map((s) => (
-        <SessionCard key={s.id} session={s} onStop={onStop} />
+        <SessionCard key={s.id} session={s} onStop={onStop} visibleClasses={visibleClasses} />
       ))}
     </div>
   );

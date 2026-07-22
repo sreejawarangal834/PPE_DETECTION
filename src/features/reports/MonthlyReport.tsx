@@ -31,12 +31,12 @@ export default function MonthlyReport() {
       <div className="flex items-center gap-4 flex-wrap">
         {/* Month Picker with Calendar Icon */}
         <div className="relative">
-          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4A8FA3]" aria-hidden="true" />
-          <input 
-            type="month" 
-            value={month} 
+          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-accent" aria-hidden="true" />
+          <input
+            type="month"
+            value={month}
             onChange={e => setMonth(e.target.value)}
-            className="bg-[#1B1F27] border border-[#21252D] rounded-xl pl-10 pr-4 py-2.5 text-sm text-[#E8EAF0] focus:outline-none focus:ring-2 focus:ring-[#4A8FA3] focus:border-[#4A8FA3] transition-all duration-200"
+            className="bg-panel border border-border-soft rounded-xl pl-10 pr-4 py-2.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-200"
           />
         </div>
         

@@ -43,44 +43,44 @@ export default function ProfilePage() {
   return (
     <PageShell><div className="max-w-2xl space-y-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-[#E8EAF0]">My Profile</h1>
-        <p className="text-sm text-[#5C6480] mt-1">Manage your account details and security settings</p>
+        <h1 className="text-2xl font-semibold text-text-primary">My Profile</h1>
+        <p className="text-sm text-text-muted mt-1">Manage your account details and security settings</p>
       </div>
 
       {/* Account card */}
       <div className="bg-panel border border-border-soft rounded-xl overflow-hidden">
         {/* Avatar section */}
-        <div className="flex items-center gap-4 px-6 py-5 border-b border-[#21252D] bg-[#20242D]">
-          <div className="w-14 h-14 rounded-full bg-[#252A35] flex items-center justify-center text-2xl font-bold text-[#4A8FA3] select-none shrink-0">
+        <div className="flex items-center gap-4 px-6 py-5 border-b border-border-soft bg-panel-alt">
+          <div className="w-14 h-14 rounded-full bg-panel-hover flex items-center justify-center text-2xl font-bold text-accent select-none shrink-0">
             {user.name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase()}
           </div>
           <div>
-            <p className="text-base font-semibold text-[#E8EAF0]">{user.name}</p>
-            <p className="text-sm text-[#9BA3B8]">{user.email}</p>
+            <p className="text-base font-semibold text-text-primary">{user.name}</p>
+            <p className="text-sm text-text-secondary">{user.email}</p>
             <div className="flex items-center gap-1.5 mt-1.5">
-              <Shield className="w-3.5 h-3.5 text-[#4A8FA3]" aria-hidden="true" />
-              <span className="text-xs text-[#4A8FA3] font-medium">{ROLE_LABELS[user.role]}</span>
+              <Shield className="w-3.5 h-3.5 text-accent" aria-hidden="true" />
+              <span className="text-xs text-accent font-medium">{ROLE_LABELS[user.role]}</span>
             </div>
           </div>
           <div className="ml-auto text-right">
-            <p className="text-xs text-[#5C6480]">Last login</p>
-            <p className="text-xs font-mono text-[#9BA3B8] mt-0.5">{user.lastLogin}</p>
+            <p className="text-xs text-text-muted">Last login</p>
+            <p className="text-xs font-mono text-text-secondary mt-0.5">{user.lastLogin}</p>
           </div>
         </div>
 
         {/* Edit form */}
         <form onSubmit={handleSaveProfile} className="px-6 py-5 space-y-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-[#5C6480]">Account Details</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-text-muted">Account Details</p>
           <div className="grid grid-cols-2 gap-4">
             <Input label="Display Name" value={name} onChange={e => setName(e.target.value)} />
             <Input label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
           </div>
           <div>
-            <label className="text-xs font-medium text-[#9BA3B8] block mb-1">Role</label>
-            <div className="flex items-center gap-2 px-3 py-2 bg-[#20242D] rounded-md border border-[#21252D]">
-              <User className="w-3.5 h-3.5 text-[#5C6480]" aria-hidden="true" />
-              <span className="text-sm text-[#5C6480]">{ROLE_LABELS[user.role]}</span>
-              <span className="text-xs text-[#5C6480] ml-auto">(read-only)</span>
+            <label className="text-xs font-medium text-text-secondary block mb-1">Role</label>
+            <div className="flex items-center gap-2 px-3 py-2 bg-panel-alt rounded-md border border-border-soft">
+              <User className="w-3.5 h-3.5 text-text-muted" aria-hidden="true" />
+              <span className="text-sm text-text-muted">{ROLE_LABELS[user.role]}</span>
+              <span className="text-xs text-text-muted ml-auto">(read-only)</span>
             </div>
           </div>
           <div className="flex justify-end">
@@ -90,9 +90,9 @@ export default function ProfilePage() {
       </div>
 
       {/* Password card */}
-      <div className="bg-[#1B1F27] border border-[#21252D] rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-[#21252D]">
-          <p className="text-xs font-medium uppercase tracking-wide text-[#5C6480]">Change Password</p>
+      <div className="bg-panel border border-border-soft rounded-xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-border-soft">
+          <p className="text-xs font-medium uppercase tracking-wide text-text-muted">Change Password</p>
         </div>
         <form onSubmit={handleChangePassword} className="px-6 py-5 space-y-4">
           <Input label="Current password" type="password" value={curPw} onChange={e => setCurPw(e.target.value)} />

@@ -28,7 +28,7 @@ function statusColor(s: string) {
   const m: Record<string, string> = {
     open: '#C25450', acknowledged: '#D9A441', escalated: '#C25450', resolved: '#4F9E7C',
   };
-  return m[s] ?? '#9BA3B8';
+  return m[s] ?? '#A8A296';
 }
 
 /** Inline SVG CCTV snapshot */
@@ -39,8 +39,8 @@ function snapshotSVG(alertId: string, severity: string): string {
   style="display:block;border-radius:5px;background:#1a1d23;width:100%;height:140px;">
   <defs>
     <pattern id="s${alertId}" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-      <rect width="3" height="6" fill="#20242D"/>
-      <rect x="3" width="3" height="6" fill="#12151A"/>
+      <rect width="3" height="6" fill="#24211C"/>
+      <rect x="3" width="3" height="6" fill="#15130F"/>
     </pattern>
   </defs>
   <rect width="320" height="140" fill="url(#s${alertId})"/>
@@ -50,8 +50,8 @@ function snapshotSVG(alertId: string, severity: string): string {
   <rect x="95" y="28" width="68" height="88" rx="2" fill="none" stroke="${bc}" stroke-width="2.5"/>
   <rect x="95" y="17" width="96" height="15" rx="2" fill="${bc}" opacity="0.9"/>
   <text x="99" y="27" fill="white" font-size="8" font-family="monospace">PPE VIOLATION ${(0.85 + Math.random() * 0.12).toFixed(2)}</text>
-  <rect x="190" y="42" width="52" height="72" rx="2" fill="none" stroke="#4A8FA3" stroke-width="1.5"/>
-  <text x="8" y="134" fill="#9BA3B8" font-size="8" font-family="monospace" opacity="0.7">
+  <rect x="190" y="42" width="52" height="72" rx="2" fill="none" stroke="#9C4A4F" stroke-width="1.5"/>
+  <text x="8" y="134" fill="#A8A296" font-size="8" font-family="monospace" opacity="0.7">
     CCTV CAPTURE — ${new Date().toLocaleTimeString('en-GB')}
   </text>
 </svg>`;

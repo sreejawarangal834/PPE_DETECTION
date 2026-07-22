@@ -113,8 +113,8 @@ function DetectionClassFilter({ selected, onChange, className = '' }: Props) {
                           style={checked ? { backgroundColor: c.color } : {}}
                         >
                           {checked && (
-                            <svg viewBox="0 0 10 10" fill="#12151A" className="w-2.5 h-2.5">
-                              <path d="M2 5l2.5 2.5L8 3" stroke="#12151A" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                            <svg viewBox="0 0 10 10" fill="#15130F" className="w-2.5 h-2.5">
+                              <path d="M2 5l2.5 2.5L8 3" stroke="#15130F" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                           )}
                         </span>

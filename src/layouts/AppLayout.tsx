@@ -114,7 +114,7 @@ function NavItem({ path, label, Icon, collapsed, alertCount }: {
       {({ isActive }) => (
         <>
           {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-accent rounded-r-full" />}
-          <Icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? 'drop-shadow-[0_0_5px_rgba(74,143,163,0.5)]' : ''}`} aria-hidden="true" />
+          <Icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? 'drop-shadow-[0_0_5px_rgba(156,74,79,0.5)]' : ''}`} aria-hidden="true" />
           <span className="truncate">{label}</span>
           {!!alertCount && alertCount > 0 && (
             <span className="ml-auto shrink-0 min-w-[20px] h-5 bg-status-danger text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1.5">
@@ -258,8 +258,8 @@ export default function AppLayout() {
           width: `${effectiveW}px`,
           minWidth: `${effectiveW}px`,
           maxWidth: `${effectiveW}px`,
-          background: 'linear-gradient(180deg,#1B1F27 0%,#161a20 100%)',
-          borderRight: '1px solid #21252D',
+          background: 'linear-gradient(180deg,var(--color-panel) 0%,var(--color-bg) 100%)',
+          borderRight: '1px solid var(--color-border-soft)',
           transition: collapsed ? 'width 0.2s ease, min-width 0.2s ease, max-width 0.2s ease' : 'none',
         }}
         className="flex flex-col shrink-0 relative no-print"
@@ -268,7 +268,7 @@ export default function AppLayout() {
         {/* Logo row */}
         <div
           className={`h-14 shrink-0 flex items-center px-4 ${collapsed ? 'justify-center' : 'justify-between'}`}
-          style={{ borderBottom: '1px solid #21252D' }}
+          style={{ borderBottom: '1px solid var(--color-border-soft)' }}
         >
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-accent/40 to-accent/10 border border-accent/25 flex items-center justify-center shrink-0">
@@ -322,7 +322,7 @@ export default function AppLayout() {
         {/* Footer — User card only, always at bottom */}
         <div
           className={`shrink-0 ${collapsed ? 'px-2 py-3' : 'px-3 py-3'}`}
-          style={{ borderTop: '1px solid #21252D' }}
+          style={{ borderTop: '1px solid var(--color-border-soft)' }}
         >
           {/* Expanded: full user card */}
           {!collapsed && user && (

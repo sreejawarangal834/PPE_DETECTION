@@ -59,7 +59,7 @@ export function printReport(html: string, title = 'Report'): void {
     .kpi-card { border: 1px solid #E5E7EB; border-radius: 7px; padding: 12px 14px; background: #F9FAFB; }
     .kpi-label { font-size: 9pt; color: #6B7280; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
     .kpi-value { font-size: 22pt; font-weight: 700; }
-    .header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 2px solid #1B1F27; }
+    .header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 2px solid #1D1A16; }
     .header-meta { font-size: 10pt; color: #6B7280; text-align: right; line-height: 1.6; }
     .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 9pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
   </style>
