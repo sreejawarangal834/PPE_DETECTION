@@ -15,9 +15,15 @@ export interface LiveCamera {
   frameIndex: number;
 }
 
-/** One concurrently-running detection session — an uploaded video or the browser webcam. */
+/** One concurrently-running detection session — an uploaded video, the
+ *  browser webcam, or a live RTSP stream (e.g. a phone running an
+ *  RTSP-server app). */
 export interface LiveSession extends LiveCamera {
-  kind: "video" | "webcam";
+  kind: "video" | "webcam" | "rtsp";
+  /** The camera slot (src/types Camera.id) this session is bound to — set when
+   * the user picks a slot at upload/webcam-start time (see CameraSlotPicker).
+   * Undefined for a session started without picking one. */
+  cameraId?: string;
 }
 
 const SEVERITY_RANK: Record<Severity, number> = { info: 0, low: 1, medium: 2, high: 3 };

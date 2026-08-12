@@ -1,11 +1,14 @@
 /**
- * Grid of all concurrently-running detection sessions — uploaded videos and
- * the browser webcam, each with its own WebSocket, its own bounding-box
- * overlay, and an independent Stop control. This is what makes "upload
- * several videos and run the webcam at the same time" visible on screen.
+ * One live detection session (uploaded video, webcam, or RTSP stream), rendered as a grid
+ * tile — shared by CameraGrid (a camera slot with a session bound to it) and
+ * MonitoringPage's "Unassigned Sessions" fallback row (a session started
+ * without picking a camera slot). Previously this lived only inside
+ * LiveSessionsGrid as a parallel section to the mock camera grid; lifting it
+ * out is what lets a live session render *inside* its camera's own grid
+ * cell instead of a separate area.
  */
 import { useEffect, useRef, useState, memo } from 'react';
-import { Video, FileVideo, Square, Activity, AlertTriangle } from 'lucide-react';
+import { Video, FileVideo, Smartphone, Square, Trash2, Activity, AlertTriangle } from 'lucide-react';
 import Badge from '../../components/ui/Badge';
 import type { LiveSession } from '../../state/DetectionStore';
 import { BoundingBoxCanvas, VideoFeed, FeedImage } from '../../components/detection/LiveFeedSurface';
@@ -22,13 +25,17 @@ const STATUS_LABEL: Record<LiveSession['status'], string> = {
   error:      'Error',
 };
 
-interface CardProps {
+interface SessionCardProps {
   session: LiveSession;
   onStop: (id: string) => void;
-  visibleClasses: Set<string>;
+  visibleClasses?: Set<string>;
+  /** Open this session's full single-view — omit to keep the card static. */
+  onClick?: () => void;
 }
 
-const SessionCard = memo(function SessionCard({ session, onStop, visibleClasses }: CardProps) {
+const SessionCard = memo(function SessionCard({
+  session, onStop, visibleClasses = ALL_DETECTION_CLASS_IDS_SET, onClick,
+}: SessionCardProps) {
   const feedRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const filteredDetections = session.detections.filter(d => isDetectionClassVisible(d.label, visibleClasses));
@@ -47,9 +54,16 @@ const SessionCard = memo(function SessionCard({ session, onStop, visibleClasses 
 
   const hasFeed = Boolean(session.stream || session.jpeg);
   const isBusy = session.status === 'uploading' || session.status === 'connecting';
+  // Uploaded videos have a server-side file to clean up on stop — call that
+  // action "Remove" so it's clear it cancels inference *and* deletes the
+  // upload, not just pauses viewing. Webcam sessions have nothing to delete.
+  const isVideo = session.kind === 'video';
 
   return (
-    <div className="rounded-2xl border border-border-soft overflow-hidden bg-panel-alt flex flex-col">
+    <div
+      className={`rounded-2xl border border-border-soft overflow-hidden bg-panel-alt flex flex-col ${onClick ? 'cursor-pointer hover:border-accent transition-colors duration-150' : ''}`}
+      onClick={onClick}
+    >
       <div ref={feedRef} className="relative aspect-video bg-bg">
         {hasFeed ? (
           <>
@@ -67,7 +81,9 @@ const SessionCard = memo(function SessionCard({ session, onStop, visibleClasses 
 
         {/* Kind badge */}
         <div className="absolute top-2 left-2 flex items-center gap-1.5 text-[10px] font-semibold text-status-ok bg-bg/85 px-2 py-1 rounded-md font-mono backdrop-blur-sm border border-status-ok/20">
-          {session.kind === 'webcam' ? <Video className="w-3 h-3" /> : <FileVideo className="w-3 h-3" />}
+          {session.kind === 'webcam' ? <Video className="w-3 h-3" />
+            : session.kind === 'rtsp' ? <Smartphone className="w-3 h-3" />
+            : <FileVideo className="w-3 h-3" />}
           {session.status === 'streaming' && <span className="w-1.5 h-1.5 rounded-full bg-status-ok animate-pulse" />}
           {STATUS_LABEL[session.status]}
         </div>
@@ -96,32 +112,16 @@ const SessionCard = memo(function SessionCard({ session, onStop, visibleClasses 
           )}
         </div>
         <button
-          onClick={() => onStop(session.id)}
-          title="Stop this session"
+          onClick={(e) => { e.stopPropagation(); onStop(session.id); }}
+          title={isVideo ? 'Cancel inference and delete this upload' : 'Stop this session'}
           className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold text-status-danger bg-status-danger/10 border border-status-danger/30 hover:bg-status-danger/20 transition-colors duration-150"
         >
-          <Square className="w-3 h-3" />
-          Stop
+          {isVideo ? <Trash2 className="w-3 h-3" /> : <Square className="w-3 h-3" />}
+          {isVideo ? 'Remove' : 'Stop'}
         </button>
       </div>
     </div>
   );
 });
 
-interface Props {
-  sessions: LiveSession[];
-  onStop: (id: string) => void;
-  /** Shared, page-wide detection-class filter — owned by MonitoringPage. */
-  visibleClasses?: Set<string>;
-}
-
-export default function LiveSessionsGrid({ sessions, onStop, visibleClasses = ALL_DETECTION_CLASS_IDS_SET }: Props) {
-  if (sessions.length === 0) return null;
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-      {sessions.map((s) => (
-        <SessionCard key={s.id} session={s} onStop={onStop} visibleClasses={visibleClasses} />
-      ))}
-    </div>
-  );
-}
+export default SessionCard;

@@ -24,7 +24,7 @@ import Badge from '../../components/ui/Badge';
 import { useAlertStore } from '../../lib/alerts/alertStore';
 import { useDetectionStore } from '../../state/DetectionStore';
 import type { Camera } from '../../types';
-import { Wifi, WifiOff, Clock, Users, AlertTriangle, Activity } from 'lucide-react';
+import { Wifi, WifiOff, Clock, Users, AlertTriangle, Activity, Square, Trash2 } from 'lucide-react';
 import type { Detection } from '../../hooks/useDetectionSocket';
 import {
   ALL_DETECTION_CLASS_IDS,
@@ -235,20 +235,29 @@ interface Props {
    *  Optional so CameraGrid.tsx's drawer-mode usage (no filter UI there
    *  anyway) keeps working unchanged when it isn't passed. */
   visibleClasses?: Set<string>;
+  /** Stop/remove the session bound to this camera, if any — only rendered
+   *  while a live session is actually showing (see isLiveActive below). */
+  onStopSession?: (id: string) => void;
 }
 
 export default function CameraDetailPanel({
   camera, cameras, onClose, onCameraChange, mode = 'drawer',
-  visibleClasses = ALL_DETECTION_CLASS_IDS_SET,
+  visibleClasses = ALL_DETECTION_CLASS_IDS_SET, onStopSession,
 }: Props) {
   const [selectedCamera, setSelectedCamera] = useState(camera);
   const recentAlerts = useAlertStore(s => s.alerts)
     .filter(a => a.cameraId === selectedCamera.id)
     .slice(0, 6);
 
-  const { liveCamera } = useDetectionStore();
+  // Scoped to THIS camera's own bound session (LiveSession.cameraId), not
+  // the store's global merged `liveCamera` — the merged view pools every
+  // concurrently-running session together, which would show session B's
+  // feed while looking at camera A's detail panel the moment any other
+  // camera also had a live session running.
+  const { sessions } = useDetectionStore();
+  const liveCamera = sessions.find(s => s.cameraId === selectedCamera.id) ?? null;
   const isLiveActive = liveCamera !== null && (
-    liveCamera.status === 'streaming' || liveCamera.jpeg !== undefined
+    liveCamera.status === 'streaming' || liveCamera.jpeg !== undefined || liveCamera.stream !== undefined
   );
 
   const filteredDetections = (liveCamera?.detections ?? [])
@@ -407,6 +416,16 @@ export default function CameraDetailPanel({
           </div>
         )}
       </div>
+
+      {isLiveActive && liveCamera && onStopSession && (
+        <button
+          onClick={() => onStopSession(liveCamera.id)}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-status-danger bg-status-danger/10 border border-status-danger/30 hover:bg-status-danger/20 transition-all duration-200"
+        >
+          {liveCamera.kind === 'video' ? <Trash2 className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
+          {liveCamera.kind === 'video' ? 'Remove This Video' : 'Stop This Session'}
+        </button>
+      )}
     </>
   );
 

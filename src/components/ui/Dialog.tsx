@@ -11,14 +11,25 @@ interface DialogProps {
 
 export default function Dialog({ open, onClose, title, children, footer, maxWidth = 'max-w-lg' }: DialogProps) {
   const firstFocusRef = useRef<HTMLButtonElement>(null);
+  // Read the latest onClose without making the effects below re-run when the
+  // caller passes a new function identity each render (e.g. an inline
+  // closure) — otherwise every keystroke in a controlled input inside the
+  // dialog would re-trigger the focus effect and steal focus back to the
+  // close button.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
     firstFocusRef.current?.focus();
-    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onCloseRef.current(); }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

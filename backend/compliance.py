@@ -65,6 +65,20 @@ REQUIRED_PPE: dict[str, list[str]] = {
               "face-mask", "face_mask", "mask"],
 }
 
+# ── Map each check to the zone-policy PPE type id it corresponds to ───────────
+# (matches frontend PpeTypeId in src/constants/ppeTypes.ts) — lets the zone
+# compliance engine skip checks a zone's policy doesn't require at all.
+PART_TO_PPE_TYPE: dict[str, str] = {
+    "head":  "helmet",
+    "hands": "gloves",
+    "foot":  "safety_shoes",
+    "face":  "mask",
+}
+PERSON_CHECK_TO_PPE_TYPE: dict[str, str] = {
+    "vest": "vest",
+    "eye":  "eye_prot",
+}
+
 # ── Expected vertical relationship: PPE should be [above|below|overlap] part ──
 # +1 = PPE centre should be above (lower y) the part centre
 # -1 = PPE centre should be below (higher y) the part centre
@@ -312,8 +326,10 @@ def _evaluate_worker(
     worker_id:    int,
     worker_dets:  list[dict],
     frame_violations: list[str],
+    worker_violations: list[dict],
     worker_states: WorkerStates,
     now: float,
+    required_ppe: frozenset[str] | None,
 ) -> None:
     """
     Evaluate PPE compliance for a single tracked worker.
@@ -321,6 +337,14 @@ def _evaluate_worker(
     Mutates:
     - Each detection in worker_dets gets `compliant: bool`
     - Appends to frame_violations if temporal threshold is met
+    - Appends a structured record to worker_violations on each *new* raise
+      (a False→True transition, not every frame the violation stays active)
+      so callers can turn it into exactly one persisted Alert per event.
+
+    `required_ppe` is the zone policy's PpeTypeId set (None = no zone bound,
+    require everything — unchanged behaviour from before zones existed).
+    Checks for PPE types outside the policy are skipped exactly like an
+    invisible body part: treated as covered, never raise a violation.
     """
     state = _get_worker_state(worker_id, worker_states)
 
@@ -337,6 +361,11 @@ def _evaluate_worker(
     claimed_global: set[tuple[str, int]] = set()   # (ppe_label, local_idx)
 
     for part, protectors in REQUIRED_PPE.items():
+        if required_ppe is not None and PART_TO_PPE_TYPE[part] not in required_ppe:
+            # This zone's policy doesn't require this PPE type — never flag it.
+            state.update(part, covered=True, now=now)
+            continue
+
         part_entries = by_label.get(part, [])
         if not part_entries:
             # Body part not visible — do NOT raise a violation (Req 5)
@@ -422,9 +451,17 @@ def _evaluate_worker(
             worker_dets[det_idx]["compliant"] = coverage.get(pi, False)
 
         # Temporal update
+        was_active = state._timeline(part).violation_active
         raise_violation = state.update(part, covered=all_covered, now=now)
         if raise_violation:
             frame_violations.append(f"no-{part}-protection")
+            if not was_active:
+                worker_violations.append({
+                    "worker_id": worker_id,
+                    "ppe_type": PART_TO_PPE_TYPE[part],
+                    "violation": f"no-{part}-protection",
+                    "confidence": state._timeline(part).last_fraction_missing,
+                })
             if DEBUG_ASSOCIATION:
                 log.debug(
                     "[W%d] VIOLATION raised: no-%s-protection (missing %.0f%% of last %.1fs)",
@@ -434,6 +471,9 @@ def _evaluate_worker(
 
     # Person-level vest / eye checks (Req 5 — only if person is detected)
     if "person" in by_label:
+        vest_required = required_ppe is None or PERSON_CHECK_TO_PPE_TYPE["vest"] in required_ppe
+        eye_required  = required_ppe is None or PERSON_CHECK_TO_PPE_TYPE["eye"]  in required_ppe
+
         has_vest = any(
             lbl in by_label
             for lbl in ("safety-vest", "safety_vest", "vest",
@@ -445,16 +485,35 @@ def _evaluate_worker(
             for lbl in ("glasses", "goggles", "safety-glasses", "safety_glasses",
                         "face-guard", "face_guard")
         )
-        if not has_vest:
+
+        if not vest_required:
+            state.update("vest", covered=True, now=now)
+        elif not has_vest:
             # Also apply temporal smoothing to vest
+            was_active = state._timeline("vest").violation_active
             if state.update("vest", covered=False, now=now):
                 frame_violations.append("no-safety-vest")
+                if not was_active:
+                    worker_violations.append({
+                        "worker_id": worker_id, "ppe_type": "vest",
+                        "violation": "no-safety-vest",
+                        "confidence": state._timeline("vest").last_fraction_missing,
+                    })
         else:
             state.update("vest", covered=True, now=now)
 
-        if not has_eye:
+        if not eye_required:
+            state.update("eye", covered=True, now=now)
+        elif not has_eye:
+            was_active = state._timeline("eye").violation_active
             if state.update("eye", covered=False, now=now):
                 frame_violations.append("no-eye-protection")
+                if not was_active:
+                    worker_violations.append({
+                        "worker_id": worker_id, "ppe_type": "eye_prot",
+                        "violation": "no-eye-protection",
+                        "confidence": state._timeline("eye").last_fraction_missing,
+                    })
         else:
             state.update("eye", covered=True, now=now)
 
@@ -470,12 +529,13 @@ def evaluate_compliance(
     detections: list[dict],
     worker_states: WorkerStates,
     now: float,
-) -> tuple[str, list[str]]:
+    required_ppe: frozenset[str] | None = None,
+) -> tuple[str, list[str], list[dict]]:
     """
     Evaluate PPE compliance for a single frame.
 
     Mutates each dict in `detections` by adding ``compliant: bool``.
-    Returns (severity, violations) — same contract as v1/v2.
+    Returns (severity, violations, worker_violations).
 
     `worker_states` is the calling session's own state dict (from
     new_session_state()) — passing a session-scoped dict instead of a shared
@@ -487,8 +547,18 @@ def evaluate_compliance(
     function has been called, so it stays correct regardless of frame skip,
     inference speed, or dropped/bursty frames.
 
-    severity:   "ok" | "medium" | "high"
-    violations: list of human-readable violation strings
+    `required_ppe` is the bound camera's zone policy (a set of PpeTypeId
+    strings) — None (no camera/zone bound to this session) requires
+    everything, matching pre-zone behaviour exactly.
+
+    severity:          "ok" | "medium" | "high"
+    violations:        list of human-readable violation strings (per-frame,
+                        WebSocket contract unchanged)
+    worker_violations: list of {worker_id, ppe_type, violation, confidence}
+                        dicts, one per *newly raised* violation this frame —
+                        this is what feeds Alert persistence in main.py, kept
+                        separate from `violations` so it never fires once per
+                        frame for a single sustained violation.
     """
     # Filter out low-confidence detections (Req 6)
     for d in detections:
@@ -501,9 +571,13 @@ def evaluate_compliance(
     worker_groups = _group_by_worker(active)
 
     frame_violations: list[str] = []
+    worker_violations: list[dict] = []
 
     for worker_id, worker_dets in worker_groups.items():
-        _evaluate_worker(worker_id, worker_dets, frame_violations, worker_states, now)
+        _evaluate_worker(
+            worker_id, worker_dets, frame_violations, worker_violations,
+            worker_states, now, required_ppe,
+        )
 
     # Default for any detection still without compliant key
     for d in detections:
@@ -526,4 +600,4 @@ def evaluate_compliance(
     else:
         severity = "high"
 
-    return severity, unique_vio
+    return severity, unique_vio, worker_violations

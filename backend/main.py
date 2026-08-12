@@ -27,12 +27,17 @@ from uuid import uuid4
 import cv2
 import numpy as np
 import torch
-from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import (
+    FastAPI, File, Form, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from ultralytics import YOLO
 
+import alerts
+import cameras
+import zones
 from compliance import evaluate_compliance, new_session_state, _iou, Box
-from frame_source import FileVideoSource
+from frame_source import FrameSource, FileVideoSource, RTSPSource
 from config import (
     CONF_THRESHOLD, IOU_THRESHOLD, IMAGE_SIZE,
     JPEG_QUALITY, MAX_SEND_WIDTH,
@@ -40,6 +45,7 @@ from config import (
     OVERLAP_THRESHOLD, LOOP_VIDEO,
     PACE_TO_SOURCE_FPS, FALLBACK_FPS,
     GHOST_GRACE_SECONDS, GHOST_SUPPRESS_IOU,
+    RTSP_RECONNECT_DELAY_SECONDS, RTSP_MAX_RECONNECT_ATTEMPTS,
 )
 
 # ─── Logging ──────────────────────────────────────────────────────────────────
@@ -170,6 +176,15 @@ def _strip_internal(detections: list[dict]) -> list[dict]:
         for d in detections
     ]
 
+
+# ─── Upload / cancellation registries ─────────────────────────────────────────
+# video_id -> camera_id chosen at upload time (None = no camera/zone picked,
+# compliance falls back to pre-zone "require everything" behaviour).
+UPLOAD_MANIFEST: dict[str, str | None] = {}
+# video_id -> this session's stop Event, exposed so DELETE /api/videos/{id}
+# can halt an in-flight session immediately instead of waiting for the next
+# failed send() to a closed socket to notice the client went away.
+ACTIVE_STOP_EVENTS: dict[str, asyncio.Event] = {}
 
 GhostCache = dict[int, dict]
 
@@ -345,7 +360,7 @@ async def model_info():
 
 
 @app.post("/api/videos/upload")
-async def upload_video(file: UploadFile = File(...)):
+async def upload_video(file: UploadFile = File(...), camera_id: str | None = Form(None)):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
 
@@ -360,13 +375,127 @@ async def upload_video(file: UploadFile = File(...)):
         log.error("Failed to save upload: %s", exc)
         raise HTTPException(status_code=500, detail="Failed to save video")
 
-    log.info("Uploaded %s → %s (%d bytes)", file.filename, dest.name, dest.stat().st_size)
+    if camera_id and cameras.get_camera(camera_id) is None:
+        log.warning("Upload %s referenced unknown camera_id=%s — proceeding unassigned", video_id, camera_id)
+        camera_id = None
+    UPLOAD_MANIFEST[video_id] = camera_id
+
+    log.info("Uploaded %s → %s (%d bytes) camera=%s", file.filename, dest.name, dest.stat().st_size, camera_id)
     return {"video_id": video_id}
+
+
+@app.delete("/api/videos/{video_id}")
+async def delete_video(video_id: str):
+    """
+    Cancel inference on an uploaded video and remove its file — used by the
+    frontend's "Remove" action, distinct from just closing the WebSocket
+    (which already stops things, but only once the *next* send fails).
+    """
+    stop_event = ACTIVE_STOP_EVENTS.get(video_id)
+    if stop_event is not None:
+        stop_event.set()  # frame_reader/inference_worker/ws_sender all halt within one frame
+        UPLOAD_MANIFEST.pop(video_id, None)
+        return {"status": "stopping"}
+
+    path = _find_upload(video_id)
+    if path is None:
+        raise HTTPException(status_code=404, detail=f"Unknown video_id: {video_id}")
+    try:
+        path.unlink(missing_ok=True)
+    except Exception as exc:
+        log.warning("Failed to delete upload %s: %s", path, exc)
+    UPLOAD_MANIFEST.pop(video_id, None)
+    return {"status": "removed"}
 
 
 def _find_upload(video_id: str) -> Path | None:
     matches = list(UPLOAD_DIR.glob(f"{video_id}.*"))
     return matches[0] if matches else None
+
+
+# ─── Zones / cameras / alerts (zone compliance engine config + persistence) ──
+
+@app.get("/api/zones")
+async def list_zones_endpoint():
+    cam_list = cameras.list_cameras()
+    return [
+        {**z, "cameraCount": sum(1 for c in cam_list if c["zoneId"] == z["id"])}
+        for z in zones.list_zones()
+    ]
+
+
+@app.post("/api/zones")
+async def create_zone_endpoint(payload: dict):
+    try:
+        return zones.create_zone(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+@app.put("/api/zones/{zone_id}")
+async def update_zone_endpoint(zone_id: str, payload: dict):
+    updated = zones.update_zone(zone_id, payload)
+    if updated is None:
+        raise HTTPException(status_code=404, detail=f"Zone {zone_id} not found")
+    return updated
+
+
+@app.delete("/api/zones/{zone_id}")
+async def delete_zone_endpoint(zone_id: str):
+    if not zones.delete_zone(zone_id):
+        raise HTTPException(status_code=404, detail=f"Zone {zone_id} not found")
+    return {"status": "deleted"}
+
+
+@app.get("/api/cameras")
+async def list_cameras_endpoint():
+    return [cameras.enrich(c) for c in cameras.list_cameras()]
+
+
+@app.post("/api/cameras")
+async def create_camera_endpoint(payload: dict):
+    return cameras.enrich(cameras.create_camera(payload))
+
+
+@app.put("/api/cameras/{camera_id}")
+async def update_camera_endpoint(camera_id: str, payload: dict):
+    updated = cameras.update_camera(camera_id, payload)
+    if updated is None:
+        raise HTTPException(status_code=404, detail=f"Camera {camera_id} not found")
+    return cameras.enrich(updated)
+
+
+@app.delete("/api/cameras/{camera_id}")
+async def delete_camera_endpoint(camera_id: str):
+    if not cameras.delete_camera(camera_id):
+        raise HTTPException(status_code=404, detail=f"Camera {camera_id} not found")
+    return {"status": "deleted"}
+
+
+@app.get("/api/alerts")
+async def list_alerts_endpoint(
+    severity: list[str] | None = Query(None),
+    zone: list[str] | None = Query(None),
+    status: list[str] | None = Query(None),
+    search: str | None = None,
+):
+    return alerts.list_alerts(severities=severity, zones=zone, statuses=status, search=search)
+
+
+@app.post("/api/alerts/{alert_id}/acknowledge")
+async def acknowledge_alert_endpoint(alert_id: str, payload: dict):
+    updated = alerts.acknowledge(alert_id, payload.get("actor", "Unknown"))
+    if updated is None:
+        raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found")
+    return updated
+
+
+@app.post("/api/alerts/{alert_id}/resolve")
+async def resolve_alert_endpoint(alert_id: str, payload: dict):
+    updated = alerts.resolve(alert_id, payload.get("actor", "Unknown"), payload.get("notes", ""))
+    if updated is None:
+        raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found")
+    return updated
 
 
 # ─── Detection WebSocket ──────────────────────────────────────────────────────
@@ -375,7 +504,7 @@ def _find_upload(video_id: str) -> Path | None:
 # would otherwise swallow "live" as a video_id and 404 it.
 
 @app.websocket("/ws/detect/live")
-async def detect_live_ws(websocket: WebSocket):
+async def detect_live_ws(websocket: WebSocket, camera_id: str | None = None):
     """
     Browser-pushed camera frames — the client owns the webcam (getUserMedia)
     and sends one JPEG per message; we decode, infer, and reply with
@@ -383,13 +512,25 @@ async def detect_live_ws(websocket: WebSocket):
     """
     await websocket.accept()
     session_id = f"live-{uuid4().hex[:8]}"
-    log.info("[%s] WebSocket connected (browser-pushed frames)", session_id)
+    log.info("[%s] WebSocket connected (browser-pushed frames, camera=%s)", session_id, camera_id)
 
     # Isolated model + compliance state — safe to run alongside any number
     # of other concurrent video/webcam sessions (see _new_model docstring).
     model = await asyncio.to_thread(_new_model)
     worker_states = new_session_state()
     ghost_cache   = _new_ghost_cache()
+
+    zone_id: str | None = None
+    zone_name = ""
+    required_ppe: frozenset[str] | None = None
+    if camera_id:
+        cam = cameras.get_camera(camera_id)
+        if cam:
+            zone_id = cam["zoneId"]
+            zone = zones.get_zone(zone_id)
+            zone_name = zone["name"] if zone else ""
+            required_ppe = zones.required_ppe_for_zone(zone_id)
+
     frame_idx = 0
     closed = False
     session_start = time.monotonic()
@@ -408,7 +549,15 @@ async def detect_live_ws(websocket: WebSocket):
             detections = await asyncio.to_thread(_run_inference, resized, model)
             infer_times.append((time.monotonic() - t0) * 1000)
             now = time.monotonic()
-            severity, violations = evaluate_compliance(detections, worker_states, now)
+            severity, violations, worker_violations = evaluate_compliance(
+                detections, worker_states, now, required_ppe=required_ppe,
+            )
+            for wv in worker_violations:
+                alerts.record_violation(
+                    camera_id=camera_id or "unassigned", zone_id=zone_id, zone_name=zone_name,
+                    worker_id=wv["worker_id"], ppe_type=wv["ppe_type"],
+                    severity=severity, confidence=wv["confidence"],
+                )
             detections = _apply_ghost_boxes(detections, ghost_cache, now)
             public_detections = _strip_internal(detections)
 
@@ -451,6 +600,38 @@ async def detect_live_ws(websocket: WebSocket):
         )
 
 
+@app.websocket("/ws/detect/rtsp")
+async def detect_rtsp_ws(websocket: WebSocket, url: str, camera_id: str | None = None):
+    """
+    Live RTSP source — an IP camera, or a phone running an RTSP-server app
+    on the same network. `url` is the rtsp:// stream address (e.g.
+    rtsp://192.168.1.42:8080/h264_ulaw.sdp for the Android "IP Webcam" app).
+
+    Registered before /ws/detect/{video_id} for the same reason
+    /ws/detect/live is: Starlette matches routes in registration order, and
+    the parameterized route would otherwise swallow "rtsp" as a video_id.
+    """
+    await websocket.accept()
+
+    if not url.startswith("rtsp://"):
+        await websocket.send_json({"type": "error", "message": "url must start with rtsp://"})
+        await websocket.close(code=1008)
+        return
+
+    session_id = f"rtsp-{uuid4().hex[:8]}"
+    log.info("[%s] WebSocket connected (RTSP source, camera=%s)", session_id, camera_id)
+
+    await _run_detection_session(
+        websocket, session_id,
+        RTSPSource(
+            url,
+            reconnect_delay=RTSP_RECONNECT_DELAY_SECONDS,
+            max_reconnect_attempts=RTSP_MAX_RECONNECT_ATTEMPTS,
+        ),
+        camera_id=camera_id,
+    )
+
+
 @app.websocket("/ws/detect/{video_id}")
 async def detect_ws(websocket: WebSocket, video_id: str):
     await websocket.accept()
@@ -463,11 +644,15 @@ async def detect_ws(websocket: WebSocket, video_id: str):
         return
 
     await _run_detection_session(
-        websocket, video_id, FileVideoSource(video_path, loop=LOOP_VIDEO)
+        websocket, video_id, FileVideoSource(video_path, loop=LOOP_VIDEO),
+        camera_id=UPLOAD_MANIFEST.get(video_id),
     )
 
 
-async def _run_detection_session(websocket: WebSocket, session_id: str, source: FileVideoSource) -> None:
+async def _run_detection_session(
+    websocket: WebSocket, session_id: str, source: FrameSource,
+    camera_id: str | None = None,
+) -> None:
     # ── Per-session statistics ──────────────────────────────────────
     stats = {
         "frames_read":     0,
@@ -484,6 +669,17 @@ async def _run_detection_session(websocket: WebSocket, session_id: str, source: 
     model = await asyncio.to_thread(_new_model)
     worker_states = new_session_state()
     ghost_cache   = _new_ghost_cache()
+
+    zone_id: str | None = None
+    zone_name = ""
+    required_ppe: frozenset[str] | None = None
+    if camera_id:
+        cam = cameras.get_camera(camera_id)
+        if cam:
+            zone_id = cam["zoneId"]
+            zone = zones.get_zone(zone_id)
+            zone_name = zone["name"] if zone else ""
+            required_ppe = zones.required_ppe_for_zone(zone_id)
 
     # Reset ByteTrack + compliance hysteresis state at each loop restart so a
     # track ID alive near the end of the video can't silently merge with a new
@@ -503,29 +699,35 @@ async def _run_detection_session(websocket: WebSocket, session_id: str, source: 
     infer_q: asyncio.Queue = asyncio.Queue(maxsize=INFER_QUEUE_SIZE)
     send_q:  asyncio.Queue = asyncio.Queue(maxsize=SEND_QUEUE_SIZE)
     _stop   = asyncio.Event()
+    ACTIVE_STOP_EVENTS[session_id] = _stop
 
     # ── Stage 1: Frame reader (puts into infer_q) ────────────────────
     async def frame_reader() -> None:
+        # `source.frames()` is a synchronous generator — for RTSPSource it
+        # blocks inside cv2.VideoCapture() (opening/reconnecting) and
+        # cap.read(), neither of which ever yields to asyncio internally. A
+        # bad or unreachable RTSP URL can therefore block for a long time
+        # with NO await point at all (this happens before the first frame is
+        # even produced), which freezes the *entire* event loop — every
+        # other session, the WebSocket sender, and unrelated requests like
+        # /api/health all stop responding until it gives up. Advancing the
+        # generator via asyncio.to_thread pushes that blocking work onto a
+        # worker thread so the event loop stays responsive regardless of how
+        # long a single connect/read attempt takes.
+        _READER_DONE = object()
+        it = iter(source.frames())
         try:
             raw_idx = 0
             next_frame_time = time.monotonic()
-            for frame in source.frames():
-                if _stop.is_set():
+            while True:
+                frame = await asyncio.to_thread(next, it, _READER_DONE)
+                if frame is _READER_DONE or _stop.is_set():
                     break
                 stats["frames_read"] += 1
 
                 # Pace decode to the source video's real FPS so playback speed
                 # matches the recording instead of running as fast as
-                # decode+inference allow. This `await` doubles as the
-                # per-frame event-loop yield — `for frame in source.frames()`
-                # never awaits internally (cv2.VideoCapture.read() is a
-                # blocking C call), so without it the reader would monopolize
-                # the event loop for the whole video's decode time, starving
-                # the inference worker, the WebSocket sender, every other
-                # concurrent session, and even unrelated requests like
-                # /api/health. asyncio.sleep always yields once even with a
-                # 0/negative delay, so this holds whether or not pacing (the
-                # `if` below) is enabled.
+                # decode+inference allow.
                 if PACE_TO_SOURCE_FPS:
                     fps = source.fps if source.fps and source.fps > 0 else FALLBACK_FPS
                     frame_interval = 1.0 / fps
@@ -578,7 +780,15 @@ async def _run_detection_session(websocket: WebSocket, session_id: str, source: 
                 stats["frames_inferred"] += 1
 
                 now = time.monotonic()
-                severity, violations = evaluate_compliance(detections, worker_states, now)
+                severity, violations, worker_violations = evaluate_compliance(
+                    detections, worker_states, now, required_ppe=required_ppe,
+                )
+                for wv in worker_violations:
+                    alerts.record_violation(
+                        camera_id=camera_id or "unassigned", zone_id=zone_id, zone_name=zone_name,
+                        worker_id=wv["worker_id"], ppe_type=wv["ppe_type"],
+                        severity=severity, confidence=wv["confidence"],
+                    )
                 detections = _apply_ghost_boxes(detections, ghost_cache, now)
                 public_detections = _strip_internal(detections)
 
@@ -652,15 +862,17 @@ async def _run_detection_session(websocket: WebSocket, session_id: str, source: 
             pass
     finally:
         _stop.set()
+        ACTIVE_STOP_EVENTS.pop(session_id, None)
+        UPLOAD_MANIFEST.pop(session_id, None)
         try:
             await websocket.close()
         except Exception:
             pass
         _release_model(model)
         try:
-            source.path.unlink(missing_ok=True)
+            source.cleanup()
         except Exception as exc:
-            log.warning("[%s] Failed to delete uploaded file %s: %s", session_id, source.path, exc)
+            log.warning("[%s] Failed to clean up frame source: %s", session_id, exc)
 
         # ── Session statistics ─────────────────────────────────────
         elapsed   = max(time.monotonic() - stats["session_start"], 0.001)

@@ -1,0 +1,75 @@
+[
+  {
+    "id": "z-assembly",
+    "name": "Assembly Line",
+    "description": "Main production assembly line \u2014 north wing",
+    "requiredPpe": [
+      "helmet",
+      "vest",
+      "gloves",
+      "safety_shoes"
+    ],
+    "active": true
+  },
+  {
+    "id": "z-welding",
+    "name": "Welding Zone",
+    "description": "Hot work area \u2014 welding and cutting operations",
+    "requiredPpe": [
+      "helmet",
+      "vest",
+      "gloves",
+      "eye_prot",
+      "safety_shoes"
+    ],
+    "active": true
+  },
+  {
+    "id": "z-chemical",
+    "name": "Chemical Zone",
+    "description": "Chemical handling and storage \u2014 east section",
+    "requiredPpe": [
+      "helmet",
+      "vest",
+      "gloves",
+      "mask",
+      "eye_prot",
+      "safety_shoes"
+    ],
+    "active": true
+  },
+  {
+    "id": "z-storage",
+    "name": "Storage Area",
+    "description": "Raw material and finished goods storage",
+    "requiredPpe": [
+      "helmet",
+      "vest",
+      "safety_shoes"
+    ],
+    "active": true
+  },
+  {
+    "id": "z-loading",
+    "name": "Loading Bay",
+    "description": "Inbound and outbound logistics dock",
+    "requiredPpe": [
+      "helmet",
+      "vest",
+      "safety_shoes"
+    ],
+    "active": true
+  },
+  {
+    "id": "z-maintenance",
+    "name": "Maintenance Workshop",
+    "description": "Equipment repair and maintenance area",
+    "requiredPpe": [
+      "helmet",
+      "vest",
+      "gloves",
+      "safety_shoes"
+    ],
+    "active": true
+  }
+]

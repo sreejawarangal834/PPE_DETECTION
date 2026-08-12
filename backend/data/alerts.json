@@ -1,0 +1,4770 @@
+[
+  {
+    "id": "ALT-af50cf66b7",
+    "createdAt": 1785737601062,
+    "timestamp": "06:13:21",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-2a040ba213",
+    "createdAt": 1785737601062,
+    "timestamp": "06:13:21",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-cdb34cf8eb",
+    "createdAt": 1785737602546,
+    "timestamp": "06:13:22",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-7",
+    "workerName": "W-7",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-b6b28f5482",
+    "createdAt": 1785737618266,
+    "timestamp": "06:13:38",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-8",
+    "workerName": "W-8",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-46c2c3b135",
+    "createdAt": 1785737618266,
+    "timestamp": "06:13:38",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-6",
+    "workerName": "W-6",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-de5882a6f5",
+    "createdAt": 1785737621120,
+    "timestamp": "06:13:41",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-32",
+    "workerName": "W-32",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-2dafc1cb4b",
+    "createdAt": 1785737623572,
+    "timestamp": "06:13:43",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-52",
+    "workerName": "W-52",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-c9254efa5c",
+    "createdAt": 1785737623572,
+    "timestamp": "06:13:43",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-52",
+    "workerName": "W-52",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-568bdc33e2",
+    "createdAt": 1785737623675,
+    "timestamp": "06:13:43",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-48",
+    "workerName": "W-48",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-3c75df0198",
+    "createdAt": 1785737626426,
+    "timestamp": "06:13:46",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-86",
+    "workerName": "W-86",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-59f8c27c1e",
+    "createdAt": 1785737626427,
+    "timestamp": "06:13:46",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-86",
+    "workerName": "W-86",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-d3dd3981e2",
+    "createdAt": 1785737627053,
+    "timestamp": "06:13:47",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-96",
+    "workerName": "W-96",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-d1d50c7510",
+    "createdAt": 1785737627574,
+    "timestamp": "06:13:47",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-14",
+    "workerName": "W-14",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-ef063a7968",
+    "createdAt": 1785737633665,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-3",
+    "workerName": "W-3",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-39aa0610dc",
+    "createdAt": 1785737633665,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-3",
+    "workerName": "W-3",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-1e81771295",
+    "createdAt": 1785737633666,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-7",
+    "workerName": "W-7",
+    "missingPpe": [
+      "mask"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-2ce7721437",
+    "createdAt": 1785737633666,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-8",
+    "workerName": "W-8",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-8b6a8da14a",
+    "createdAt": 1785737633666,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-9",
+    "workerName": "W-9",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-55cc484599",
+    "createdAt": 1785737633667,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-13",
+    "workerName": "W-13",
+    "missingPpe": [
+      "mask"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-d57a80f786",
+    "createdAt": 1785737633667,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-14",
+    "workerName": "W-14",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-e2e3186f50",
+    "createdAt": 1785737633667,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-15",
+    "workerName": "W-15",
+    "missingPpe": [
+      "mask"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-5a26f693d6",
+    "createdAt": 1785737633667,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-16",
+    "workerName": "W-16",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-4474f8dd0d",
+    "createdAt": 1785737633668,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-17",
+    "workerName": "W-17",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-95f8359680",
+    "createdAt": 1785737633668,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-18",
+    "workerName": "W-18",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-7c587b8037",
+    "createdAt": 1785737633668,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-18",
+    "workerName": "W-18",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-3f78d6ebb0",
+    "createdAt": 1785737633668,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-20",
+    "workerName": "W-20",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-4f9c710c52",
+    "createdAt": 1785737633669,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-21",
+    "workerName": "W-21",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-329d4c3a09",
+    "createdAt": 1785737633669,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-24",
+    "workerName": "W-24",
+    "missingPpe": [
+      "mask"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-da65fd1016",
+    "createdAt": 1785737633669,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-26",
+    "workerName": "W-26",
+    "missingPpe": [
+      "mask"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-c819109047",
+    "createdAt": 1785737633669,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-30",
+    "workerName": "W-30",
+    "missingPpe": [
+      "mask"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-9d8c8b5286",
+    "createdAt": 1785737633669,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-35",
+    "workerName": "W-35",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-b4a8fb850b",
+    "createdAt": 1785737633669,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-47",
+    "workerName": "W-47",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-7ddda9008c",
+    "createdAt": 1785737633669,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-47",
+    "workerName": "W-47",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-cca20b9d6c",
+    "createdAt": 1785737633669,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-39",
+    "workerName": "W-39",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-0264ef8fe2",
+    "createdAt": 1785737633670,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-10",
+    "workerName": "W-10",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-bd7489adcf",
+    "createdAt": 1785737633670,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-10",
+    "workerName": "W-10",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-79d403008f",
+    "createdAt": 1785737633670,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-41",
+    "workerName": "W-41",
+    "missingPpe": [
+      "mask"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-a5a8388fe7",
+    "createdAt": 1785737633670,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-27",
+    "workerName": "W-27",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-02ab5cb25a",
+    "createdAt": 1785737633670,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-27",
+    "workerName": "W-27",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-5548d2e06c",
+    "createdAt": 1785737633670,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-36",
+    "workerName": "W-36",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-54458f75cd",
+    "createdAt": 1785737633670,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-36",
+    "workerName": "W-36",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-f699b6de5e",
+    "createdAt": 1785737633671,
+    "timestamp": "06:13:53",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-45",
+    "workerName": "W-45",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-24cc7a6ee4",
+    "createdAt": 1785737634073,
+    "timestamp": "06:13:54",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-57",
+    "workerName": "W-57",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-bdac0820a7",
+    "createdAt": 1785737634074,
+    "timestamp": "06:13:54",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-57",
+    "workerName": "W-57",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-fcac9d40db",
+    "createdAt": 1785737634280,
+    "timestamp": "06:13:54",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-60",
+    "workerName": "W-60",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-7dc0423851",
+    "createdAt": 1785737634629,
+    "timestamp": "06:13:54",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-67",
+    "workerName": "W-67",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-2da3722d15",
+    "createdAt": 1785737636402,
+    "timestamp": "06:13:56",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-86",
+    "workerName": "W-86",
+    "missingPpe": [
+      "mask"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-c7e9dca8e8",
+    "createdAt": 1785737637698,
+    "timestamp": "06:13:57",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-110",
+    "workerName": "W-110",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-c00dfd283c",
+    "createdAt": 1785737640028,
+    "timestamp": "06:14:00",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-168",
+    "workerName": "W-168",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-7eed9ee019",
+    "createdAt": 1785737643258,
+    "timestamp": "06:14:03",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-234",
+    "workerName": "W-234",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-64ffbfebaf",
+    "createdAt": 1785737643289,
+    "timestamp": "06:14:03",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-235",
+    "workerName": "W-235",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-df6a92294c",
+    "createdAt": 1785737644095,
+    "timestamp": "06:14:04",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-247",
+    "workerName": "W-247",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-d24b5a3c26",
+    "createdAt": 1785737645546,
+    "timestamp": "06:14:05",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-257",
+    "workerName": "W-257",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-726ab9ac4a",
+    "createdAt": 1785737645946,
+    "timestamp": "06:14:05",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-7",
+    "workerName": "W-7",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-bc0daa3f66",
+    "createdAt": 1785737645948,
+    "timestamp": "06:14:05",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-7",
+    "workerName": "W-7",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-65c779759e",
+    "createdAt": 1785737646841,
+    "timestamp": "06:14:06",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-32",
+    "workerName": "W-32",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-d658af8395",
+    "createdAt": 1785737646841,
+    "timestamp": "06:14:06",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-32",
+    "workerName": "W-32",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-016f0012f3",
+    "createdAt": 1785737646873,
+    "timestamp": "06:14:06",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-49",
+    "workerName": "W-49",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-201559d309",
+    "createdAt": 1785737646874,
+    "timestamp": "06:14:06",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-49",
+    "workerName": "W-49",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-c28937d735",
+    "createdAt": 1785737647466,
+    "timestamp": "06:14:07",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-79",
+    "workerName": "W-79",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-311a548930",
+    "createdAt": 1785737647466,
+    "timestamp": "06:14:07",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-79",
+    "workerName": "W-79",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-e20196f86e",
+    "createdAt": 1785737647573,
+    "timestamp": "06:14:07",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-84",
+    "workerName": "W-84",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-132f025585",
+    "createdAt": 1785737647649,
+    "timestamp": "06:14:07",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-227",
+    "workerName": "W-227",
+    "missingPpe": [
+      "mask"
+    ],
+    "confidence": 0.6,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-7827a18caa",
+    "createdAt": 1785737647686,
+    "timestamp": "06:14:07",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-23",
+    "workerName": "W-23",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 0.61,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-e4225e9158",
+    "createdAt": 1785737648429,
+    "timestamp": "06:14:08",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-9",
+    "workerName": "W-9",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-4eec42aaf5",
+    "createdAt": 1785737648878,
+    "timestamp": "06:14:08",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-19",
+    "workerName": "W-19",
+    "missingPpe": [
+      "mask"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-733ece7f48",
+    "createdAt": 1785737648879,
+    "timestamp": "06:14:08",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-22",
+    "workerName": "W-22",
+    "missingPpe": [
+      "mask"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-42157ec4fb",
+    "createdAt": 1785737648879,
+    "timestamp": "06:14:08",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-24",
+    "workerName": "W-24",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-38ce9ad8c8",
+    "createdAt": 1785737648880,
+    "timestamp": "06:14:08",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-29",
+    "workerName": "W-29",
+    "missingPpe": [
+      "mask"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-929cdae5d6",
+    "createdAt": 1785737648880,
+    "timestamp": "06:14:08",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-38",
+    "workerName": "W-38",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-8a6791c735",
+    "createdAt": 1785737648910,
+    "timestamp": "06:14:08",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-54",
+    "workerName": "W-54",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-24745d1c38",
+    "createdAt": 1785737649603,
+    "timestamp": "06:14:09",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-67",
+    "workerName": "W-67",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-f8114e66e4",
+    "createdAt": 1785737649603,
+    "timestamp": "06:14:09",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-69",
+    "workerName": "W-69",
+    "missingPpe": [
+      "mask"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-02cac6c4ee",
+    "createdAt": 1785737650146,
+    "timestamp": "06:14:10",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-25",
+    "workerName": "W-25",
+    "missingPpe": [
+      "mask"
+    ],
+    "confidence": 0.6,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-b37a6bf0ed",
+    "createdAt": 1785737650523,
+    "timestamp": "06:14:10",
+    "cameraId": "CAM-05",
+    "zoneId": "z-loading",
+    "zoneName": "Loading Bay",
+    "workerId": "W-135",
+    "workerName": "W-135",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-ae3307d431",
+    "createdAt": 1785737650558,
+    "timestamp": "06:14:10",
+    "cameraId": "CAM-05",
+    "zoneId": "z-loading",
+    "zoneName": "Loading Bay",
+    "workerId": "W-139",
+    "workerName": "W-139",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-3fbd7ec862",
+    "createdAt": 1785737650800,
+    "timestamp": "06:14:10",
+    "cameraId": "CAM-05",
+    "zoneId": "z-loading",
+    "zoneName": "Loading Bay",
+    "workerId": "W-158",
+    "workerName": "W-158",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-8ce16bdcec",
+    "createdAt": 1785737650903,
+    "timestamp": "06:14:10",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-130",
+    "workerName": "W-130",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-3830defbce",
+    "createdAt": 1785737651511,
+    "timestamp": "06:14:11",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-220",
+    "workerName": "W-220",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-a0410f8ef2",
+    "createdAt": 1785737651511,
+    "timestamp": "06:14:11",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-220",
+    "workerName": "W-220",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-ee90effb3c",
+    "createdAt": 1785737652196,
+    "timestamp": "06:14:12",
+    "cameraId": "CAM-05",
+    "zoneId": "z-loading",
+    "zoneName": "Loading Bay",
+    "workerId": "W-218",
+    "workerName": "W-218",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-679d4f290b",
+    "createdAt": 1785737653022,
+    "timestamp": "06:14:13",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-303",
+    "workerName": "W-303",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-65b5aa0b90",
+    "createdAt": 1785737653227,
+    "timestamp": "06:14:13",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-326",
+    "workerName": "W-326",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-5cab8a0575",
+    "createdAt": 1785737653330,
+    "timestamp": "06:14:13",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-341",
+    "workerName": "W-341",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-7cfac143f4",
+    "createdAt": 1785737653331,
+    "timestamp": "06:14:13",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-341",
+    "workerName": "W-341",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-00fe664033",
+    "createdAt": 1785737655618,
+    "timestamp": "06:14:15",
+    "cameraId": "CAM-05",
+    "zoneId": "z-loading",
+    "zoneName": "Loading Bay",
+    "workerId": "W-0",
+    "workerName": "W-0",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-7cd9fc1976",
+    "createdAt": 1785737656473,
+    "timestamp": "06:14:16",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-853",
+    "workerName": "W-853",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-d62ee82db8",
+    "createdAt": 1785737656542,
+    "timestamp": "06:14:16",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-852",
+    "workerName": "W-852",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-81a603021a",
+    "createdAt": 1785737682136,
+    "timestamp": "06:14:42",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-3",
+    "workerName": "W-3",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-6bc54e305a",
+    "createdAt": 1785737682137,
+    "timestamp": "06:14:42",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-8",
+    "workerName": "W-8",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-3d0f8a9372",
+    "createdAt": 1785737682138,
+    "timestamp": "06:14:42",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-9",
+    "workerName": "W-9",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-09d5d80e3f",
+    "createdAt": 1785737682138,
+    "timestamp": "06:14:42",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-14",
+    "workerName": "W-14",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-4af9a87c0c",
+    "createdAt": 1785737682138,
+    "timestamp": "06:14:42",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-16",
+    "workerName": "W-16",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-277424e390",
+    "createdAt": 1785737682139,
+    "timestamp": "06:14:42",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-17",
+    "workerName": "W-17",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-67df61bbbe",
+    "createdAt": 1785737682139,
+    "timestamp": "06:14:42",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-18",
+    "workerName": "W-18",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-b28b312678",
+    "createdAt": 1785737682139,
+    "timestamp": "06:14:42",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-20",
+    "workerName": "W-20",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-afa7cc22de",
+    "createdAt": 1785737682140,
+    "timestamp": "06:14:42",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-21",
+    "workerName": "W-21",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-5665c4ef91",
+    "createdAt": 1785737682140,
+    "timestamp": "06:14:42",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-35",
+    "workerName": "W-35",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-9634985a0c",
+    "createdAt": 1785737682140,
+    "timestamp": "06:14:42",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-47",
+    "workerName": "W-47",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-552d5bbdf5",
+    "createdAt": 1785737682140,
+    "timestamp": "06:14:42",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-39",
+    "workerName": "W-39",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-8478a6f355",
+    "createdAt": 1785737682141,
+    "timestamp": "06:14:42",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-10",
+    "workerName": "W-10",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-96a9d2e31d",
+    "createdAt": 1785737682141,
+    "timestamp": "06:14:42",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-27",
+    "workerName": "W-27",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-6129d03f7d",
+    "createdAt": 1785737682141,
+    "timestamp": "06:14:42",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-36",
+    "workerName": "W-36",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-2525a9115f",
+    "createdAt": 1785737682142,
+    "timestamp": "06:14:42",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-45",
+    "workerName": "W-45",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-df802581cc",
+    "createdAt": 1785737682515,
+    "timestamp": "06:14:42",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-57",
+    "workerName": "W-57",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-77721dd95e",
+    "createdAt": 1785737682794,
+    "timestamp": "06:14:42",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-60",
+    "workerName": "W-60",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-2d20abbef7",
+    "createdAt": 1785737686248,
+    "timestamp": "06:14:46",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-84",
+    "workerName": "W-84",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-2400105a01",
+    "createdAt": 1785737688558,
+    "timestamp": "06:14:48",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-124",
+    "workerName": "W-124",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-562d80dbef",
+    "createdAt": 1785737691842,
+    "timestamp": "06:14:51",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-169",
+    "workerName": "W-169",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-99adcbd88b",
+    "createdAt": 1785737691874,
+    "timestamp": "06:14:51",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-170",
+    "workerName": "W-170",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-34c4d9b5c9",
+    "createdAt": 1785737692669,
+    "timestamp": "06:14:52",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-179",
+    "workerName": "W-179",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-da5f6595b4",
+    "createdAt": 1785737694149,
+    "timestamp": "06:14:54",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-186",
+    "workerName": "W-186",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-e76b6ddc67",
+    "createdAt": 1785737695441,
+    "timestamp": "06:14:55",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-32",
+    "workerName": "W-32",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-c9076fc2fe",
+    "createdAt": 1785737695472,
+    "timestamp": "06:14:55",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-201",
+    "workerName": "W-201",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-96fd23b545",
+    "createdAt": 1785737695473,
+    "timestamp": "06:14:55",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-202",
+    "workerName": "W-202",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-6be54bfd07",
+    "createdAt": 1785737695473,
+    "timestamp": "06:14:55",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-204",
+    "workerName": "W-204",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-fbf1d7d88d",
+    "createdAt": 1785737695474,
+    "timestamp": "06:14:55",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-205",
+    "workerName": "W-205",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-4c44e680dc",
+    "createdAt": 1785737695474,
+    "timestamp": "06:14:55",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-216",
+    "workerName": "W-216",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-01eb28f32e",
+    "createdAt": 1785737695474,
+    "timestamp": "06:14:55",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-227",
+    "workerName": "W-227",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-6d4e524af1",
+    "createdAt": 1785737695475,
+    "timestamp": "06:14:55",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-219",
+    "workerName": "W-219",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-3059838a24",
+    "createdAt": 1785737695475,
+    "timestamp": "06:14:55",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-225",
+    "workerName": "W-225",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-027a20d7e1",
+    "createdAt": 1785737695814,
+    "timestamp": "06:14:55",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-237",
+    "workerName": "W-237",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-97e2937c38",
+    "createdAt": 1785737696089,
+    "timestamp": "06:14:56",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-240",
+    "workerName": "W-240",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-0802de6fa6",
+    "createdAt": 1785737699529,
+    "timestamp": "06:14:59",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-263",
+    "workerName": "W-263",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-6baf4289f3",
+    "createdAt": 1785737701848,
+    "timestamp": "06:15:01",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-303",
+    "workerName": "W-303",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-67fe795694",
+    "createdAt": 1785737705158,
+    "timestamp": "06:15:05",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-349",
+    "workerName": "W-349",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-8caf38b0a1",
+    "createdAt": 1785737705229,
+    "timestamp": "06:15:05",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-348",
+    "workerName": "W-348",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-8400161fd0",
+    "createdAt": 1785737705987,
+    "timestamp": "06:15:05",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-358",
+    "workerName": "W-358",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-27c5bf7024",
+    "createdAt": 1785737707440,
+    "timestamp": "06:15:07",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-365",
+    "workerName": "W-365",
+    "missingPpe": [
+      "gloves"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-a3a9bc3da9",
+    "createdAt": 1785737708723,
+    "timestamp": "06:15:08",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-a0419acca3",
+    "createdAt": 1785737708723,
+    "timestamp": "06:15:08",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-5",
+    "workerName": "W-5",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-44b6bb73c5",
+    "createdAt": 1785737708724,
+    "timestamp": "06:15:08",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-7",
+    "workerName": "W-7",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-f0694a46ee",
+    "createdAt": 1785737708725,
+    "timestamp": "06:15:08",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-9",
+    "workerName": "W-9",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-6f40f8dd4d",
+    "createdAt": 1785737708726,
+    "timestamp": "06:15:08",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-11",
+    "workerName": "W-11",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-1469d00a76",
+    "createdAt": 1785737708726,
+    "timestamp": "06:15:08",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-19",
+    "workerName": "W-19",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-41c36cc11e",
+    "createdAt": 1785737708726,
+    "timestamp": "06:15:08",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-22",
+    "workerName": "W-22",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-72d7b3134a",
+    "createdAt": 1785737709107,
+    "timestamp": "06:15:09",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-8",
+    "workerName": "W-8",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-12c7fc45e0",
+    "createdAt": 1785737710849,
+    "timestamp": "06:15:10",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-24",
+    "workerName": "W-24",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 0.6,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-b4745d804a",
+    "createdAt": 1785737713135,
+    "timestamp": "06:15:13",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-12",
+    "workerName": "W-12",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 0.61,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-5fef90dabc",
+    "createdAt": 1785737714126,
+    "timestamp": "06:15:14",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-18",
+    "workerName": "W-18",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 0.61,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-6fefdbd98c",
+    "createdAt": 1785737718209,
+    "timestamp": "06:15:18",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-25",
+    "workerName": "W-25",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 0.61,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-933df2770f",
+    "createdAt": 1785737720108,
+    "timestamp": "06:15:20",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-27",
+    "workerName": "W-27",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-1ad921ede1",
+    "createdAt": 1785737722044,
+    "timestamp": "06:15:22",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-f5c5f4400b",
+    "createdAt": 1785737722045,
+    "timestamp": "06:15:22",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-5",
+    "workerName": "W-5",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-788ae81361",
+    "createdAt": 1785737722046,
+    "timestamp": "06:15:22",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-7",
+    "workerName": "W-7",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-1796892ed5",
+    "createdAt": 1785737722047,
+    "timestamp": "06:15:22",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-9",
+    "workerName": "W-9",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-8d211674d3",
+    "createdAt": 1785737722048,
+    "timestamp": "06:15:22",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-11",
+    "workerName": "W-11",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-56fc450dbb",
+    "createdAt": 1785737722049,
+    "timestamp": "06:15:22",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-19",
+    "workerName": "W-19",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-ef215c36f2",
+    "createdAt": 1785737722049,
+    "timestamp": "06:15:22",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-22",
+    "workerName": "W-22",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-bfe4519cba",
+    "createdAt": 1785737722422,
+    "timestamp": "06:15:22",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-8",
+    "workerName": "W-8",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-50341335c3",
+    "createdAt": 1785737724188,
+    "timestamp": "06:15:24",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-24",
+    "workerName": "W-24",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 0.6,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-2144c6b8cf",
+    "createdAt": 1785737726432,
+    "timestamp": "06:15:26",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-12",
+    "workerName": "W-12",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 0.61,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-da3ecb4404",
+    "createdAt": 1785737727437,
+    "timestamp": "06:15:27",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-18",
+    "workerName": "W-18",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 0.61,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-b14194b59d",
+    "createdAt": 1785737731516,
+    "timestamp": "06:15:31",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-25",
+    "workerName": "W-25",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 0.61,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-4f50dbc7cf",
+    "createdAt": 1785737733403,
+    "timestamp": "06:15:33",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-27",
+    "workerName": "W-27",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-17731b9e63",
+    "createdAt": 1785737735344,
+    "timestamp": "06:15:35",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-87b70a0ef1",
+    "createdAt": 1785737735345,
+    "timestamp": "06:15:35",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-5",
+    "workerName": "W-5",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-e0588a3333",
+    "createdAt": 1785737735346,
+    "timestamp": "06:15:35",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-7",
+    "workerName": "W-7",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-ff3483c353",
+    "createdAt": 1785737735347,
+    "timestamp": "06:15:35",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-9",
+    "workerName": "W-9",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-074322b243",
+    "createdAt": 1785737735348,
+    "timestamp": "06:15:35",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-11",
+    "workerName": "W-11",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-fbb3fe80bc",
+    "createdAt": 1785737735349,
+    "timestamp": "06:15:35",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-19",
+    "workerName": "W-19",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-0908c0cfda",
+    "createdAt": 1785737735349,
+    "timestamp": "06:15:35",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-22",
+    "workerName": "W-22",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-f0e9644ee7",
+    "createdAt": 1785737735729,
+    "timestamp": "06:15:35",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-8",
+    "workerName": "W-8",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-f50336ca23",
+    "createdAt": 1785737737487,
+    "timestamp": "06:15:37",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-24",
+    "workerName": "W-24",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 0.6,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-590ac6d65b",
+    "createdAt": 1785737739716,
+    "timestamp": "06:15:39",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-12",
+    "workerName": "W-12",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 0.6,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-d6cfb43c6a",
+    "createdAt": 1785737739856,
+    "timestamp": "06:15:39",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-c167d668f0",
+    "createdAt": 1785737740716,
+    "timestamp": "06:15:40",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-18",
+    "workerName": "W-18",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 0.6,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-efaa238fab",
+    "createdAt": 1785737741368,
+    "timestamp": "06:15:41",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-1121",
+    "workerName": "W-1121",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-8f880a62f5",
+    "createdAt": 1785737746651,
+    "timestamp": "06:15:46",
+    "cameraId": "CAM-06",
+    "zoneId": "z-maintenance",
+    "zoneName": "Maintenance Workshop",
+    "workerId": "W-27",
+    "workerName": "W-27",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-0ba04458a8",
+    "createdAt": 1785737778404,
+    "timestamp": "06:16:18",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-a2690b156d",
+    "createdAt": 1785737779238,
+    "timestamp": "06:16:19",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-0",
+    "workerName": "W-0",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 0.94,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-b988a1512d",
+    "createdAt": 1785737779239,
+    "timestamp": "06:16:19",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-0",
+    "workerName": "W-0",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-c3702ef22f",
+    "createdAt": 1785737779265,
+    "timestamp": "06:16:19",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-9",
+    "workerName": "W-9",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-56a5e1709c",
+    "createdAt": 1785737779265,
+    "timestamp": "06:16:19",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-9",
+    "workerName": "W-9",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-f62ced6350",
+    "createdAt": 1785737781876,
+    "timestamp": "06:16:21",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-4b1d2edb8f",
+    "createdAt": 1785737783658,
+    "timestamp": "06:16:23",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-ca1deeab94",
+    "createdAt": 1785737785429,
+    "timestamp": "06:16:25",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-415661b4ff",
+    "createdAt": 1785737787198,
+    "timestamp": "06:16:27",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-0565a8d06d",
+    "createdAt": 1785737788977,
+    "timestamp": "06:16:28",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-e69072efb4",
+    "createdAt": 1785737790745,
+    "timestamp": "06:16:30",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-3f4553ce0a",
+    "createdAt": 1785737792518,
+    "timestamp": "06:16:32",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-5b462221f8",
+    "createdAt": 1785737794286,
+    "timestamp": "06:16:34",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-f79bd4b003",
+    "createdAt": 1785737796071,
+    "timestamp": "06:16:36",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-ce8ebc90cb",
+    "createdAt": 1785737797839,
+    "timestamp": "06:16:37",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-590b6537d0",
+    "createdAt": 1785737799613,
+    "timestamp": "06:16:39",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-a2eb4ea1f3",
+    "createdAt": 1785737801377,
+    "timestamp": "06:16:41",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-6c1cf7de30",
+    "createdAt": 1785737803155,
+    "timestamp": "06:16:43",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-f662c2498c",
+    "createdAt": 1785737804929,
+    "timestamp": "06:16:44",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-7818b11c23",
+    "createdAt": 1785737872228,
+    "timestamp": "06:17:52",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-3",
+    "workerName": "W-3",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-de0dfcac36",
+    "createdAt": 1785737872259,
+    "timestamp": "06:17:52",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-4",
+    "workerName": "W-4",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-8fef5bb0d7",
+    "createdAt": 1785737872499,
+    "timestamp": "06:17:52",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-7",
+    "workerName": "W-7",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-2778b4cf75",
+    "createdAt": 1785737873880,
+    "timestamp": "06:17:53",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-18",
+    "workerName": "W-18",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-40c1cf873d",
+    "createdAt": 1785737877282,
+    "timestamp": "06:17:57",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-0",
+    "workerName": "W-0",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-0d408963e8",
+    "createdAt": 1785737880659,
+    "timestamp": "06:18:00",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-20",
+    "workerName": "W-20",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-2aef7a18d5",
+    "createdAt": 1785737880697,
+    "timestamp": "06:18:00",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-22",
+    "workerName": "W-22",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-db54f5554a",
+    "createdAt": 1785737882121,
+    "timestamp": "06:18:02",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-23",
+    "workerName": "W-23",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-2ed61e7ef8",
+    "createdAt": 1785737882324,
+    "timestamp": "06:18:02",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-11",
+    "workerName": "W-11",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-74035b1ea5",
+    "createdAt": 1785737889079,
+    "timestamp": "06:18:09",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-17",
+    "workerName": "W-17",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-ef131d2877",
+    "createdAt": 1785737889147,
+    "timestamp": "06:18:09",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-18",
+    "workerName": "W-18",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-a088d49236",
+    "createdAt": 1785737897669,
+    "timestamp": "06:18:17",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-14",
+    "workerName": "W-14",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-ab2afda1be",
+    "createdAt": 1785737897739,
+    "timestamp": "06:18:17",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-16",
+    "workerName": "W-16",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-df0b696fb4",
+    "createdAt": 1785737902622,
+    "timestamp": "06:18:22",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-3",
+    "workerName": "W-3",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-6039b2fd21",
+    "createdAt": 1785737902623,
+    "timestamp": "06:18:22",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-3",
+    "workerName": "W-3",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-734f44f0a8",
+    "createdAt": 1785737904097,
+    "timestamp": "06:18:24",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-4",
+    "workerName": "W-4",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-1f14ab7a4b",
+    "createdAt": 1785737905546,
+    "timestamp": "06:18:25",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-5",
+    "workerName": "W-5",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-b078a70b6e",
+    "createdAt": 1785737905547,
+    "timestamp": "06:18:25",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-5",
+    "workerName": "W-5",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-0d1f8af198",
+    "createdAt": 1785737906185,
+    "timestamp": "06:18:26",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-26",
+    "workerName": "W-26",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-ca7b8d62ee",
+    "createdAt": 1785737906214,
+    "timestamp": "06:18:26",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-29",
+    "workerName": "W-29",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-35e2477828",
+    "createdAt": 1785737909729,
+    "timestamp": "06:18:29",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-21",
+    "workerName": "W-21",
+    "missingPpe": [
+      "mask"
+    ],
+    "confidence": 0.94,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-11777d1194",
+    "createdAt": 1785737914787,
+    "timestamp": "06:18:34",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-11",
+    "workerName": "W-11",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-59a2d924db",
+    "createdAt": 1785737914833,
+    "timestamp": "06:18:34",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-13",
+    "workerName": "W-13",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-7eae389afc",
+    "createdAt": 1785738056008,
+    "timestamp": "06:20:56",
+    "cameraId": "CAM-05",
+    "zoneId": "z-loading",
+    "zoneName": "Loading Bay",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-929322ae5e",
+    "createdAt": 1785738057512,
+    "timestamp": "06:20:57",
+    "cameraId": "CAM-05",
+    "zoneId": "z-loading",
+    "zoneName": "Loading Bay",
+    "workerId": "W-7",
+    "workerName": "W-7",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-521cb981fd",
+    "createdAt": 1785738079552,
+    "timestamp": "06:21:19",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-4b592a5858",
+    "createdAt": 1785738080390,
+    "timestamp": "06:21:20",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-0",
+    "workerName": "W-0",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 0.94,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-6f11c74c39",
+    "createdAt": 1785738080428,
+    "timestamp": "06:21:20",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-9",
+    "workerName": "W-9",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-8535a462b7",
+    "createdAt": 1785738083045,
+    "timestamp": "06:21:23",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-46a6c4323d",
+    "createdAt": 1785738084810,
+    "timestamp": "06:21:24",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-39f18a1986",
+    "createdAt": 1785738086648,
+    "timestamp": "06:21:26",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-1c5e4dde05",
+    "createdAt": 1785738088354,
+    "timestamp": "06:21:28",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-8e4578eb09",
+    "createdAt": 1785738090125,
+    "timestamp": "06:21:30",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-a1ebcd7af0",
+    "createdAt": 1785738091906,
+    "timestamp": "06:21:31",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-e5a1e9c4db",
+    "createdAt": 1785738093690,
+    "timestamp": "06:21:33",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-b77c626d7c",
+    "createdAt": 1785738095469,
+    "timestamp": "06:21:35",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-5820e0297d",
+    "createdAt": 1785738097236,
+    "timestamp": "06:21:37",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-ca9082c4f0",
+    "createdAt": 1785738099010,
+    "timestamp": "06:21:39",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-8962ff4d9d",
+    "createdAt": 1785738100788,
+    "timestamp": "06:21:40",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-14841cd902",
+    "createdAt": 1785738102568,
+    "timestamp": "06:21:42",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-90f1fdb198",
+    "createdAt": 1785738104341,
+    "timestamp": "06:21:44",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-a3fd16aa33",
+    "createdAt": 1785738106123,
+    "timestamp": "06:21:46",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-5190196394",
+    "createdAt": 1785738383145,
+    "timestamp": "06:26:23",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-3",
+    "workerName": "W-3",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-436642599f",
+    "createdAt": 1785738383176,
+    "timestamp": "06:26:23",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-4",
+    "workerName": "W-4",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-383792b158",
+    "createdAt": 1785738383417,
+    "timestamp": "06:26:23",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-5",
+    "workerName": "W-5",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-5e29fd9d20",
+    "createdAt": 1785738384811,
+    "timestamp": "06:26:24",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-7",
+    "workerName": "W-7",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-8103ca2e3a",
+    "createdAt": 1785738388230,
+    "timestamp": "06:26:28",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-0",
+    "workerName": "W-0",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-da6b642ce4",
+    "createdAt": 1785738391642,
+    "timestamp": "06:26:31",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-11",
+    "workerName": "W-11",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-61e9aab2e9",
+    "createdAt": 1785738391676,
+    "timestamp": "06:26:31",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-12",
+    "workerName": "W-12",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-a394a48a46",
+    "createdAt": 1785738391914,
+    "timestamp": "06:26:31",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-13",
+    "workerName": "W-13",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-b58acf9241",
+    "createdAt": 1785738393314,
+    "timestamp": "06:26:33",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-15",
+    "workerName": "W-15",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-6596ea57a7",
+    "createdAt": 1785738400033,
+    "timestamp": "06:26:40",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-a601ea8398",
+    "createdAt": 1785738400104,
+    "timestamp": "06:26:40",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-3",
+    "workerName": "W-3",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-c7b1b60ad7",
+    "createdAt": 1785738408512,
+    "timestamp": "06:26:48",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-d250155459",
+    "createdAt": 1785738408578,
+    "timestamp": "06:26:48",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-3",
+    "workerName": "W-3",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-80fd5fd8f6",
+    "createdAt": 1785738409953,
+    "timestamp": "06:26:49",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-3",
+    "workerName": "W-3",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-37364c634c",
+    "createdAt": 1785738409954,
+    "timestamp": "06:26:49",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-3",
+    "workerName": "W-3",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-976440b23f",
+    "createdAt": 1785738411405,
+    "timestamp": "06:26:51",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-27",
+    "workerName": "W-27",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-5e66ca35f0",
+    "createdAt": 1785738417028,
+    "timestamp": "06:26:57",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-17",
+    "workerName": "W-17",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-338d56b958",
+    "createdAt": 1785738417099,
+    "timestamp": "06:26:57",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-19",
+    "workerName": "W-19",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-4674ab3845",
+    "createdAt": 1785738425479,
+    "timestamp": "06:27:05",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-10",
+    "workerName": "W-10",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-50c45fe9f1",
+    "createdAt": 1785738425544,
+    "timestamp": "06:27:05",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-11",
+    "workerName": "W-11",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-3879265c5d",
+    "createdAt": 1785738432273,
+    "timestamp": "06:27:12",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-9",
+    "workerName": "W-9",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-871c6448e4",
+    "createdAt": 1785738432274,
+    "timestamp": "06:27:12",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-9",
+    "workerName": "W-9",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-bf5d028295",
+    "createdAt": 1785738434020,
+    "timestamp": "06:27:14",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-19",
+    "workerName": "W-19",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-c4db974772",
+    "createdAt": 1785738434090,
+    "timestamp": "06:27:14",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-21",
+    "workerName": "W-21",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-63689c60fd",
+    "createdAt": 1785738434539,
+    "timestamp": "06:27:14",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-28",
+    "workerName": "W-28",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-b0af84f300",
+    "createdAt": 1785738434540,
+    "timestamp": "06:27:14",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-28",
+    "workerName": "W-28",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-ffc19ad27f",
+    "createdAt": 1785738435026,
+    "timestamp": "06:27:15",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-17",
+    "workerName": "W-17",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 0.6,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-bad5e7fd02",
+    "createdAt": 1785738442567,
+    "timestamp": "06:27:22",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-5",
+    "workerName": "W-5",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-139de15201",
+    "createdAt": 1785738442636,
+    "timestamp": "06:27:22",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-6",
+    "workerName": "W-6",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-956bbd412a",
+    "createdAt": 1785738451004,
+    "timestamp": "06:27:31",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-23",
+    "workerName": "W-23",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-970d6ccedf",
+    "createdAt": 1785738451070,
+    "timestamp": "06:27:31",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-25",
+    "workerName": "W-25",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-92b0e3dd25",
+    "createdAt": 1785738454529,
+    "timestamp": "06:27:34",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-7",
+    "workerName": "W-7",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-6939c852f0",
+    "createdAt": 1785738454530,
+    "timestamp": "06:27:34",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-7",
+    "workerName": "W-7",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-aa9260f485",
+    "createdAt": 1785738456936,
+    "timestamp": "06:27:36",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-94",
+    "workerName": "W-94",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-8ce59775d6",
+    "createdAt": 1785738459441,
+    "timestamp": "06:27:39",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-170",
+    "workerName": "W-170",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-3040e85e4d",
+    "createdAt": 1785738459510,
+    "timestamp": "06:27:39",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-176",
+    "workerName": "W-176",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-a8ae8d5e1d",
+    "createdAt": 1785738459957,
+    "timestamp": "06:27:39",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-217",
+    "workerName": "W-217",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-08a3613a78",
+    "createdAt": 1785738459958,
+    "timestamp": "06:27:39",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-217",
+    "workerName": "W-217",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-7f5abe2a83",
+    "createdAt": 1785738466221,
+    "timestamp": "06:27:46",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-85",
+    "workerName": "W-85",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-d5e885fa7e",
+    "createdAt": 1785738467872,
+    "timestamp": "06:27:47",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-156",
+    "workerName": "W-156",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-20c60d1a60",
+    "createdAt": 1785738467942,
+    "timestamp": "06:27:47",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-160",
+    "workerName": "W-160",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-d61451f859",
+    "createdAt": 1785738476391,
+    "timestamp": "06:27:56",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-104",
+    "workerName": "W-104",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-72300e6369",
+    "createdAt": 1785738476457,
+    "timestamp": "06:27:56",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-107",
+    "workerName": "W-107",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-6461e6c542",
+    "createdAt": 1785738476758,
+    "timestamp": "06:27:56",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-7",
+    "workerName": "W-7",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-85b198f0bc",
+    "createdAt": 1785738476759,
+    "timestamp": "06:27:56",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-7",
+    "workerName": "W-7",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-5e7f939103",
+    "createdAt": 1785738479126,
+    "timestamp": "06:27:59",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-132",
+    "workerName": "W-132",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-c67ec3378a",
+    "createdAt": 1785738484816,
+    "timestamp": "06:28:04",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-199",
+    "workerName": "W-199",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-eed7124f2b",
+    "createdAt": 1785738484880,
+    "timestamp": "06:28:04",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-210",
+    "workerName": "W-210",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-d655fae032",
+    "createdAt": 1785738488470,
+    "timestamp": "06:28:08",
+    "cameraId": "CAM-02",
+    "zoneId": "z-welding",
+    "zoneName": "Welding Zone",
+    "workerId": "W-779",
+    "workerName": "W-779",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-c7a603c98b",
+    "createdAt": 1785738628888,
+    "timestamp": "06:30:28",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-5f9c79914c",
+    "createdAt": 1785738630379,
+    "timestamp": "06:30:30",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-7",
+    "workerName": "W-7",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-038122a54a",
+    "createdAt": 1785738651503,
+    "timestamp": "06:30:51",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-110",
+    "workerName": "W-110",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-7d7a146ae7",
+    "createdAt": 1785738652960,
+    "timestamp": "06:30:52",
+    "cameraId": "CAM-01",
+    "zoneId": "z-assembly",
+    "zoneName": "Assembly Line",
+    "workerId": "W-115",
+    "workerName": "W-115",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-4ed4b7988f",
+    "createdAt": 1785738724961,
+    "timestamp": "06:32:04",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-3dfdb66383",
+    "createdAt": 1785738724962,
+    "timestamp": "06:32:04",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-2",
+    "workerName": "W-2",
+    "missingPpe": [
+      "eye_prot"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-756a6478ec",
+    "createdAt": 1785738726452,
+    "timestamp": "06:32:06",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-7",
+    "workerName": "W-7",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-644747a112",
+    "createdAt": 1785738732109,
+    "timestamp": "06:32:12",
+    "cameraId": "CAM-04",
+    "zoneId": "z-chemical",
+    "zoneName": "Chemical Zone",
+    "workerId": "W-46",
+    "workerName": "W-46",
+    "missingPpe": [
+      "mask"
+    ],
+    "confidence": 0.93,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-34e10e2ef9",
+    "createdAt": 1785740454252,
+    "timestamp": "07:00:54",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-6",
+    "workerName": "W-6",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-b06b0d52dc",
+    "createdAt": 1785740454254,
+    "timestamp": "07:00:54",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-5",
+    "workerName": "W-5",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-c2696a7068",
+    "createdAt": 1785740454858,
+    "timestamp": "07:00:54",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-11",
+    "workerName": "W-11",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-ba79f8d4b5",
+    "createdAt": 1785740483809,
+    "timestamp": "07:01:23",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-47",
+    "workerName": "W-47",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-e464cf3934",
+    "createdAt": 1785740506462,
+    "timestamp": "07:01:46",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-95",
+    "workerName": "W-95",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-9ea8a587f5",
+    "createdAt": 1785740515458,
+    "timestamp": "07:01:55",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-114",
+    "workerName": "W-114",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-273ceb0b63",
+    "createdAt": 1785740520259,
+    "timestamp": "07:02:00",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-121",
+    "workerName": "W-121",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-d7ab27b76d",
+    "createdAt": 1785740524309,
+    "timestamp": "07:02:04",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-122",
+    "workerName": "W-122",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-79afbea34d",
+    "createdAt": 1785740544709,
+    "timestamp": "07:02:24",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-132",
+    "workerName": "W-132",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "high",
+    "status": "open"
+  },
+  {
+    "id": "ALT-af71dc2991",
+    "createdAt": 1785740626317,
+    "timestamp": "07:03:46",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-212",
+    "workerName": "W-212",
+    "missingPpe": [
+      "vest"
+    ],
+    "confidence": 1.0,
+    "severity": "medium",
+    "status": "open"
+  },
+  {
+    "id": "ALT-c4647519f1",
+    "createdAt": 1785740628259,
+    "timestamp": "07:03:48",
+    "cameraId": "CAM-03",
+    "zoneId": "z-storage",
+    "zoneName": "Storage Area",
+    "workerId": "W-211",
+    "workerName": "W-211",
+    "missingPpe": [
+      "helmet"
+    ],
+    "confidence": 0.62,
+    "severity": "high",
+    "status": "open"
+  }
+]

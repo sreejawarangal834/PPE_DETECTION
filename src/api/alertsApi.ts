@@ -1,13 +1,5 @@
 import type { Alert, PagedResult } from '../types';
-import type { AlertStatus } from '../constants/alertStatus';
-import { ALERTS } from '../data/mockData';
 import { appendAuditLog } from '../lib/audit/auditLog';
-
-let _alerts: Alert[] = [...ALERTS];
-let _counter = ALERTS.length + 1;
-
-export function getAlertStore(): Alert[] { return _alerts; }
-export function setAlertStore(alerts: Alert[]): void { _alerts = alerts; }
 
 export interface AlertFilters {
   severities?: string[];
@@ -20,28 +12,32 @@ export interface AlertFilters {
   pageSize?: number;
 }
 
-function delay(ms = 300) { return new Promise<void>(r => setTimeout(r, ms)); }
-
-export async function getAlerts(filters: AlertFilters = {}): Promise<PagedResult<Alert>> {
-  await delay();
-  let data = [..._alerts].sort((a, b) => {
-    if (a.status === 'escalated' && b.status !== 'escalated') return -1;
-    if (b.status === 'escalated' && a.status !== 'escalated') return 1;
-    return b.createdAt - a.createdAt;
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(path, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
   });
-  if (filters.severities?.length) data = data.filter(a => filters.severities!.includes(a.severity));
-  if (filters.zones?.length) data = data.filter(a => filters.zones!.includes(a.zoneId));
-  if (filters.statuses?.length) data = data.filter(a => filters.statuses!.includes(a.status));
-  if (filters.search) {
-    const q = filters.search.toLowerCase();
-    data = data.filter(a =>
-      a.workerId.toLowerCase().includes(q) ||
-      a.workerName.toLowerCase().includes(q) ||
-      a.zoneName.toLowerCase().includes(q) ||
-      (a.acknowledgedBy ?? '').toLowerCase().includes(q) ||
-      (a.resolvedBy ?? '').toLowerCase().includes(q)
-    );
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail ?? `Request failed (${res.status})`);
   }
+  return res.json() as Promise<T>;
+}
+
+// The backend doesn't paginate — it returns every alert (JSON-file scale,
+// not a real DB) — so pagination/date-range filtering happens here, same as
+// the mock layer did, keeping this function's contract unchanged for callers.
+export async function getAlerts(filters: AlertFilters = {}): Promise<PagedResult<Alert>> {
+  const params = new URLSearchParams();
+  filters.severities?.forEach(s => params.append('severity', s));
+  filters.zones?.forEach(z => params.append('zone', z));
+  filters.statuses?.forEach(s => params.append('status', s));
+  if (filters.search) params.set('search', filters.search);
+
+  let data = await request<Alert[]>(`/api/alerts${params.toString() ? `?${params}` : ''}`);
+  if (filters.dateFrom) data = data.filter(a => a.createdAt >= new Date(filters.dateFrom!).getTime());
+  if (filters.dateTo) data = data.filter(a => a.createdAt <= new Date(filters.dateTo!).getTime());
+
   const total = data.length;
   const page = filters.page ?? 1;
   const pageSize = filters.pageSize ?? 25;
@@ -49,41 +45,24 @@ export async function getAlerts(filters: AlertFilters = {}): Promise<PagedResult
 }
 
 export async function getAlertById(id: string): Promise<Alert> {
-  await delay(150);
-  const a = _alerts.find(a => a.id === id);
-  if (!a) throw new Error(`Alert ${id} not found`);
-  return { ...a };
+  const { data } = await getAlerts({ pageSize: 1000 });
+  const alert = data.find(a => a.id === id);
+  if (!alert) throw new Error(`Alert ${id} not found`);
+  return alert;
 }
 
 export async function acknowledgeAlert(id: string, actorName: string): Promise<Alert> {
-  await delay(300);
-  const idx = _alerts.findIndex(a => a.id === id);
-  if (idx === -1) throw new Error(`Alert ${id} not found`);
-  const updated: Alert = { ..._alerts[idx], status: 'acknowledged', acknowledgedBy: actorName, acknowledgedAt: new Date().toISOString() };
-  _alerts[idx] = updated;
+  const updated = await request<Alert>(`/api/alerts/${id}/acknowledge`, {
+    method: 'POST', body: JSON.stringify({ actor: actorName }),
+  });
   appendAuditLog({ actor: actorName, actionType: 'ALERT_ACK', entity: `Alert: ${id}`, description: `Acknowledged alert ${id}`, ipAddress: '—' });
-  return { ...updated };
+  return updated;
 }
 
 export async function resolveAlert(id: string, actorName: string, notes: string): Promise<Alert> {
-  await delay(300);
-  const idx = _alerts.findIndex(a => a.id === id);
-  if (idx === -1) throw new Error(`Alert ${id} not found`);
-  const updated: Alert = { ..._alerts[idx], status: 'resolved', resolvedBy: actorName, resolvedAt: new Date().toISOString(), resolutionNotes: notes };
-  _alerts[idx] = updated;
+  const updated = await request<Alert>(`/api/alerts/${id}/resolve`, {
+    method: 'POST', body: JSON.stringify({ actor: actorName, notes }),
+  });
   appendAuditLog({ actor: actorName, actionType: 'ALERT_RESOLVE', entity: `Alert: ${id}`, description: `Resolved alert ${id}: ${notes}`, ipAddress: '—' });
-  return { ...updated };
-}
-
-export function addAlertToStore(alert: Omit<Alert, 'id' | 'createdAt'>): Alert {
-  const newAlert: Alert = { ...alert, id: `ALT-${String(_counter++).padStart(3,'0')}`, createdAt: Date.now() };
-  _alerts.unshift(newAlert);
-  return newAlert;
-}
-
-export function updateAlertStatus(id: string, status: AlertStatus, meta?: Partial<Alert>): Alert | null {
-  const idx = _alerts.findIndex(a => a.id === id);
-  if (idx === -1) return null;
-  _alerts[idx] = { ..._alerts[idx], status, ...meta };
-  return { ..._alerts[idx] };
+  return updated;
 }

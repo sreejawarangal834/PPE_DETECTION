@@ -1,10 +1,9 @@
 import { create } from 'zustand';
 import type { Alert } from '../../types';
 import type { AlertStatus } from '../../constants/alertStatus';
-import { ALERTS } from '../../data/mockData';
 import { getEscalationDelayMs } from '../../data/alertConfig';
 import { appendAuditLog } from '../audit/auditLog';
-import { updateAlertStatus } from '../../api/alertsApi';
+import { getAlerts } from '../../api/alertsApi';
 
 interface AlertState {
   alerts: Alert[];
@@ -14,17 +13,26 @@ interface AlertState {
   markRead: (id: string) => void;
   clearUnread: () => void;
   runEscalationCheck: () => string[]; // returns IDs escalated
-  seedAlerts: () => void;
+  /** Refresh from the real zone-compliance backend — no-ops (keeps the last
+   * known list) if the backend is unreachable, so a transient poll failure
+   * doesn't blank the UI. */
+  loadAlerts: () => Promise<void>;
 }
 
 let _escalationInterval: ReturnType<typeof setInterval> | null = null;
+let _pollInterval: ReturnType<typeof setInterval> | null = null;
 
 export const useAlertStore = create<AlertState>()((set, get) => ({
-  alerts: [...ALERTS],
-  unreadCount: ALERTS.filter(a => a.status !== 'resolved').length,
+  alerts: [],
+  unreadCount: 0,
 
-  seedAlerts() {
-    set({ alerts: [...ALERTS], unreadCount: ALERTS.filter(a => a.status !== 'resolved').length });
+  async loadAlerts() {
+    try {
+      const { data } = await getAlerts({ pageSize: 200 });
+      set({ alerts: data, unreadCount: data.filter(a => a.status !== 'resolved').length });
+    } catch {
+      // backend unreachable — keep whatever's currently in the store
+    }
   },
 
   addAlert(alert) {
@@ -35,10 +43,12 @@ export const useAlertStore = create<AlertState>()((set, get) => ({
   },
 
   updateStatus(id, status, meta) {
+    // The caller (AcknowledgeDialog/ResolveDialog) already persisted this
+    // via the real acknowledgeAlert/resolveAlert API call — this just
+    // reflects it locally before the next loadAlerts() poll confirms it.
     set(s => ({
       alerts: s.alerts.map(a => a.id === id ? { ...a, status, ...meta } : a),
     }));
-    updateAlertStatus(id, status, meta);
   },
 
   markRead(id) {
@@ -61,7 +71,6 @@ export const useAlertStore = create<AlertState>()((set, get) => ({
       if (now - a.createdAt >= delay) {
         escalated.push(a.id);
         appendAuditLog({ actor: 'system', actionType: 'ALERT_ESCALATE', entity: `Alert: ${a.id}`, description: `Auto-escalated alert ${a.id} — response time exceeded`, ipAddress: '—' });
-        updateAlertStatus(a.id, 'escalated', { escalatedAt: new Date().toISOString() });
         return { ...a, status: 'escalated' as AlertStatus, escalatedAt: new Date().toISOString() };
       }
       return a;
@@ -83,4 +92,18 @@ export function startEscalationInterval(onEscalate: (ids: string[]) => void): vo
 
 export function stopEscalationInterval(): void {
   if (_escalationInterval) { clearInterval(_escalationInterval); _escalationInterval = null; }
+}
+
+const ALERT_POLL_INTERVAL_MS = 5000;
+
+/** Keep the Alerts page / sidebar feed / unread badge live without a page
+ * reload — same polling cadence as MonitoringPage's backend health check. */
+export function startAlertPolling(): void {
+  if (_pollInterval) clearInterval(_pollInterval);
+  useAlertStore.getState().loadAlerts();
+  _pollInterval = setInterval(() => useAlertStore.getState().loadAlerts(), ALERT_POLL_INTERVAL_MS);
+}
+
+export function stopAlertPolling(): void {
+  if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
 }

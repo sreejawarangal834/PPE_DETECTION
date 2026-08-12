@@ -4,8 +4,9 @@ import { VIEW_MODE_STORAGE_KEY, VIEW_MODE_DEFAULT } from '../../constants/app';
 import { ViewModeToggle, type ViewMode } from '../../components/widgets/ViewModeToggle';
 import CameraGrid from './CameraGrid';
 import CameraDetailPanel from './CameraDetailPanel';
-import LiveSessionsGrid from './LiveSessionsGrid';
-import LiveSessionDetail from './LiveSessionDetail';
+import CameraSlotPicker from './CameraSlotPicker';
+import RtspConnectDialog from './RtspConnectDialog';
+import SessionCard from './SessionCard';
 import AlertFeedWidget from '../../components/widgets/AlertFeedWidget';
 import LiveWorkerList from './LiveWorkerList';
 import Card from '../../components/ui/Card';
@@ -13,9 +14,9 @@ import { useQuery } from '@tanstack/react-query';
 import { getCameras } from '../../api/camerasApi';
 import type { Camera } from '../../types';
 import PageShell from '../../components/ui/PageShell';
-import { useLiveSessions, WEBCAM_SESSION_ID } from '../../hooks/useLiveSessions';
+import { useLiveSessions } from '../../hooks/useLiveSessions';
 import { useDetectionStore } from '../../state/DetectionStore';
-import { Upload, Video, WifiOff, Play, Square } from 'lucide-react';
+import { Upload, Video, Smartphone, WifiOff, Play, Square } from 'lucide-react';
 import DetectionClassFilter from '../../components/widgets/DetectionClassFilter';
 import {
   ALL_DETECTION_CLASS_IDS,
@@ -41,11 +42,21 @@ export default function MonitoringPage() {
   const user = useAuthStore(s => s.user);
   const [viewMode, setViewMode]         = useState<ViewMode>(VIEW_MODE_DEFAULT as ViewMode);
   const [selectedCamera, setSelectedCamera] = useState<Camera | null>(null);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [selectedZone]                  = useState<string | null>(null);
   const [backendOnline, setBackendOnline] = useState<boolean | null>(null); // null = checking
   const fileInputRef                    = useRef<HTMLInputElement>(null);
   const consecutiveFailuresRef          = useRef(0);
+
+  // ── Camera slot picker — a video/webcam/RTSP session must be bound to a
+  // camera (and therefore a zone) before it starts, so the compliance engine
+  // knows which PPE policy applies. `pendingFiles`/`pendingWebcam`/
+  // `pendingRtspUrl` hold what's waiting on a pick; closing the picker
+  // without choosing discards them.
+  const [pickerOpen, setPickerOpen]     = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
+  const [pendingWebcam, setPendingWebcam] = useState(false);
+  const [pendingRtspUrl, setPendingRtspUrl] = useState<string | null>(null);
+  const [rtspDialogOpen, setRtspDialogOpen] = useState(false);
 
   // ── Detection class filter — which classes get drawn/listed, shared by
   // every view mode (mock camera, single live session, session grid) so it's
@@ -72,7 +83,7 @@ export default function MonitoringPage() {
 
   // Backend detection pipeline — supports any number of concurrent sessions
   // (multiple uploaded videos + one browser webcam), each independent.
-  const { startVideoSession, startWebcamSession, stopSession, stopAllSessions } = useLiveSessions();
+  const { startVideoSession, startWebcamSession, startRtspSession, stopSession, stopAllSessions } = useLiveSessions();
   const { sessions } = useDetectionStore();
   const streamingCount = sessions.filter(s => s.status === 'streaming').length;
 
@@ -131,27 +142,71 @@ export default function MonitoringPage() {
   /* ── Video upload handler — one dialog can pick several files, and the
    * button can be clicked again any time to add more; each becomes its own
    * independent session rather than replacing whatever is already running.
-   * A single file jumps to Single View focused on it; multiple files jump
-   * to Grid View so all of them are visible at once. ── */
+   * A single file asks which camera slot it belongs to (via the picker) and
+   * jumps to Single View focused on it; multiple files auto-assign to the
+   * next idle camera slots in order (prompting once per file would be
+   * tedious) and jump to Grid View so all of them are visible at once —
+   * any file beyond the number of idle slots starts unassigned. ── */
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     if (files.length === 0) return;
     e.target.value = ''; // reset so the same file(s) can be re-selected later
-    const ids = await Promise.all(files.map(startVideoSession));
-    if (ids.length === 1) {
-      setSelectedSessionId(ids[0]);
-      setViewMode('single');
-      sessionStorage.setItem(VIEW_MODE_STORAGE_KEY, 'single');
-    } else {
-      setViewMode('grid');
-      sessionStorage.setItem(VIEW_MODE_STORAGE_KEY, 'grid');
+
+    if (files.length === 1) {
+      setPendingFiles(files);
+      setPickerOpen(true);
+      return;
     }
+
+    const boundIds = new Set(sessions.map(s => s.cameraId).filter(Boolean));
+    const idleCameras = filteredCameras.filter(c => !boundIds.has(c.id));
+    await Promise.all(files.map((f, i) => startVideoSession(f, idleCameras[i]?.id)));
+    setViewMode('grid');
+    sessionStorage.setItem(VIEW_MODE_STORAGE_KEY, 'grid');
   }
 
   /* ── Webcam handler — browser camera permission, not the backend host's ── */
   function handleUseWebcam() {
-    startWebcamSession();
-    setSelectedSessionId(WEBCAM_SESSION_ID);
+    setPendingWebcam(true);
+    setPickerOpen(true);
+  }
+
+  /* ── RTSP handler — collect the phone/IP camera's stream URL first, then
+   * fall into the same camera-slot picker flow as upload/webcam. ── */
+  function handleUseRtsp() {
+    setRtspDialogOpen(true);
+  }
+
+  function handleRtspConnect(url: string) {
+    setRtspDialogOpen(false);
+    setPendingRtspUrl(url);
+    setPickerOpen(true);
+  }
+
+  function handlePickerClose() {
+    setPickerOpen(false);
+    setPendingFiles(null);
+    setPendingWebcam(false);
+    setPendingRtspUrl(null);
+  }
+
+  /* ── Camera picked — start whatever was waiting on it, bound to that
+   * camera's zone, and jump straight to its Single View. ── */
+  async function handleCameraPicked(cameraId: string) {
+    if (pendingFiles) {
+      await startVideoSession(pendingFiles[0], cameraId);
+      setPendingFiles(null);
+    } else if (pendingWebcam) {
+      startWebcamSession(cameraId);
+      setPendingWebcam(false);
+    } else if (pendingRtspUrl) {
+      startRtspSession(pendingRtspUrl, cameraId);
+      setPendingRtspUrl(null);
+    } else {
+      return;
+    }
+    const cam = cameras.find(c => c.id === cameraId);
+    if (cam) setSelectedCamera(cam);
     setViewMode('single');
     sessionStorage.setItem(VIEW_MODE_STORAGE_KEY, 'single');
   }
@@ -163,6 +218,8 @@ export default function MonitoringPage() {
       sessionStorage.setItem(VIEW_MODE_STORAGE_KEY, 'single');
     }
   };
+
+  const unassignedSessions = sessions.filter(s => !s.cameraId);
 
   return (
     <PageShell noPadding>
@@ -245,6 +302,22 @@ export default function MonitoringPage() {
                     <Video className="w-4 h-4" aria-hidden="true" />
                     Use Webcam
                   </button>
+
+                  <button
+                    onClick={handleUseRtsp}
+                    disabled={!backendOnline}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white
+                      disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg
+                      ${backendOnline
+                        ? 'bg-accent hover:bg-accent-hover shadow-accent/20'
+                        : 'bg-status-warn/80 hover:bg-status-warn shadow-status-warn/20'}`}
+                    title={backendOnline
+                      ? 'Connect a phone or IP camera over RTSP — the phone must be on the same network as the backend'
+                      : 'Backend offline — start FastAPI server on port 8000 first'}
+                  >
+                    <Smartphone className="w-4 h-4" aria-hidden="true" />
+                    Connect Phone Camera
+                  </button>
                 </>
               )}
 
@@ -272,31 +345,30 @@ export default function MonitoringPage() {
             </div>
           )}
 
-          {/* Camera View */}
+          {/* Camera View — every session renders inside its own camera's
+              grid cell / detail view, never in a separate area. */}
           <div className="flex-1 overflow-auto p-6 [scrollbar-gutter:stable]">
             {viewMode === 'grid' ? (
               <div className="space-y-8">
-                {sessions.length > 0 && (
+                <CameraGrid
+                  selectedZone={selectedZone}
+                  onCameraSelect={handleCameraSelect}
+                  onStopSession={stopSession}
+                  visibleClasses={visibleClasses}
+                />
+                {unassignedSessions.length > 0 && (
                   <div>
                     <p className="text-sm font-semibold uppercase tracking-wide text-text-muted mb-4">
-                      Live Detection Sessions
+                      Unassigned Sessions
                     </p>
-                    <LiveSessionsGrid sessions={sessions} onStop={stopSession} visibleClasses={visibleClasses} />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                      {unassignedSessions.map(s => (
+                        <SessionCard key={s.id} session={s} onStop={stopSession} visibleClasses={visibleClasses} />
+                      ))}
+                    </div>
                   </div>
                 )}
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-wide text-text-muted mb-4">Camera Grid</p>
-                  <CameraGrid selectedZone={selectedZone} onCameraSelect={handleCameraSelect} />
-                </div>
               </div>
-            ) : sessions.length > 0 ? (
-              <LiveSessionDetail
-                sessions={sessions}
-                selectedId={selectedSessionId ?? sessions[0].id}
-                onSelect={setSelectedSessionId}
-                onStop={stopSession}
-                visibleClasses={visibleClasses}
-              />
             ) : selectedCamera ? (
               <CameraDetailPanel
                 camera={selectedCamera}
@@ -304,6 +376,7 @@ export default function MonitoringPage() {
                 onCameraChange={handleCameraSelect}
                 mode="full"
                 visibleClasses={visibleClasses}
+                onStopSession={stopSession}
               />
             ) : (
               <div className="flex flex-col items-center justify-center h-full gap-4 text-text-muted">
@@ -316,6 +389,23 @@ export default function MonitoringPage() {
             )}
           </div>
         </div>
+
+        <CameraSlotPicker
+          open={pickerOpen}
+          onClose={handlePickerClose}
+          onSelect={handleCameraPicked}
+          title={
+            pendingWebcam ? 'Assign webcam to a camera'
+              : pendingRtspUrl ? 'Assign phone camera to a camera'
+              : 'Assign video to a camera'
+          }
+        />
+
+        <RtspConnectDialog
+          open={rtspDialogOpen}
+          onClose={() => setRtspDialogOpen(false)}
+          onConnect={handleRtspConnect}
+        />
 
         {/* ── Right Side Panel ──────────────────────────── */}
         <div className="w-96 border-l border-border-soft flex flex-col bg-panel shrink-0">

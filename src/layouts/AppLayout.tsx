@@ -10,7 +10,7 @@ import { useWsStore } from '../lib/websocket/wsStore';
 import { useNotificationStore } from '../lib/notifications/notificationStore';
 import { useAlertStore } from '../lib/alerts/alertStore';
 import { useWebSocket } from '../lib/websocket/useWebSocket';
-import { startEscalationInterval, stopEscalationInterval } from '../lib/alerts/alertStore';
+import { startEscalationInterval, stopEscalationInterval, startAlertPolling, stopAlertPolling } from '../lib/alerts/alertStore';
 import { ROUTE_PERMISSIONS } from '../constants/permissions';
 import { ROUTES } from '../constants/routes';
 import { ROLE_LABELS, ROLE_BADGE_COLOR } from '../constants/roles';
@@ -216,6 +216,7 @@ export default function AppLayout() {
 
   useWebSocket();
   useEffect(() => { startEscalationInterval(() => {}); return () => stopEscalationInterval(); }, []);
+  useEffect(() => { startAlertPolling(); return () => stopAlertPolling(); }, []);
 
   // Close profile on outside click
   useEffect(() => {

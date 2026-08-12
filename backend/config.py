@@ -47,6 +47,15 @@ LOOP_VIDEO: bool = _bool("PPE_LOOP_VIDEO", True)
 PACE_TO_SOURCE_FPS: bool = _bool("PPE_PACE_TO_SOURCE_FPS", True)
 FALLBACK_FPS: float = _float("PPE_FALLBACK_FPS", 25.0)
 
+# ── RTSP live sources (phone/IP cameras) ───────────────────────────────────────
+# Seconds to wait before retrying a dropped/failed RTSP connection — phone
+# RTSP-server apps commonly drop the stream on screen lock or app switch.
+RTSP_RECONNECT_DELAY_SECONDS: float = _float("PPE_RTSP_RECONNECT_DELAY_SECONDS", 2.0)
+# 0 = retry forever (the session only ends when the client disconnects the
+# WebSocket or DELETE's it — matches "a camera should keep trying").
+_rtsp_max_attempts = _int("PPE_RTSP_MAX_RECONNECT_ATTEMPTS", 0)
+RTSP_MAX_RECONNECT_ATTEMPTS: int | None = _rtsp_max_attempts or None
+
 # ── Compliance — global overlap threshold (legacy / fallback) ─────────────────
 OVERLAP_THRESHOLD: float = _float("PPE_OVERLAP_THRESHOLD", 0.10)
 

@@ -13,6 +13,9 @@ interface SessionHandle {
   ws?: WebSocket;
   stream?: MediaStream;
   captureTimer?: number;
+  /** Backend's own video_id (distinct from the frontend session id) — needed
+   * to call DELETE /api/videos/{video_id} on removal. Video sessions only. */
+  videoId?: string;
 }
 
 function teardown(handle: SessionHandle): void {
@@ -23,13 +26,21 @@ function teardown(handle: SessionHandle): void {
   } catch {
     // already closed
   }
+  if (handle.videoId) {
+    // Cancel inference and delete the uploaded file server-side immediately
+    // — "Remove" — rather than relying on the server noticing the closed
+    // socket on its next send attempt. 404s if the file is already gone
+    // (e.g. the video finished normally and the backend already cleaned up
+    // itself) are expected and harmless.
+    fetch(`/api/videos/${handle.videoId}`, { method: "DELETE" }).catch(() => {});
+  }
 }
 
 /**
  * Manages any number of concurrent detection sessions — multiple uploaded
- * videos plus (at most) one browser-webcam session — each with its own
- * WebSocket connection. Every session writes its frames into DetectionStore
- * under its own id, so they render independently (e.g. one card per session
+ * videos, multiple RTSP streams, plus (at most) one browser-webcam session —
+ * each with its own WebSocket connection. Every session writes its frames
+ * into DetectionStore under its own id, so they render independently (e.g. one card per session
  * in Grid View) instead of one session overwriting another.
  *
  * Each `start*Session` registers its `SessionHandle` in `handlesRef`
@@ -67,26 +78,31 @@ export function useLiveSessions() {
     removeAllSessions();
   }, [removeAllSessions]);
 
-  /** Upload a video file and start an independent detection session for it. Returns its session id. */
-  const startVideoSession = useCallback(async (file: File): Promise<string> => {
+  /** Upload a video file and start an independent detection session for it,
+   * bound to `cameraId` (a camera slot from the picker — see
+   * CameraSlotPicker) so the compliance engine applies that camera's zone
+   * policy. Returns its session id. */
+  const startVideoSession = useCallback(async (file: File, cameraId?: string): Promise<string> => {
     const id = `video-${crypto.randomUUID()}`;
     const handle: SessionHandle = {};
     handlesRef.current.set(id, handle);
     const isCurrent = () => handlesRef.current.get(id) === handle;
 
     upsertSession(id, () => ({
-      id, kind: "video", name: file.name, status: "uploading",
+      id, kind: "video", name: file.name, status: "uploading", cameraId,
       detections: [], severity: "info", violations: [], frameIndex: 0,
     }));
 
     try {
       const form = new FormData();
       form.append("file", file);
+      if (cameraId) form.append("camera_id", cameraId);
       const res = await fetch("/api/videos/upload", { method: "POST", body: form });
       if (!isCurrent()) return id; // stopped while uploading
       if (!res.ok) throw new Error(`Upload failed (${res.status})`);
       const { video_id } = (await res.json()) as { video_id: string };
       if (!isCurrent()) return id; // stopped while parsing the response
+      handle.videoId = video_id;
 
       upsertSession(id, (prev) => ({ ...prev!, status: "connecting" }));
       const proto = window.location.protocol === "https:" ? "wss" : "ws";
@@ -122,8 +138,11 @@ export function useLiveSessions() {
     return id;
   }, [upsertSession, stopSession]);
 
-  /** Capture the browser's own webcam and stream frames to the backend for inference. Returns its session id. */
-  const startWebcamSession = useCallback(async (): Promise<string> => {
+  /** Capture the browser's own webcam and stream frames to the backend for
+   * inference, bound to `cameraId` (a camera slot — see CameraSlotPicker) so
+   * the compliance engine applies that camera's zone policy. Returns its
+   * session id. */
+  const startWebcamSession = useCallback(async (cameraId?: string): Promise<string> => {
     stopSession(WEBCAM_SESSION_ID); // supersede whatever's currently there — real session or a racing in-flight attempt
     const id = WEBCAM_SESSION_ID;
     const handle: SessionHandle = {};
@@ -131,7 +150,7 @@ export function useLiveSessions() {
     const isCurrent = () => handlesRef.current.get(id) === handle;
 
     upsertSession(id, () => ({
-      id, kind: "webcam", name: "Browser Webcam", status: "connecting",
+      id, kind: "webcam", name: "Browser Webcam", status: "connecting", cameraId,
       detections: [], severity: "info", violations: [], frameIndex: 0,
     }));
 
@@ -165,7 +184,8 @@ export function useLiveSessions() {
       if (!ctx) throw new Error("Canvas 2D context unavailable");
 
       const proto = window.location.protocol === "https:" ? "wss" : "ws";
-      const ws = new WebSocket(`${proto}://${window.location.host}/ws/detect/live`);
+      const query = cameraId ? `?camera_id=${encodeURIComponent(cameraId)}` : "";
+      const ws = new WebSocket(`${proto}://${window.location.host}/ws/detect/live${query}`);
       handle.ws = ws;
 
       let sending = false;
@@ -212,6 +232,66 @@ export function useLiveSessions() {
     return id;
   }, [upsertSession, stopSession]);
 
+  /** Connect to a live RTSP stream (an IP camera, or a phone running an
+   * RTSP-server app on the same network) via the backend's /ws/detect/rtsp,
+   * bound to `cameraId` (a camera slot — see CameraSlotPicker) so the
+   * compliance engine applies that camera's zone policy. The backend itself
+   * owns reconnect-on-drop (RTSPSource in frame_source.py), so unlike the
+   * webcam this doesn't need any client-side capture loop — frames arrive
+   * as jpeg over the WebSocket exactly like an uploaded video. Returns its
+   * session id. */
+  const startRtspSession = useCallback(async (url: string, cameraId?: string): Promise<string> => {
+    const id = `rtsp-${crypto.randomUUID()}`;
+    const handle: SessionHandle = {};
+    handlesRef.current.set(id, handle);
+    const isCurrent = () => handlesRef.current.get(id) === handle;
+
+    upsertSession(id, () => ({
+      id, kind: "rtsp", name: url, status: "connecting", cameraId,
+      detections: [], severity: "info", violations: [], frameIndex: 0,
+    }));
+
+    try {
+      if (!url.startsWith("rtsp://")) throw new Error("URL must start with rtsp://");
+
+      const proto = window.location.protocol === "https:" ? "wss" : "ws";
+      const params = new URLSearchParams({ url });
+      if (cameraId) params.set("camera_id", cameraId);
+      const ws = new WebSocket(`${proto}://${window.location.host}/ws/detect/rtsp?${params}`);
+      handle.ws = ws;
+
+      ws.onopen = () => { if (isCurrent()) upsertSession(id, (prev) => ({ ...prev!, status: "streaming" })); };
+      ws.onmessage = (ev) => {
+        if (!isCurrent()) return;
+        const data = JSON.parse(ev.data) as FrameMessage | { type: "done" | "error"; message?: string };
+        if (data.type === "frame") {
+          const frame = data as FrameMessage;
+          upsertSession(id, (prev) => ({
+            ...prev!,
+            status:     "streaming",
+            jpeg:       frame.jpeg,
+            detections: frame.detections,
+            severity:   frame.severity,
+            violations: frame.violations,
+            frameIndex: frame.frameIndex,
+          }));
+        } else if (data.type === "done") {
+          upsertSession(id, (prev) => ({ ...prev!, status: "done" }));
+        } else if (data.type === "error") {
+          upsertSession(id, (prev) => ({ ...prev!, status: "error" }));
+        }
+      };
+      ws.onerror = () => { if (isCurrent()) upsertSession(id, (prev) => ({ ...prev!, status: "error" })); };
+      ws.onclose = () => stopSession(id, handle);
+    } catch {
+      if (isCurrent()) {
+        upsertSession(id, (prev) => ({ ...prev!, status: "error" }));
+        handlesRef.current.delete(id);
+      }
+    }
+    return id;
+  }, [upsertSession, stopSession]);
+
   useEffect(() => {
     const handles = handlesRef.current;
     return () => {
@@ -220,7 +300,7 @@ export function useLiveSessions() {
     };
   }, []);
 
-  return { startVideoSession, startWebcamSession, stopSession, stopAllSessions };
+  return { startVideoSession, startWebcamSession, startRtspSession, stopSession, stopAllSessions };
 }
 
 export type { LiveSession };

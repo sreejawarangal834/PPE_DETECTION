@@ -61,13 +61,6 @@ export default function CameraCard({ camera: initial, onClick }: CameraCardProps
               <Users className="w-4 h-4" aria-hidden="true" />
               {cam.workersDetected}
             </div>
-            {/* Simulated bounding boxes with animation */}
-            {hasViolations && (
-              <div className="absolute border-2 border-status-danger rounded-lg opacity-90 animate-pulse"
-                style={{ left:'35%', top:'20%', width:'18%', height:'55%' }} />
-            )}
-            <div className="absolute border-2 border-accent rounded-lg opacity-70 transition-all duration-500 hover:opacity-100"
-              style={{ left:'57%', top:'30%', width:'15%', height:'45%' }} />
           </>
         )}
       </div>

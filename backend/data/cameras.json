@@ -1,0 +1,32 @@
+[
+  {
+    "id": "CAM-01",
+    "name": "Assembly Line \u2014 North",
+    "zoneId": "z-assembly"
+  },
+  {
+    "id": "CAM-02",
+    "name": "Welding Bay",
+    "zoneId": "z-welding"
+  },
+  {
+    "id": "CAM-03",
+    "name": "Storage \u2014 East Gate",
+    "zoneId": "z-storage"
+  },
+  {
+    "id": "CAM-04",
+    "name": "Chemical Handling",
+    "zoneId": "z-chemical"
+  },
+  {
+    "id": "CAM-05",
+    "name": "Loading Bay \u2014 Main",
+    "zoneId": "z-loading"
+  },
+  {
+    "id": "CAM-06",
+    "name": "Maintenance Workshop",
+    "zoneId": "z-maintenance"
+  }
+]
