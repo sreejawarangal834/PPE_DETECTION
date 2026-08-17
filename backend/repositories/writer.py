@@ -51,6 +51,7 @@ import asyncpg
 import numpy as np
 
 from config import DB_WRITE_QUEUE_SIZE
+from notifications import notifier
 from reid import resolver as reid_resolver
 from repositories.cameras import get_camera_id, set_status as _set_camera_status
 from repositories.persons import get_or_create_by_track_label
@@ -192,6 +193,14 @@ async def _persist_violation(conn: asyncpg.Connection, event: dict[str, Any]) ->
         )
 
         await conn.execute("UPDATE compliance_events SET alert_id = $1 WHERE id = $2", alert_uuid, event_id)
+
+        # Phase 4: fire in-app WS + (severity/cooldown-gated) email, every attempt logged to
+        # notification_log regardless of outcome. Never allowed to raise into this transaction
+        # — see notifier.notify_violation's own docstring.
+        await notifier.notify_violation(
+            conn, alert_uuid, label, zone_name, event["ppe_type"], alert_severity,
+            event.get("camera_code"), f"{label} missing {event['ppe_type']} in {zone_name}",
+        )
 
 
 async def _persist_reid_resolve(conn: asyncpg.Connection, event: dict[str, Any]) -> None:

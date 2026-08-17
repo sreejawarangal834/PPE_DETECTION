@@ -30,20 +30,28 @@ import cv2
 import numpy as np
 import torch
 from fastapi import (
-    FastAPI, File, Form, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect,
+    Depends, FastAPI, File, Form, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from ultralytics import YOLO
 
 import db
+import escalation
+from auth import security as auth_security
+from auth.dependencies import get_current_user, require_role
 from repositories import alerts, cameras, zones
+from repositories import audit
+from repositories import audit_query
 from repositories import compliance as session_repo
 from repositories import persons as persons_repo
 from repositories import reports as reports_repo
+from repositories import users as users_repo
 from repositories import workers as workers_repo
 from repositories import writer as write_queue
 from compliance import evaluate_compliance, new_session_state, _iou, Box
 from frame_source import FrameSource, FileVideoSource, RTSPSource
+from notifications import notifier
+from config import JWT_REFRESH_TTL_SECONDS
 from reid import resolver as reid_resolver
 from reid.embedder import OsnetEmbedder, get_embedder
 from config import (
@@ -209,6 +217,7 @@ def _reid_process_frame(
 
 # ─── FastAPI app ──────────────────────────────────────────────────────────────
 _writer_task: asyncio.Task | None = None
+_escalation_task: asyncio.Task | None = None
 
 
 @asynccontextmanager
@@ -217,20 +226,22 @@ async def lifespan(app: FastAPI):
     task (see repositories/writer.py) before accepting traffic; tear both down
     on shutdown. write_queue.init() must run on THIS event loop, since it's
     what submit_threadsafe() later hands work back to from other threads."""
-    global _writer_task
+    global _writer_task, _escalation_task
     pool = await db.connect()
     write_queue.init(asyncio.get_running_loop())
     _writer_task = asyncio.create_task(write_queue.writer_task(pool))
-    log.info("Compliance writer task started")
+    _escalation_task = asyncio.create_task(escalation.escalation_task())
+    log.info("Compliance writer + escalation tasks started")
     try:
         yield
     finally:
-        if _writer_task is not None:
-            _writer_task.cancel()
-            try:
-                await _writer_task
-            except asyncio.CancelledError:
-                pass
+        for task in (_writer_task, _escalation_task):
+            if task is not None:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
         await db.disconnect()
 
 
@@ -509,84 +520,245 @@ def _find_upload(video_id: str) -> Path | None:
 # ─── Zones / cameras / alerts (zone compliance engine config + persistence) ──
 
 @app.get("/api/zones")
-async def list_zones_endpoint():
+async def list_zones_endpoint(user: dict = Depends(get_current_user)):
     return await zones.list_zones()
 
 
 @app.post("/api/zones")
-async def create_zone_endpoint(payload: dict):
+async def create_zone_endpoint(payload: dict, user: dict = Depends(require_role("admin"))):
     try:
-        return await zones.create_zone(payload)
+        result = await zones.create_zone(payload)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
+    await audit.write("zone_create", "zone", result["id"], user_id=user["id"], metadata={"name": result["name"]})
+    return result
 
 
 @app.put("/api/zones/{zone_id}")
-async def update_zone_endpoint(zone_id: str, payload: dict):
+async def update_zone_endpoint(zone_id: str, payload: dict, user: dict = Depends(require_role("admin"))):
     updated = await zones.update_zone(zone_id, payload)
     if updated is None:
         raise HTTPException(status_code=404, detail=f"Zone {zone_id} not found")
+    await audit.write("zone_update", "zone", zone_id, user_id=user["id"], metadata=payload)
     return updated
 
 
 @app.delete("/api/zones/{zone_id}")
-async def delete_zone_endpoint(zone_id: str):
+async def delete_zone_endpoint(zone_id: str, user: dict = Depends(require_role("admin"))):
     if not await zones.delete_zone(zone_id):
         raise HTTPException(status_code=404, detail=f"Zone {zone_id} not found")
+    await audit.write("zone_delete", "zone", zone_id, user_id=user["id"])
     return {"status": "deleted"}
 
 
 @app.get("/api/cameras")
-async def list_cameras_endpoint():
-    return await cameras.list_cameras()
+async def list_cameras_endpoint(user: dict = Depends(get_current_user)):
+    cams = await cameras.list_cameras()
+    # Zone-scoping for `operator` (SCHEMA_DEEP_DIVE.md §2): derive camera visibility from
+    # `user_zones` — the same mechanism that scopes zones, not a second competing one.
+    if user["role"] == "operator":
+        allowed = set(await users_repo.get_zone_slugs(user["id"]))
+        cams = [c for c in cams if c["zoneId"] in allowed]
+    return cams
 
 
 @app.post("/api/cameras")
-async def create_camera_endpoint(payload: dict):
-    return await cameras.create_camera(payload)
+async def create_camera_endpoint(payload: dict, user: dict = Depends(require_role("admin"))):
+    result = await cameras.create_camera(payload)
+    await audit.write("camera_create", "camera", result["id"], user_id=user["id"], metadata={"name": result["name"]})
+    return result
 
 
 @app.put("/api/cameras/{camera_id}")
-async def update_camera_endpoint(camera_id: str, payload: dict):
+async def update_camera_endpoint(camera_id: str, payload: dict, user: dict = Depends(require_role("admin"))):
     updated = await cameras.update_camera(camera_id, payload)
     if updated is None:
         raise HTTPException(status_code=404, detail=f"Camera {camera_id} not found")
+    await audit.write("camera_update", "camera", camera_id, user_id=user["id"], metadata=payload)
     return updated
 
 
 @app.delete("/api/cameras/{camera_id}")
-async def delete_camera_endpoint(camera_id: str):
+async def delete_camera_endpoint(camera_id: str, user: dict = Depends(require_role("admin"))):
     if not await cameras.delete_camera(camera_id):
         raise HTTPException(status_code=404, detail=f"Camera {camera_id} not found")
+    await audit.write("camera_delete", "camera", camera_id, user_id=user["id"])
     return {"status": "deleted"}
 
 
 @app.get("/api/alerts")
 async def list_alerts_endpoint(
+    user: dict = Depends(get_current_user),
     severity: list[str] | None = Query(None),
     zone: list[str] | None = Query(None),
     status: list[str] | None = Query(None),
     search: str | None = None,
 ):
+    # Same zone-scoping as /api/cameras — an operator only sees alerts for zones assigned
+    # to them via user_zones, pushed into the query itself (not filtered after the fact —
+    # SCHEMA_DEEP_DIVE.md §2/§3: post-filtering in application code breaks pagination totals
+    # and can leak zone-existence information through row counts).
+    if user["role"] == "operator":
+        allowed = await users_repo.get_zone_slugs(user["id"])
+        zone = [z for z in zone if z in allowed] if zone else allowed
     return await alerts.list_alerts(severities=severity, zones=zone, statuses=status, search=search)
 
 
 @app.post("/api/alerts/{alert_id}/acknowledge")
-async def acknowledge_alert_endpoint(alert_id: str, payload: dict):
-    # actor_user_id is None until Phase 4 auth wires a real session user in;
-    # the actor NAME still gets recorded so the UI shows who acted.
-    updated = await alerts.acknowledge(alert_id, None, payload.get("actor", "Unknown"))
+async def acknowledge_alert_endpoint(alert_id: str, payload: dict, user: dict = Depends(require_role("admin", "operator"))):
+    # SCHEMA_DEEP_DIVE.md §2: permissions aren't a clean rank hierarchy across the 4 roles —
+    # `operator` can acknowledge/resolve alerts, `manager` (which otherwise outranks operator
+    # on reports access) cannot. Hence an explicit role set here, not a rank comparison.
+    updated = await alerts.acknowledge(alert_id, user["id"], payload.get("actor", "Unknown"))
     if updated is None:
         raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found")
+    await audit.write("alert_acknowledge", "alert", alert_id, user_id=user["id"])
     return updated
 
 
 @app.post("/api/alerts/{alert_id}/resolve")
-async def resolve_alert_endpoint(alert_id: str, payload: dict):
-    updated = await alerts.resolve(alert_id, None, payload.get("actor", "Unknown"), payload.get("notes", ""))
+async def resolve_alert_endpoint(alert_id: str, payload: dict, user: dict = Depends(require_role("admin", "operator"))):
+    updated = await alerts.resolve(alert_id, user["id"], payload.get("actor", "Unknown"), payload.get("notes", ""))
     if updated is None:
         raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found")
+    await audit.write("alert_resolve", "alert", alert_id, user_id=user["id"], metadata={"notes": payload.get("notes", "")})
     return updated
+
+
+# ─── Auth (Phase 4) ───────────────────────────────────────────────────────────
+# Real argon2id + JWT access/opaque-refresh-token auth, replacing the plaintext seed
+# users that used to live in src/api/authApi.ts (deleted — see that file's history).
+# The frontend's route guards are UX only; every mutating endpoint above independently
+# re-checks via require_role(), which is the actual security boundary (SCHEMA_DEEP_DIVE.md §2).
+
+async def _user_payload(user_row: dict) -> dict:
+    zone_slugs = await users_repo.get_zone_slugs(str(user_row["id"]))
+    return {
+        "id": str(user_row["id"]), "name": user_row["name"], "email": user_row["email"],
+        "role": user_row["role"], "assignedZones": zone_slugs,
+    }
+
+
+@app.post("/api/auth/login")
+async def login_endpoint(payload: dict):
+    email = payload.get("email") or payload.get("username")
+    password = payload.get("password")
+    if not email or not password:
+        raise HTTPException(status_code=400, detail="email and password are required")
+    user = await users_repo.get_by_email(email)
+    # Constant-shape failure path: verify against a real hash either way so a timing
+    # difference doesn't reveal whether the email exists (verify_password itself already
+    # runs off the event loop via asyncio.to_thread — see auth/security.py).
+    ok = await auth_security.verify_password(user["password_hash"], password) if user else False
+    if not user or not ok:
+        await audit.write("login_failed", "user", email)
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    access = auth_security.create_access_token(str(user["id"]), user["role"], user["email"])
+    refresh = auth_security.new_refresh_token()
+    await users_repo.create_session(str(user["id"]), auth_security.hash_refresh_token(refresh), JWT_REFRESH_TTL_SECONDS)
+    await audit.write("login", "user", str(user["id"]), user_id=user["id"])
+    return {"accessToken": access, "refreshToken": refresh, "user": await _user_payload(user)}
+
+
+@app.post("/api/auth/refresh")
+async def refresh_endpoint(payload: dict):
+    token = payload.get("refreshToken")
+    if not token:
+        raise HTTPException(status_code=400, detail="refreshToken is required")
+    token_hash = auth_security.hash_refresh_token(token)
+    session = await users_repo.find_session_by_hash(token_hash)
+    if session is None:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    if session["revoked_at"] is not None:
+        # Reuse of an already-rotated refresh token == theft (SCHEMA_DEEP_DIVE.md §2) —
+        # revoke the user's ENTIRE session chain, not just this one token.
+        await users_repo.revoke_all_sessions_for_user(session["user_id"])
+        await audit.write(
+            "refresh_token_reuse_detected", "user", str(session["user_id"]), user_id=session["user_id"],
+        )
+        raise HTTPException(status_code=401, detail="Refresh token reuse detected — all sessions revoked")
+
+    if users_repo.session_expired(session):
+        raise HTTPException(status_code=401, detail="Refresh token expired")
+
+    user = await users_repo.get_by_id(str(session["user_id"]))
+    if user is None:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    new_refresh = auth_security.new_refresh_token()
+    new_session_id = await users_repo.create_session(
+        str(user["id"]), auth_security.hash_refresh_token(new_refresh), JWT_REFRESH_TTL_SECONDS,
+    )
+    await users_repo.revoke_session(session["id"], replaced_by=new_session_id)
+    access = auth_security.create_access_token(str(user["id"]), user["role"], user["email"])
+    return {"accessToken": access, "refreshToken": new_refresh}
+
+
+@app.post("/api/auth/logout")
+async def logout_endpoint(payload: dict, user: dict = Depends(get_current_user)):
+    token = payload.get("refreshToken")
+    if token:
+        session = await users_repo.find_session_by_hash(auth_security.hash_refresh_token(token))
+        if session is not None:
+            await users_repo.revoke_session(session["id"])
+    await audit.write("logout", "user", user["id"], user_id=user["id"])
+    return {"status": "ok"}
+
+
+@app.get("/api/auth/me")
+async def me_endpoint(user: dict = Depends(get_current_user)):
+    full = await users_repo.get_by_id(user["id"])
+    if full is None:
+        raise HTTPException(status_code=401, detail="User not found")
+    return await _user_payload(full)
+
+
+# ─── Admin: users (Phase 4 — minimal, backs UserManagementPage) ─────────────
+
+@app.get("/api/admin/users")
+async def list_users_endpoint(user: dict = Depends(require_role("admin"))):
+    return await users_repo.list_users()
+
+
+@app.post("/api/admin/users")
+async def create_user_endpoint(payload: dict, user: dict = Depends(require_role("admin"))):
+    if not payload.get("email") or not payload.get("password") or not payload.get("name"):
+        raise HTTPException(status_code=400, detail="name, email and password are required")
+    role = payload.get("role", "viewer")
+    if role not in ("admin", "manager", "operator", "viewer"):
+        raise HTTPException(status_code=400, detail=f"Invalid role: {role}")
+    existing = await users_repo.get_by_email(payload["email"])
+    if existing is not None:
+        raise HTTPException(status_code=409, detail="A user with that email already exists")
+    password_hash = await auth_security.hash_password(payload["password"])
+    created = await users_repo.create_user(
+        payload["name"], payload["email"], password_hash, role, payload.get("assignedZones"),
+    )
+    await audit.write("user_create", "user", created["id"], user_id=user["id"], metadata={"role": role})
+    return created
+
+
+@app.put("/api/admin/users/{target_user_id}")
+async def update_user_endpoint(target_user_id: str, payload: dict, user: dict = Depends(require_role("admin"))):
+    role = payload.get("role")
+    if role is not None and role not in ("admin", "manager", "operator", "viewer"):
+        raise HTTPException(status_code=400, detail=f"Invalid role: {role}")
+    updated = await users_repo.update_user(target_user_id, payload.get("name"), role, payload.get("assignedZones"))
+    if updated is None:
+        raise HTTPException(status_code=404, detail=f"User {target_user_id} not found")
+    await audit.write("user_update", "user", target_user_id, user_id=user["id"], metadata=payload)
+    return updated
+
+
+@app.get("/api/admin/audit-log")
+async def audit_log_endpoint(
+    user: dict = Depends(require_role("admin")),
+    actor: str | None = None, actionType: str | None = None, search: str | None = None,
+    page: int = Query(1), pageSize: int = Query(50),
+):
+    return await audit_query.query(actor_search=actor, action_type=actionType, search=search, page=page, page_size=pageSize)
 
 
 # ─── Person-wise compliance reporting (Phase 3) ──────────────────────────────
@@ -664,6 +836,27 @@ async def get_worker_zone_log_endpoint(
     worker_id: str, zone: str | None = None, page: int = Query(1), pageSize: int = Query(25),
 ):
     return await workers_repo.get_worker_zone_log(worker_id, zone=zone, page=page, page_size=pageSize)
+
+
+# ─── In-app alert delivery (Phase 4) ──────────────────────────────────────────
+# Retires src/lib/alerts/alertStore.ts's 5s GET /api/alerts poll — new alerts now push over
+# this socket the moment repositories/writer.py's notifier.notify_violation() fires.
+
+@app.websocket("/ws/alerts")
+async def alerts_ws(websocket: WebSocket):
+    await websocket.accept()
+    notifier.register_ws_client(websocket)
+    try:
+        while True:
+            # No client->server messages expected; just keep the connection open and
+            # notice a disconnect (receive() raises WebSocketDisconnect when the client goes away).
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        pass
+    except Exception:
+        log.exception("[/ws/alerts] connection error")
+    finally:
+        notifier.unregister_ws_client(websocket)
 
 
 # ─── Detection WebSocket ──────────────────────────────────────────────────────
