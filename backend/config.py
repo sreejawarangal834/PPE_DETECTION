@@ -137,3 +137,24 @@ MIN_BODY_PART_AREA: float = _float("PPE_MIN_BODY_PART_AREA", 0.001)
 
 # ── Debug (Req 7) ──────────────────────────────────────────────────────────────
 DEBUG_ASSOCIATION: bool = _bool("PPE_DEBUG_ASSOCIATION", False)
+
+# ── Postgres persistence (compliance pipeline) ─────────────────────────────────
+DATABASE_URL: str = os.environ.get(
+    "PPE_DATABASE_URL", "postgresql://ppe:ppe@localhost:5432/ppe_compliance",
+)
+# Bounded queue between the request/inference event-loop callers and the single
+# DB writer task (see repositories/writer.py) — sized generously since a DB
+# stall should degrade to dropped events, not backpressure on inference.
+DB_WRITE_QUEUE_SIZE: int = _int("PPE_DB_WRITE_QUEUE_SIZE", 2000)
+
+# ── Auth (Phase 4) ──────────────────────────────────────────────────────────────
+JWT_SECRET: str = os.environ.get("PPE_JWT_SECRET", "dev-only-insecure-secret-change-me")
+JWT_ACCESS_TTL_SECONDS: int = _int("PPE_JWT_ACCESS_TTL_SECONDS", 15 * 60)
+JWT_REFRESH_TTL_SECONDS: int = _int("PPE_JWT_REFRESH_TTL_SECONDS", 7 * 24 * 3600)
+ADMIN_BOOTSTRAP_EMAIL: str = os.environ.get("PPE_ADMIN_BOOTSTRAP_EMAIL", "admin@innovision.com")
+ADMIN_BOOTSTRAP_PASSWORD: str | None = os.environ.get("PPE_ADMIN_BOOTSTRAP_PASSWORD")
+
+# ── SMTP (Phase 4) ───────────────────────────────────────────────────────────────
+SMTP_HOST: str = os.environ.get("PPE_SMTP_HOST", "localhost")
+SMTP_PORT: int = _int("PPE_SMTP_PORT", 1025)
+SMTP_FROM: str = os.environ.get("PPE_SMTP_FROM", "alerts@ppe-compliance.local")

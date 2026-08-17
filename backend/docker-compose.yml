@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16        # same image the platform standardises on
+    environment:
+      POSTGRES_DB: ppe_compliance
+      POSTGRES_USER: ppe
+      POSTGRES_PASSWORD: ppe
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ppe -d ppe_compliance"]
+      interval: 5s
+      retries: 10
+  mailhog:
+    image: mailhog/mailhog               # SMTP :1025, web UI :8025
+    ports: ["1025:1025", "8025:8025"]
+volumes:
+  pgdata: {}

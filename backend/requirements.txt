@@ -6,3 +6,14 @@ python-multipart>=0.0.9
 websockets>=12.0
 torch>=2.2.0          # CUDA auto-detection; install the GPU build from pytorch.org for CUDA support
 numpy>=1.26.0
+
+# ── Compliance pipeline (Postgres persistence, auth, alerts) ──────────────────
+asyncpg>=0.29.0
+alembic>=1.13.0
+sqlalchemy>=2.0.0     # alembic needs it for migration DDL helpers; app itself uses raw asyncpg SQL
+greenlet>=3.0.0       # required by sqlalchemy's async engine (used only by alembic's env.py)
+argon2-cffi>=23.1.0
+pyjwt>=2.9.0
+aiosmtplib>=3.0.0
+pydantic-settings>=2.5.0
+

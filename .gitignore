@@ -33,3 +33,11 @@ node_modules/
 Thumbs.db
 
 !model/best.onnx
+
+# Compliance pipeline runtime artifacts (not source)
+backend/uploads/
+backend/snapshots/
+backend/reid/weights/
+backend/*.log
+*.log
+
