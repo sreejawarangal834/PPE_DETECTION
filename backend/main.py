@@ -40,6 +40,8 @@ from repositories import compliance as session_repo
 from repositories import writer as write_queue
 from compliance import evaluate_compliance, new_session_state, _iou, Box
 from frame_source import FrameSource, FileVideoSource, RTSPSource
+from reid import resolver as reid_resolver
+from reid.embedder import OsnetEmbedder, get_embedder
 from config import (
     CONF_THRESHOLD, IOU_THRESHOLD, IMAGE_SIZE,
     JPEG_QUALITY, MAX_SEND_WIDTH,
@@ -141,6 +143,65 @@ def _release_model(model: YOLO) -> None:
 # per-session models each WebSocket connection creates for itself.
 _names_model = _new_model()
 log.info("Model loaded. Classes: %s", list(_names_model.names.values())[:10])
+
+# ─── Re-ID (Phase 2) ──────────────────────────────────────────────────────────
+# Unlike the per-session YOLO models, one OSNet instance is shared across every
+# concurrent session — it carries no persistent per-track state (see
+# reid/embedder.py's docstring), so sharing it is safe and avoids reloading
+# weights per session. Optional: a box with the weights file missing (or a
+# corrupt one) disables Re-ID rather than failing startup — Phase 1's
+# violation->Postgres->alert path has no dependency on this succeeding.
+_reid_torch_device = "cuda:0" if _device == 0 else _device
+REID_ENABLED = True
+_reid_embedder: OsnetEmbedder | None = None
+try:
+    _reid_embedder = get_embedder(device=_reid_torch_device)
+except Exception as exc:
+    log.warning("Re-ID disabled — could not load OSNet embedder: %s", exc)
+    REID_ENABLED = False
+
+
+def _reid_process_frame(
+    frame: np.ndarray,
+    detections: list[dict],
+    track_frame_counts: dict[int, int],
+    session_key: str,
+    loop_index: int,
+) -> list[dict]:
+    """Synchronous — call via asyncio.to_thread alongside/after inference (it does its own
+    GPU forward pass on _reid_embedder). For each person detection with a tracker id: ages
+    the track, quality-gates the crop (reid/embedder.py's crop_quality_gate — cheap, no GPU),
+    embeds crops that pass, and hands each embedding to the in-process aggregator
+    (reid/resolver.py's accumulate — also cheap, no I/O). Returns only the samples that just
+    crossed a resolve/re-verify threshold, i.e. almost always an empty list.
+    """
+    assert _reid_embedder is not None
+    h, w = frame.shape[:2]
+    now = time.monotonic()
+    ready: list[dict] = []
+    for d in detections:
+        if d.get("label") != "person":
+            continue
+        tid = d.get("_track_id")
+        if tid is None or tid < 0:
+            continue
+        track_frame_counts[tid] = track_frame_counts.get(tid, 0) + 1
+        passes, quality = _reid_embedder.crop_quality_gate(tuple(d["box"]), d["conf"], track_frame_counts[tid])
+        if not passes:
+            continue
+        x1, y1, x2, y2 = d["box"]
+        px1, py1 = max(int(x1 * w), 0), max(int(y1 * h), 0)
+        px2, py2 = min(int(x2 * w), w), min(int(y2 * h), h)
+        if px2 <= px1 or py2 <= py1:
+            continue
+        crop = frame[py1:py2, px1:px2]
+        embedding = _reid_embedder.embed_one(crop)
+        key = (session_key, loop_index, tid)
+        ready_flag, centroid, _is_reverify = reid_resolver.accumulate(key, now, embedding, quality)
+        if ready_flag and centroid is not None:
+            ready.append({"track_id": tid, "embedding": centroid.tolist(), "quality": quality})
+    return ready
+
 
 # ─── FastAPI app ──────────────────────────────────────────────────────────────
 _writer_task: asyncio.Task | None = None
@@ -545,6 +606,7 @@ async def detect_live_ws(websocket: WebSocket, camera_id: str | None = None):
     model = await asyncio.to_thread(_new_model)
     worker_states = new_session_state()
     ghost_cache   = _new_ghost_cache()
+    track_frame_counts: dict[int, int] = {}
 
     zone_id: str | None = None
     zone_name = ""
@@ -593,6 +655,15 @@ async def detect_live_ws(websocket: WebSocket, camera_id: str | None = None):
                     "severity": severity, "confidence": wv["confidence"],
                     "session_id": session_uuid, "loop_index": 0,
                 })
+            if REID_ENABLED and session_uuid is not None:
+                reid_ready = await asyncio.to_thread(
+                    _reid_process_frame, resized, detections, track_frame_counts, str(session_uuid), 0,
+                )
+                for r in reid_ready:
+                    write_queue.submit({
+                        "kind": "reid_resolve", "camera_code": camera_id or "unassigned",
+                        "session_id": session_uuid, "loop_index": 0, **r,
+                    })
             detections = _apply_ghost_boxes(detections, ghost_cache, now)
             public_detections = _strip_internal(detections)
 
@@ -629,6 +700,8 @@ async def detect_live_ws(websocket: WebSocket, camera_id: str | None = None):
             await session_repo.end_session(session_uuid, frame_idx)
         except Exception:
             log.exception("[%s] Failed to close detection_sessions row", session_id)
+        if session_uuid is not None:
+            reid_resolver.forget_session(str(session_uuid))
 
         elapsed   = max(time.monotonic() - session_start, 0.001)
         avg_fps   = frame_idx / elapsed
@@ -723,6 +796,7 @@ async def _run_detection_session(
     model = await asyncio.to_thread(_new_model)
     worker_states = new_session_state()
     ghost_cache   = _new_ghost_cache()
+    track_frame_counts: dict[int, int] = {}
 
     zone_id: str | None = None
     zone_name = ""
@@ -761,6 +835,7 @@ async def _run_detection_session(
         model.predictor = None
         worker_states = new_session_state()
         ghost_cache   = _new_ghost_cache()
+        track_frame_counts.clear()
         loop_index   += 1
     source.on_loop = _on_loop_restart
 
@@ -867,6 +942,16 @@ async def _run_detection_session(
                         "severity": severity, "confidence": wv["confidence"],
                         "session_id": session_uuid, "loop_index": loop_index,
                     })
+                if REID_ENABLED and session_uuid is not None:
+                    reid_ready = await asyncio.to_thread(
+                        _reid_process_frame, frame, detections, track_frame_counts,
+                        str(session_uuid), loop_index,
+                    )
+                    for r in reid_ready:
+                        write_queue.submit({
+                            "kind": "reid_resolve", "camera_code": camera_id or "unassigned",
+                            "session_id": session_uuid, "loop_index": loop_index, **r,
+                        })
                 detections = _apply_ghost_boxes(detections, ghost_cache, now)
                 public_detections = _strip_internal(detections)
 
@@ -955,6 +1040,8 @@ async def _run_detection_session(
             await session_repo.end_session(session_uuid, stats["frames_inferred"])
         except Exception:
             log.exception("[%s] Failed to close detection_sessions row", session_id)
+        if session_uuid is not None:
+            reid_resolver.forget_session(str(session_uuid))
 
         # ── Session statistics ─────────────────────────────────────
         elapsed   = max(time.monotonic() - stats["session_start"], 0.001)

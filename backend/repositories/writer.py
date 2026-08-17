@@ -48,8 +48,10 @@ from typing import Any
 from uuid import UUID
 
 import asyncpg
+import numpy as np
 
 from config import DB_WRITE_QUEUE_SIZE
+from reid import resolver as reid_resolver
 from repositories.cameras import get_camera_id, set_status as _set_camera_status
 from repositories.persons import get_or_create_by_track_label
 from repositories.zones import get_zone_id
@@ -105,6 +107,8 @@ async def writer_task(pool: asyncpg.Pool) -> None:
                     await _persist_violation(conn, event)
                 elif kind == "camera_status":
                     await _set_camera_status(event["camera_code"], event["status"])
+                elif kind == "reid_resolve":
+                    await _persist_reid_resolve(conn, event)
                 else:
                     log.warning("Unknown write-queue event kind: %r", kind)
         except Exception:
@@ -114,17 +118,26 @@ async def writer_task(pool: asyncpg.Pool) -> None:
 async def _persist_violation(conn: asyncpg.Connection, event: dict[str, Any]) -> None:
     """One newly-RAISED violation (a False->True transition in compliance.py's
     hysteresis, i.e. exactly one alert-worthy occurrence) -> one
-    compliance_events row + one alerts row, transactionally."""
+    compliance_events row + one alerts row, transactionally.
+
+    Person resolution: a track_segments row may already carry a Re-ID-resolved
+    person_id (Phase 2 — see reid/resolver.py, which upgrades this via a
+    separate "reid_resolve" event as soon as enough good crops accumulate).
+    The upsert below preserves that with COALESCE(existing, placeholder) and
+    RETURNS the actually-stored value, so a violation recorded before Re-ID
+    resolves still gets attributed to the right person once it does, and one
+    already resolved never gets silently overwritten by a fresh placeholder."""
     async with conn.transaction():
         camera_id = await get_camera_id(event.get("camera_code"), executor=conn)
         zone_id = await get_zone_id(event.get("zone_slug"), executor=conn)
-        person_id = await get_or_create_by_track_label(conn, event.get("track_id"))
+        placeholder_person_id = await get_or_create_by_track_label(conn, event.get("track_id"))
 
         track_segment_id = None
+        person_id = placeholder_person_id
         session_id: UUID | None = event.get("session_id")
         track_id = event.get("track_id")
         if session_id is not None and track_id is not None:
-            track_segment_id = await conn.fetchval(
+            ts_row = await conn.fetchrow(
                 """
                 INSERT INTO track_segments
                     (session_id, track_id, loop_index, person_id, first_frame_at, last_frame_at, frame_count)
@@ -133,10 +146,12 @@ async def _persist_violation(conn: asyncpg.Connection, event: dict[str, Any]) ->
                     SET last_frame_at = now(),
                         frame_count = track_segments.frame_count + 1,
                         person_id = COALESCE(track_segments.person_id, EXCLUDED.person_id)
-                RETURNING id
+                RETURNING id, person_id
                 """,
-                session_id, track_id, event.get("loop_index", 0), person_id,
+                session_id, track_id, event.get("loop_index", 0), placeholder_person_id,
             )
+            track_segment_id = ts_row["id"]
+            person_id = ts_row["person_id"] or placeholder_person_id
 
         severity = event.get("severity")
         alert_severity = severity if severity in ("low", "medium", "high", "critical") else "medium"
@@ -152,7 +167,7 @@ async def _persist_violation(conn: asyncpg.Connection, event: dict[str, Any]) ->
             person_id, track_segment_id, camera_id, zone_id, event["ppe_type"], confidence,
         )
 
-        label = f"W-{track_id}" if track_id is not None and track_id >= 0 else "W-unknown"
+        label = await conn.fetchval("SELECT label FROM persons WHERE id = $1", person_id) or "W-unknown"
         zone_name = event.get("zone_name") or "an unassigned zone"
         metadata = {
             "person_label": label,
@@ -177,3 +192,30 @@ async def _persist_violation(conn: asyncpg.Connection, event: dict[str, Any]) ->
         )
 
         await conn.execute("UPDATE compliance_events SET alert_id = $1 WHERE id = $2", alert_uuid, event_id)
+
+
+async def _persist_reid_resolve(conn: asyncpg.Connection, event: dict[str, Any]) -> None:
+    """Phase 2 (Re-ID): match/create a person for a track's aggregated embedding centroid
+    and upgrade that track_segment's person_id from the Phase-1 placeholder to the resolved
+    identity. See reid/resolver.py for the matching policy and why no advisory lock is needed
+    here despite the TOCTOU concern SCHEMA_DEEP_DIVE.md §1.7 raises for a naive version of
+    this (this IS the single serial writer that concern is about)."""
+    session_id: UUID = event["session_id"]
+    track_id: int = event["track_id"]
+    loop_index: int = event.get("loop_index", 0)
+    centroid = np.asarray(event["embedding"], dtype=np.float32)
+
+    camera_id = await get_camera_id(event.get("camera_code"), executor=conn)
+    track_segment_id = await conn.fetchval(
+        "SELECT id FROM track_segments WHERE session_id = $1 AND loop_index = $2 AND track_id = $3",
+        session_id, loop_index, track_id,
+    )
+    async with conn.transaction():
+        person_id = await reid_resolver.resolve_or_create(
+            conn, str(session_id), track_id, centroid, event["quality"], camera_id, track_segment_id,
+        )
+        if person_id is None:
+            return  # ambiguous — deliberately left unresolved, nothing to persist
+        if track_segment_id is not None:
+            await conn.execute("UPDATE track_segments SET person_id = $1 WHERE id = $2", person_id, track_segment_id)
+        reid_resolver.mark_resolved((str(session_id), loop_index, track_id), str(person_id))
