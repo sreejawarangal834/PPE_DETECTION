@@ -26,11 +26,11 @@ from uuid import UUID
 import aiosmtplib
 import asyncpg
 
-from config import SMTP_FROM, SMTP_HOST, SMTP_PORT
+from config import (
+    NOTIFY_EMAIL_TO, SMTP_FROM, SMTP_HOST, SMTP_PASSWORD, SMTP_PORT, SMTP_USE_TLS, SMTP_USERNAME,
+)
 
 log = logging.getLogger("ppe_backend.notifications")
-
-NOTIFY_EMAIL_TO = "safety-team@ppe-compliance.local"
 
 # Severity routing (IMPLEMENTATION_PLAN.md §7.1) — email is reserved for the severities that
 # actually warrant paging someone; low/medium stay in-app only.
@@ -91,7 +91,14 @@ async def _send_email(subject: str, body: str) -> None:
     msg["To"] = NOTIFY_EMAIL_TO
     msg["Subject"] = subject
     msg.set_content(body)
-    await aiosmtplib.send(msg, hostname=SMTP_HOST, port=SMTP_PORT)
+    # start_tls=True is STARTTLS (port 587, what Gmail needs) — a plaintext connection that
+    # upgrades to TLS, distinct from use_tls=True (implicit TLS on port 465). MailHog (the dev
+    # default) speaks plaintext with no auth, so both stay off unless explicitly configured.
+    await aiosmtplib.send(
+        msg, hostname=SMTP_HOST, port=SMTP_PORT,
+        username=SMTP_USERNAME, password=SMTP_PASSWORD,
+        start_tls=SMTP_USE_TLS,
+    )
 
 
 async def notify_violation(

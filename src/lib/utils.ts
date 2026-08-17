@@ -1,20 +1,34 @@
 import { format, formatDistanceToNow } from 'date-fns';
 import * as XLSX from 'xlsx';
 
+// Several backend fields (e.g. Camera.lastSeen, Worker.lastSeen) are the
+// placeholder string '—' when there's no real telemetry yet — not a real
+// timestamp. Every formatter below must degrade to '—' on that instead of
+// throwing (`new Date('—')` is an Invalid Date, and date-fns throws on it).
+function toValidDate(iso: string | number | null | undefined): Date | null {
+  if (iso === null || iso === undefined || iso === '') return null;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 export function formatDate(iso: string | number): string {
-  return format(new Date(iso), 'dd MMM yyyy, HH:mm');
+  const d = toValidDate(iso);
+  return d ? format(d, 'dd MMM yyyy, HH:mm') : '—';
 }
 
 export function formatTime(iso: string | number): string {
-  return format(new Date(iso), 'HH:mm:ss');
+  const d = toValidDate(iso);
+  return d ? format(d, 'HH:mm:ss') : '—';
 }
 
 export function formatDateShort(iso: string | number): string {
-  return format(new Date(iso), 'dd MMM yyyy');
+  const d = toValidDate(iso);
+  return d ? format(d, 'dd MMM yyyy') : '—';
 }
 
 export function formatRelative(iso: string | number): string {
-  return formatDistanceToNow(new Date(iso), { addSuffix: true });
+  const d = toValidDate(iso);
+  return d ? formatDistanceToNow(d, { addSuffix: true }) : '—';
 }
 
 export function formatDuration(ms: number): string {

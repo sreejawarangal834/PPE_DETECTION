@@ -155,6 +155,16 @@ ADMIN_BOOTSTRAP_EMAIL: str = os.environ.get("PPE_ADMIN_BOOTSTRAP_EMAIL", "admin@
 ADMIN_BOOTSTRAP_PASSWORD: str | None = os.environ.get("PPE_ADMIN_BOOTSTRAP_PASSWORD")
 
 # ── SMTP (Phase 4) ───────────────────────────────────────────────────────────────
+# Defaults target MailHog (no auth, no TLS). Real delivery (e.g. Gmail) needs
+# PPE_SMTP_HOST=smtp.gmail.com, PPE_SMTP_PORT=587, PPE_SMTP_USE_TLS=true, plus a
+# username + an app password (not the account password — Gmail requires 2FA +
+# an app-specific password from myaccount.google.com/apppasswords).
 SMTP_HOST: str = os.environ.get("PPE_SMTP_HOST", "localhost")
 SMTP_PORT: int = _int("PPE_SMTP_PORT", 1025)
 SMTP_FROM: str = os.environ.get("PPE_SMTP_FROM", "alerts@ppe-compliance.local")
+SMTP_USERNAME: str | None = os.environ.get("PPE_SMTP_USERNAME")
+SMTP_PASSWORD: str | None = os.environ.get("PPE_SMTP_PASSWORD")
+SMTP_USE_TLS: bool = _bool("PPE_SMTP_USE_TLS", False)
+# The docstring in notifications/notifier.py already documented this as
+# env-configurable; the code just never read the env var. Fixed here.
+NOTIFY_EMAIL_TO: str = os.environ.get("PPE_NOTIFY_EMAIL_TO", "safety-team@ppe-compliance.local")
