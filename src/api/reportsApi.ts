@@ -1,7 +1,16 @@
 import type { DailyReport, WorkerComplianceRow, KpiSummary } from '../types';
-import { generateDailyReport, generateWorkerComplianceReport, generateKpiSummary } from '../data/reports';
+import { generateDailyReport, generateKpiSummary } from '../data/reports';
 
 function delay(ms = 400) { return new Promise<void>(r => setTimeout(r, ms)); }
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(path, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) } });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail ?? `Request failed (${res.status})`);
+  }
+  return res.json() as Promise<T>;
+}
 
 export async function getDailyReport(date: string): Promise<DailyReport> {
   await delay();
@@ -25,14 +34,58 @@ export async function getWorkerComplianceReport(filters?: {
   page?: number;
   pageSize?: number;
 }): Promise<{ data: WorkerComplianceRow[]; total: number }> {
-  await delay();
-  let data = generateWorkerComplianceReport(filters);
-  if (filters?.departments?.length) data = data.filter(r => filters.departments!.includes(r.department));
-  if (filters?.thresholdBelow !== undefined) data = data.filter(r => r.complianceRate < filters.thresholdBelow!);
-  const total = data.length;
-  const page = filters?.page ?? 1;
-  const pageSize = filters?.pageSize ?? 25;
-  return { data: data.slice((page - 1) * pageSize, page * pageSize), total };
+  const params = new URLSearchParams();
+  filters?.zones?.forEach(z => params.append('zone', z));
+  filters?.departments?.forEach(d => params.append('department', d));
+  if (filters?.thresholdBelow !== undefined) params.set('thresholdBelow', String(filters.thresholdBelow));
+  if (filters?.page) params.set('page', String(filters.page));
+  if (filters?.pageSize) params.set('pageSize', String(filters.pageSize));
+  return request(`/api/reports/workers${params.toString() ? `?${params}` : ''}`);
+}
+
+/* ─── Person-wise reporting (Phase 3 — real backend, no mock) ─────────────── */
+
+export interface PersonSummary {
+  id: string;
+  label: string;
+  name: string | null;
+  department: string | null;
+}
+
+export async function searchPersons(query: string): Promise<PersonSummary[]> {
+  const params = new URLSearchParams();
+  if (query) params.set('search', query);
+  return request(`/api/persons${params.toString() ? `?${params}` : ''}`);
+}
+
+export interface PersonComplianceDetail {
+  person: PersonSummary & { source: string; status: string };
+  perZone: { zoneId: string; zoneName: string; violations: number }[];
+  perPpe: { ppeType: string; violations: number; lastSeen: string | null }[];
+  trend: { day: string; violations: number }[];
+  timeline: {
+    id: string; ppeType: string; confidence: number | null; startedAt: string;
+    zoneId: string | null; zoneName: string | null; cameraCode: string | null;
+    severity: string; alertStatus: string;
+  }[];
+}
+
+export interface PersonComplianceFilters {
+  from?: string;
+  to?: string;
+  zoneIds?: string[];
+  ppeTypes?: string[];
+  severity?: string[];
+}
+
+export async function getPersonCompliance(personId: string, filters: PersonComplianceFilters = {}): Promise<PersonComplianceDetail> {
+  const params = new URLSearchParams();
+  if (filters.from) params.set('from', filters.from);
+  if (filters.to) params.set('to', filters.to);
+  filters.zoneIds?.forEach(z => params.append('zone_ids', z));
+  filters.ppeTypes?.forEach(p => params.append('ppe_types', p));
+  filters.severity?.forEach(s => params.append('severity', s));
+  return request(`/api/persons/${personId}/compliance${params.toString() ? `?${params}` : ''}`);
 }
 
 export async function getAdHocReport(filters: {

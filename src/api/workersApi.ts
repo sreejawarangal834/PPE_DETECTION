@@ -1,44 +1,39 @@
 import type { Worker, WorkerZoneLog, PagedResult } from '../types';
-import { WORKERS, ZONE_LOGS } from '../data/workers';
 
-let _workers = [...WORKERS];
-
-function delay(ms = 300) { return new Promise<void>(r => setTimeout(r, ms)); }
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(path, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) } });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail ?? `Request failed (${res.status})`);
+  }
+  return res.json() as Promise<T>;
+}
 
 export async function getWorkers(filters?: { search?: string; zone?: string; compliance?: string }): Promise<Worker[]> {
-  await delay();
-  let data = [..._workers];
-  if (filters?.search) {
-    const q = filters.search.toLowerCase();
-    data = data.filter(w => w.id.toLowerCase().includes(q) || w.name.toLowerCase().includes(q));
-  }
-  if (filters?.zone) data = data.filter(w => w.currentZoneId === filters.zone);
-  if (filters?.compliance === 'compliant') data = data.filter(w => w.complianceRate >= 80);
-  if (filters?.compliance === 'non_compliant') data = data.filter(w => w.complianceRate < 80);
-  return data;
+  const params = new URLSearchParams();
+  if (filters?.search) params.set('search', filters.search);
+  if (filters?.zone) params.set('zone', filters.zone);
+  if (filters?.compliance) params.set('compliance', filters.compliance);
+  return request(`/api/workers${params.toString() ? `?${params}` : ''}`);
 }
 
 export async function getWorkerById(id: string): Promise<Worker> {
-  await delay(200);
-  const w = _workers.find(w => w.id === id);
-  if (!w) throw new Error(`Worker ${id} not found`);
-  return { ...w };
+  return request(`/api/workers/${id}`);
 }
 
 export async function getWorkerZoneLog(
   workerId: string,
   filters?: { zone?: string; page?: number; pageSize?: number }
 ): Promise<PagedResult<WorkerZoneLog>> {
-  await delay(200);
-  let data = ZONE_LOGS.filter(l => l.workerId === workerId);
-  if (filters?.zone) data = data.filter(l => l.zoneId === filters.zone);
-  const total = data.length;
-  const page = filters?.page ?? 1;
-  const pageSize = filters?.pageSize ?? 25;
-  return { data: data.slice((page - 1) * pageSize, page * pageSize), total, page, pageSize };
+  const params = new URLSearchParams();
+  if (filters?.zone) params.set('zone', filters.zone);
+  if (filters?.page) params.set('page', String(filters.page));
+  if (filters?.pageSize) params.set('pageSize', String(filters.pageSize));
+  return request(`/api/workers/${workerId}/zone-log${params.toString() ? `?${params}` : ''}`);
 }
 
-export function updateWorkerLive(id: string, patch: Partial<Worker>): void {
-  const idx = _workers.findIndex(w => w.id === id);
-  if (idx !== -1) _workers[idx] = { ..._workers[idx], ...patch };
-}
+// No-op: live per-frame worker telemetry belongs to in-process session state
+// (see backend/repositories/workers.py's docstring on activeViolations), not
+// a client-side cache to patch — kept so no caller mirroring the old mock-WS
+// pattern hits a missing export.
+export function updateWorkerLive(_id: string, _patch: Partial<Worker>): void {}

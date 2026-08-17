@@ -21,6 +21,7 @@ import logging
 import shutil
 import time
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 from uuid import uuid4
@@ -37,6 +38,9 @@ from ultralytics import YOLO
 import db
 from repositories import alerts, cameras, zones
 from repositories import compliance as session_repo
+from repositories import persons as persons_repo
+from repositories import reports as reports_repo
+from repositories import workers as workers_repo
 from repositories import writer as write_queue
 from compliance import evaluate_compliance, new_session_state, _iou, Box
 from frame_source import FrameSource, FileVideoSource, RTSPSource
@@ -583,6 +587,83 @@ async def resolve_alert_endpoint(alert_id: str, payload: dict):
     if updated is None:
         raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found")
     return updated
+
+
+# ─── Person-wise compliance reporting (Phase 3) ──────────────────────────────
+
+def _parse_report_date(value: str | None, *, end_of_day: bool = False) -> datetime | None:
+    """Frontend DateRangePicker sends plain 'yyyy-MM-dd' strings — treat them as UTC
+    calendar-day boundaries (see SCHEMA_DEEP_DIVE.md §5.1 on pinning timezone handling
+    explicitly rather than trusting whatever timezone a cast happens to run under)."""
+    if not value:
+        return None
+    try:
+        d = datetime.strptime(value, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid date: {value!r} (expected yyyy-MM-dd)")
+    return d + timedelta(days=1) if end_of_day else d
+
+
+@app.get("/api/persons")
+async def list_persons_endpoint(search: str | None = None):
+    return await persons_repo.search(search)
+
+
+@app.get("/api/persons/{person_id}/compliance")
+async def person_compliance_endpoint(
+    person_id: str,
+    from_: str | None = Query(None, alias="from"),
+    to: str | None = Query(None),
+    zone_ids: list[str] | None = Query(None),
+    ppe_types: list[str] | None = Query(None),
+    severity: list[str] | None = Query(None),
+):
+    result = await persons_repo.get_compliance_detail(
+        person_id,
+        date_from=_parse_report_date(from_),
+        date_to=_parse_report_date(to, end_of_day=True),
+        zone_ids=zone_ids, ppe_types=ppe_types, severities=severity,
+    )
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"Person {person_id} not found")
+    return result
+
+
+@app.get("/api/reports/workers")
+async def workers_report_endpoint(
+    zone: list[str] | None = Query(None),
+    department: list[str] | None = Query(None),
+    thresholdBelow: float | None = Query(None),
+    page: int = Query(1),
+    pageSize: int = Query(25),
+):
+    return await reports_repo.get_worker_compliance_rows(
+        zones=zone, departments=department, threshold_below=thresholdBelow, page=page, page_size=pageSize,
+    )
+
+
+# ─── Workers pages (src/features/workers/) — real data, same Worker/WorkerZoneLog shapes ────
+
+@app.get("/api/workers")
+async def list_workers_endpoint(
+    search: str | None = None, zone: str | None = None, compliance: str | None = None,
+):
+    return await workers_repo.list_workers(search=search, zone=zone, compliance=compliance)
+
+
+@app.get("/api/workers/{worker_id}")
+async def get_worker_endpoint(worker_id: str):
+    worker = await workers_repo.get_worker(worker_id)
+    if worker is None:
+        raise HTTPException(status_code=404, detail=f"Worker {worker_id} not found")
+    return worker
+
+
+@app.get("/api/workers/{worker_id}/zone-log")
+async def get_worker_zone_log_endpoint(
+    worker_id: str, zone: str | None = None, page: int = Query(1), pageSize: int = Query(25),
+):
+    return await workers_repo.get_worker_zone_log(worker_id, zone=zone, page=page, page_size=pageSize)
 
 
 # ─── Detection WebSocket ──────────────────────────────────────────────────────

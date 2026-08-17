@@ -199,7 +199,16 @@ async def _persist_reid_resolve(conn: asyncpg.Connection, event: dict[str, Any])
     and upgrade that track_segment's person_id from the Phase-1 placeholder to the resolved
     identity. See reid/resolver.py for the matching policy and why no advisory lock is needed
     here despite the TOCTOU concern SCHEMA_DEEP_DIVE.md §1.7 raises for a naive version of
-    this (this IS the single serial writer that concern is about)."""
+    this (this IS the single serial writer that concern is about).
+
+    Also backfills any compliance_events already recorded against this track_segment under
+    the Phase-1 placeholder person before resolution completed (found via testing — resolution
+    takes 3+ good samples, typically a couple of seconds, and any violation raised in that
+    window would otherwise stay permanently attributed to a throwaway `W-<track_id>` person
+    even after the real identity resolves, splitting one person's history across two rows).
+    The placeholder person row itself is left in place (unreferenced, harmless) rather than
+    deleted — deleting it would need the full merge/audit workflow (person_merge_log), which
+    is a bigger piece of work than this one-track backfill warrants."""
     session_id: UUID = event["session_id"]
     track_id: int = event["track_id"]
     loop_index: int = event.get("loop_index", 0)
@@ -218,4 +227,8 @@ async def _persist_reid_resolve(conn: asyncpg.Connection, event: dict[str, Any])
             return  # ambiguous — deliberately left unresolved, nothing to persist
         if track_segment_id is not None:
             await conn.execute("UPDATE track_segments SET person_id = $1 WHERE id = $2", person_id, track_segment_id)
+            await conn.execute(
+                "UPDATE compliance_events SET person_id = $1 WHERE track_segment_id = $2 AND person_id != $1",
+                person_id, track_segment_id,
+            )
         reid_resolver.mark_resolved((str(session_id), loop_index, track_id), str(person_id))
