@@ -22,10 +22,17 @@ export default function ProfilePage() {
     e.preventDefault();
     if (!user) return;
     setSaving(true);
-    const updated = await updateProfile(user.id, { name, email });
-    updateUser(updated);
-    setSaving(false);
-    toast.success('Profile updated.');
+    try {
+      // Not implemented on the backend yet (see src/api/authApi.ts) — surfaced honestly
+      // rather than silently pretending to succeed the way the old mock did.
+      const updated = await updateProfile(name, email);
+      updateUser(updated);
+      toast.success('Profile updated.');
+    } catch {
+      toast.error('Profile editing is not available yet.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleChangePassword(e: React.FormEvent) {

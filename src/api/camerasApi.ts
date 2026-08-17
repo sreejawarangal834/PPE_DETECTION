@@ -1,17 +1,9 @@
 import type { Camera } from '../types';
 import { appendAuditLog } from '../lib/audit/auditLog';
-
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail ?? `Request failed (${res.status})`);
-  }
-  return res.json() as Promise<T>;
-}
+// Backend camera CRUD now enforces require_role("admin") and GET /api/cameras is zone-scoped
+// for `operator` (Phase 4 — see backend/main.py); every call here needs the current access
+// token attached, hence authRequest over a plain fetch.
+import { authRequest as request } from '../lib/http';
 
 export async function getCameras(): Promise<Camera[]> {
   return request<Camera[]>('/api/cameras');

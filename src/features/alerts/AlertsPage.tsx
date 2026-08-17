@@ -17,7 +17,7 @@ export default function AlertsPage() {
   const [filters, setFilters]   = useState<AlertFilterState>(() => defaultFilters(false));
   const [selected, setSelected] = useState<Alert | null>(null);
   const [page, setPage]         = useState(1);
-  const assignedZones = user?.role === 'site_supervisor' ? user.assignedZones : undefined;
+  const assignedZones = user?.role === 'operator' ? user.assignedZones : undefined;
 
   function handleExportCSV() {
     let data = [...allAlerts];

@@ -9,13 +9,22 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    await forgotPassword(email);
-    setSent(true);
-    setLoading(false);
+    setError('');
+    try {
+      // Not implemented on the backend yet (see src/api/authApi.ts) — there is no email-reset
+      // infrastructure wired up (MailHog is used for compliance-alert email, not this flow).
+      await forgotPassword(email);
+      setSent(true);
+    } catch {
+      setError('Password reset by email is not available yet. Contact an administrator.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -29,6 +38,11 @@ export default function ForgotPasswordPage() {
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Input label="Email address" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" />
+          {error && (
+            <div className="bg-status-danger/10 border border-status-danger/30 rounded-lg p-3 text-sm text-status-danger" role="alert">
+              {error}
+            </div>
+          )}
           <Button type="submit" loading={loading} className="w-full justify-center">Send reset link</Button>
         </form>
       )}

@@ -10,7 +10,7 @@ import { useWsStore } from '../lib/websocket/wsStore';
 import { useNotificationStore } from '../lib/notifications/notificationStore';
 import { useAlertStore } from '../lib/alerts/alertStore';
 import { useWebSocket } from '../lib/websocket/useWebSocket';
-import { startEscalationInterval, stopEscalationInterval, startAlertPolling, stopAlertPolling } from '../lib/alerts/alertStore';
+import { startAlertLiveFeed, stopAlertLiveFeed } from '../lib/alerts/alertStore';
 import { ROUTE_PERMISSIONS } from '../constants/permissions';
 import { ROUTES } from '../constants/routes';
 import { ROLE_LABELS, ROLE_BADGE_COLOR } from '../constants/roles';
@@ -215,8 +215,10 @@ export default function AppLayout() {
   }
 
   useWebSocket();
-  useEffect(() => { startEscalationInterval(() => {}); return () => stopEscalationInterval(); }, []);
-  useEffect(() => { startAlertPolling(); return () => stopAlertPolling(); }, []);
+  // Escalation moved server-side (backend/escalation.py) — this just listens for the
+  // alert_new / alert_escalated events it (and repositories/writer.py) broadcast over
+  // /ws/alerts, retiring the old 5s GET /api/alerts poll entirely.
+  useEffect(() => { startAlertLiveFeed(); return () => stopAlertLiveFeed(); }, []);
 
   // Close profile on outside click
   useEffect(() => {

@@ -1,8 +1,6 @@
 import { create } from 'zustand';
 import type { Alert } from '../../types';
 import type { AlertStatus } from '../../constants/alertStatus';
-import { getEscalationDelayMs } from '../../data/alertConfig';
-import { appendAuditLog } from '../audit/auditLog';
 import { getAlerts } from '../../api/alertsApi';
 
 interface AlertState {
@@ -10,17 +8,14 @@ interface AlertState {
   unreadCount: number;
   addAlert: (a: Alert) => void;
   updateStatus: (id: string, status: AlertStatus, meta?: Partial<Alert>) => void;
+  markEscalated: (id: string) => void;
   markRead: (id: string) => void;
   clearUnread: () => void;
-  runEscalationCheck: () => string[]; // returns IDs escalated
-  /** Refresh from the real zone-compliance backend — no-ops (keeps the last
-   * known list) if the backend is unreachable, so a transient poll failure
-   * doesn't blank the UI. */
+  /** One-shot fetch from the real backend — used on mount and to recover after a dropped
+   * /ws/alerts connection reconnects. No-ops (keeps the last known list) if the backend is
+   * unreachable, so a transient failure doesn't blank the UI. */
   loadAlerts: () => Promise<void>;
 }
-
-let _escalationInterval: ReturnType<typeof setInterval> | null = null;
-let _pollInterval: ReturnType<typeof setInterval> | null = null;
 
 export const useAlertStore = create<AlertState>()((set, get) => ({
   alerts: [],
@@ -45,9 +40,16 @@ export const useAlertStore = create<AlertState>()((set, get) => ({
   updateStatus(id, status, meta) {
     // The caller (AcknowledgeDialog/ResolveDialog) already persisted this
     // via the real acknowledgeAlert/resolveAlert API call — this just
-    // reflects it locally before the next loadAlerts() poll confirms it.
+    // reflects it locally before the next /ws/alerts event confirms it.
     set(s => ({
       alerts: s.alerts.map(a => a.id === id ? { ...a, status, ...meta } : a),
+    }));
+  },
+
+  markEscalated(id) {
+    set(s => ({
+      alerts: s.alerts.map(a => a.id === id ? { ...a, escalatedAt: new Date().toISOString() } : a),
+      unreadCount: s.unreadCount + 1,
     }));
   },
 
@@ -60,50 +62,54 @@ export const useAlertStore = create<AlertState>()((set, get) => ({
   },
 
   clearUnread() { set({ unreadCount: 0 }); },
-
-  runEscalationCheck() {
-    const { alerts } = get();
-    const now = Date.now();
-    const escalated: string[] = [];
-    const updated = alerts.map(a => {
-      if (a.status !== 'open' && a.status !== 'acknowledged') return a;
-      const delay = getEscalationDelayMs(a.zoneId);
-      if (now - a.createdAt >= delay) {
-        escalated.push(a.id);
-        appendAuditLog({ actor: 'system', actionType: 'ALERT_ESCALATE', entity: `Alert: ${a.id}`, description: `Auto-escalated alert ${a.id} — response time exceeded`, ipAddress: '—' });
-        return { ...a, status: 'escalated' as AlertStatus, escalatedAt: new Date().toISOString() };
-      }
-      return a;
-    });
-    if (escalated.length) {
-      set(s => ({ alerts: updated, unreadCount: s.unreadCount + escalated.length }));
-    }
-    return escalated;
-  },
 }));
 
-export function startEscalationInterval(onEscalate: (ids: string[]) => void): void {
-  if (_escalationInterval) clearInterval(_escalationInterval);
-  _escalationInterval = setInterval(() => {
-    const ids = useAlertStore.getState().runEscalationCheck();
-    if (ids.length > 0) onEscalate(ids);
-  }, 60_000);
+// ─── Live feed over /ws/alerts (Phase 4) ─────────────────────────────────────
+// Replaces both the old 5s GET /api/alerts poll AND the client-side escalation
+// setInterval (IMPLEMENTATION_PLAN.md §7.1 — escalation now runs server-side, see
+// backend/escalation.py; this only reacts to the events it broadcasts).
+let _ws: WebSocket | null = null;
+let _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+function wsUrl(): string {
+  const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  return `${proto}://${window.location.host}/ws/alerts`;
 }
 
-export function stopEscalationInterval(): void {
-  if (_escalationInterval) { clearInterval(_escalationInterval); _escalationInterval = null; }
+function connect(): void {
+  if (_ws) return;
+  const ws = new WebSocket(wsUrl());
+  _ws = ws;
+
+  ws.onopen = () => {
+    useAlertStore.getState().loadAlerts(); // reconcile full state on (re)connect
+  };
+  ws.onmessage = (evt) => {
+    try {
+      const msg = JSON.parse(evt.data);
+      if (msg.type === 'alert_new') {
+        useAlertStore.getState().loadAlerts(); // simplest correct reaction: refetch the list
+      } else if (msg.type === 'alert_escalated' && msg.alertId) {
+        useAlertStore.getState().markEscalated(msg.alertId);
+      }
+    } catch {
+      // ignore malformed frames
+    }
+  };
+  ws.onclose = () => {
+    _ws = null;
+    if (_reconnectTimer) clearTimeout(_reconnectTimer);
+    _reconnectTimer = setTimeout(connect, 5000);
+  };
+  ws.onerror = () => ws.close();
 }
 
-const ALERT_POLL_INTERVAL_MS = 5000;
-
-/** Keep the Alerts page / sidebar feed / unread badge live without a page
- * reload — same polling cadence as MonitoringPage's backend health check. */
-export function startAlertPolling(): void {
-  if (_pollInterval) clearInterval(_pollInterval);
+export function startAlertLiveFeed(): void {
   useAlertStore.getState().loadAlerts();
-  _pollInterval = setInterval(() => useAlertStore.getState().loadAlerts(), ALERT_POLL_INTERVAL_MS);
+  connect();
 }
 
-export function stopAlertPolling(): void {
-  if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
+export function stopAlertLiveFeed(): void {
+  if (_reconnectTimer) { clearTimeout(_reconnectTimer); _reconnectTimer = null; }
+  if (_ws) { _ws.onclose = null; _ws.close(); _ws = null; }
 }

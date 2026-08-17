@@ -1,17 +1,8 @@
 import type { Zone } from '../types';
 import { appendAuditLog } from '../lib/audit/auditLog';
-
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail ?? `Request failed (${res.status})`);
-  }
-  return res.json() as Promise<T>;
-}
+// Backend zone CRUD now enforces require_role("admin") (Phase 4 — see backend/main.py); every
+// call here needs the current access token attached, hence authRequest over a plain fetch.
+import { authRequest as request } from '../lib/http';
 
 export async function getZones(): Promise<Zone[]> {
   return request<Zone[]>('/api/zones');

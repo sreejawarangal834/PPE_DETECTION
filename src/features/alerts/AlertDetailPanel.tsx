@@ -8,13 +8,20 @@ import ResolveDialog from './ResolveDialog';
 import type { Alert } from '../../types';
 import { formatDate } from '../../lib/utils';
 import { PPE_LABEL } from '../../constants/ppeTypes';
+import { useAuthStore } from '../../lib/auth/authStore';
+import { hasCapability } from '../../constants/permissions';
 
 interface Props { alert: Alert; onClose: () => void; onUpdate: (a: Alert) => void; }
 
 export default function AlertDetailPanel({ alert, onClose, onUpdate }: Props) {
   const [showAck, setShowAck] = useState(false);
   const [showResolve, setShowResolve] = useState(false);
-  const canAct = alert.status === 'open' || alert.status === 'escalated';
+  const role = useAuthStore(s => s.user?.role);
+  // UI-only gating — backend/main.py's require_role("admin","operator") on
+  // acknowledge/resolve is the real boundary (a manager/viewer hitting the endpoint
+  // directly still gets a 403). This just avoids showing a button that would fail.
+  const canAct = (alert.status === 'open' || alert.status === 'escalated')
+    && !!role && (hasCapability(role, 'acknowledgeAlerts') || hasCapability(role, 'resolveAlerts'));
 
   return (
     <>

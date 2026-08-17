@@ -1,5 +1,9 @@
 import type { Alert, PagedResult } from '../types';
 import { appendAuditLog } from '../lib/audit/auditLog';
+// GET /api/alerts is zone-scoped for `operator`, and acknowledge/resolve now enforce
+// require_role("admin","operator") (Phase 4 — see backend/main.py); every call here needs the
+// current access token attached, hence authRequest over a plain fetch.
+import { authRequest as request } from '../lib/http';
 
 export interface AlertFilters {
   severities?: string[];
@@ -10,18 +14,6 @@ export interface AlertFilters {
   dateTo?: string;
   page?: number;
   pageSize?: number;
-}
-
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail ?? `Request failed (${res.status})`);
-  }
-  return res.json() as Promise<T>;
 }
 
 // The backend doesn't paginate — it returns every alert (JSON-file scale,

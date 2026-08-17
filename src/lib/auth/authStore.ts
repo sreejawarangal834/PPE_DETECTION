@@ -1,12 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { AuthUser, MockToken } from '../../types';
+import type { AuthUser, AuthToken } from '../../types';
 import { EXPIRY_CHECK_MS } from '../../constants/app';
+import { refresh as refreshTokenApi } from '../../api/authApi';
 
 interface AuthState {
   user: AuthUser | null;
-  token: MockToken | null;
-  login: (user: AuthUser, token: MockToken) => void;
+  token: AuthToken | null;
+  login: (user: AuthUser, token: AuthToken) => void;
   logout: () => void;
   checkExpiry: () => boolean;
   updateUser: (patch: Partial<AuthUser>) => void;
@@ -14,9 +15,45 @@ interface AuthState {
 
 let _expiryInterval: ReturnType<typeof setInterval> | null = null;
 let _navigateFn: ((path: string) => void) | null = null;
+let _refreshing = false;
 
 export function setNavigate(fn: (path: string) => void): void {
   _navigateFn = fn;
+}
+
+// Proactively rotate the refresh token this far ahead of the access token's actual expiry
+// (backend/repositories/users.py's rotate-with-reuse-detection means only ONE refresh token
+// is ever valid at a time, so this must complete before expiry, not after).
+const REFRESH_LEAD_MS = 60_000;
+
+async function tryProactiveRefresh(): Promise<boolean> {
+  const { token, login, user } = useAuthStore.getState();
+  if (!token || !user || _refreshing) return true;
+  if (token.expiresAt - Date.now() > REFRESH_LEAD_MS) return true; // not due yet
+  _refreshing = true;
+  try {
+    const newToken = await refreshTokenApi(token.refreshToken);
+    login(user, newToken);
+    return true;
+  } catch {
+    return false; // refresh token invalid/expired/revoked — real logout, not a transient blip
+  } finally {
+    _refreshing = false;
+  }
+}
+
+function startExpiryInterval(get: () => AuthState): void {
+  if (_expiryInterval) clearInterval(_expiryInterval);
+  _expiryInterval = setInterval(async () => {
+    const ok = await tryProactiveRefresh();
+    if (!ok) {
+      get().logout();
+      if (_navigateFn) _navigateFn('/login');
+      return;
+    }
+    const expired = get().checkExpiry();
+    if (expired && _navigateFn) _navigateFn('/login');
+  }, EXPIRY_CHECK_MS);
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -27,12 +64,7 @@ export const useAuthStore = create<AuthState>()(
 
       login(user, token) {
         set({ user, token });
-        // Start expiry interval
-        if (_expiryInterval) clearInterval(_expiryInterval);
-        _expiryInterval = setInterval(() => {
-          const expired = get().checkExpiry();
-          if (expired && _navigateFn) _navigateFn('/login');
-        }, EXPIRY_CHECK_MS);
+        startExpiryInterval(get);
       },
 
       logout() {
@@ -66,13 +98,7 @@ export const useAuthStore = create<AuthState>()(
           logout();
           return;
         }
-        if (token) {
-          if (_expiryInterval) clearInterval(_expiryInterval);
-          _expiryInterval = setInterval(() => {
-            const expired = state.checkExpiry();
-            if (expired && _navigateFn) _navigateFn('/login');
-          }, EXPIRY_CHECK_MS);
-        }
+        if (token) startExpiryInterval(() => useAuthStore.getState());
       },
     }
   )

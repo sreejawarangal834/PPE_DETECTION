@@ -15,8 +15,13 @@ function wrap(factory: () => Promise<{ default: React.ComponentType }>) {
   );
 }
 
-const MON   = ['admin','safety_officer','site_supervisor','ehs_manager'] as const;
-const RPT   = ['admin','ehs_manager','plant_mgmt'] as const;
+// 4-tier role model (IMPLEMENTATION_PLAN.md §7.3) — mirrors src/constants/permissions.ts's
+// ROUTE_PERMISSIONS; kept as separate literals here only because that's the pattern this
+// router already used (RoleGuard takes the array directly), not a second source of truth to
+// maintain by hand — see permissions.ts for the reasoning on why manager/viewer get route
+// access here despite being read-only once on the page.
+const MON   = ['admin','manager','operator','viewer'] as const;
+const RPT   = ['admin','manager','viewer'] as const;
 const ADMIN = ['admin'] as const;
 
 export const router = createBrowserRouter([

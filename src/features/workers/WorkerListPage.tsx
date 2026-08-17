@@ -20,7 +20,7 @@ export default function WorkerListPage() {
   const [search,     setSearch]     = useState('');
   const [zone,       setZone]       = useState('');
   const [compliance, setCompliance] = useState('');
-  const assignedZones = user?.role === 'site_supervisor' ? user.assignedZones : undefined;
+  const assignedZones = user?.role === 'operator' ? user.assignedZones : undefined;
 
   const { data: workers = [] } = useQuery({
     queryKey: ['workers', search, zone, compliance],

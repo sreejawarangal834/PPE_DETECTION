@@ -12,7 +12,7 @@ export default function AnalyticsPage() {
   const user = useAuthStore(s => s.user);
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
 
-  const assignedZones = user?.role === 'site_supervisor' ? user.assignedZones : undefined;
+  const assignedZones = user?.role === 'operator' ? user.assignedZones : undefined;
 
   function handleZoneClick(zoneId: string | null) {
     setSelectedZone(prev => prev === zoneId ? null : zoneId);
@@ -25,7 +25,7 @@ export default function AnalyticsPage() {
         <h1 className="text-4xl font-bold text-text-primary">Analytics</h1>
         <p className="text-lg text-text-secondary mt-2">
           Compliance statistics, zone performance, and violation trends
-          {user?.role === 'site_supervisor' && user.assignedZones?.length
+          {user?.role === 'operator' && user.assignedZones?.length
             ? ` · Zones: ${user.assignedZones.join(', ')}`
             : ''
           }

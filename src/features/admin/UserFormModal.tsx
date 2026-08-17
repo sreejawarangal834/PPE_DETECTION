@@ -21,20 +21,20 @@ export default function UserFormModal({ user, onSave, onClose }: Props) {
   const [name, setName]           = useState(user?.name ?? '');
   const [username, setUsername]   = useState(user?.username ?? '');
   const [email, setEmail]         = useState(user?.email ?? '');
-  const [role, setRole]           = useState<UserRole>(user?.role ?? 'safety_officer');
+  const [role, setRole]           = useState<UserRole>(user?.role ?? 'viewer');
   const [password, setPassword]   = useState('');
   const [zones, setZones]         = useState<string[]>(user?.assignedZones ?? []);
   const [loading, setLoading]     = useState(false);
   const [errors, setErrors]       = useState<Record<string, string>>({});
 
-  useEffect(() => { if (role !== 'site_supervisor') setZones([]); }, [role]);
+  useEffect(() => { if (role !== 'operator') setZones([]); }, [role]);
 
   async function handleSave() {
     const errs: Record<string, string> = {};
     if (!name.trim()) errs.name = 'Name is required';
     if (!email.trim()) errs.email = 'Email is required';
     if (!user && !password.trim()) errs.password = 'Password is required for new users';
-    if (role === 'site_supervisor' && zones.length === 0) errs.zones = 'At least one zone must be assigned';
+    if (role === 'operator' && zones.length === 0) errs.zones = 'At least one zone must be assigned';
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setLoading(true);
     await onSave({ name, username, email, role, assignedZones: zones, ...(password ? { password } : {}) });
@@ -51,7 +51,7 @@ export default function UserFormModal({ user, onSave, onClose }: Props) {
         <Input label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} error={errors.email} />
         <Select label="Role" options={ROLE_OPTS} value={role} onChange={e => setRole(e.target.value as UserRole)} />
         {!user && <Input label="Temporary Password" type="password" value={password} onChange={e => setPassword(e.target.value)} error={errors.password} />}
-        {role === 'site_supervisor' && (
+        {role === 'operator' && (
           <div className="relative">
             <MultiSelect label="Assigned Zones (required)" options={ZONE_OPTS} value={zones} onChange={setZones} error={errors.zones} />
           </div>

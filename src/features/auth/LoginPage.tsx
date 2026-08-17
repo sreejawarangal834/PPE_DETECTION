@@ -8,32 +8,28 @@ import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import { ROUTES } from '../../constants/routes';
 
-const DEMO_USERS = [
-  { u: 'admin',      p: 'admin123',   role: 'Admin'           },
-  { u: 'officer',    p: 'officer123', role: 'Safety Officer'   },
-  { u: 'supervisor', p: 'super123',   role: 'Site Supervisor'  },
-  { u: 'ehs',        p: 'ehs123',     role: 'EHS Manager'      },
-  { u: 'manager',    p: 'mgmt123',    role: 'Plant Management' },
-];
+// The old plaintext "Demo Accounts" quick-fill panel (admin/admin123, etc.) is gone along
+// with src/api/authApi.ts's mock seed users — every credential is real now (backend/auth/,
+// argon2id-hashed), so there is no safe hardcoded password left to demo with here.
 
 export default function LoginPage() {
   const navigate   = useNavigate();
   const loginStore = useAuthStore(s => s.login);
-  const [username, setUsername] = useState('');
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!username || !password) { setError('Please enter your username and password.'); return; }
+    if (!email || !password) { setError('Please enter your email and password.'); return; }
     setError(''); setLoading(true);
     try {
-      const { user, token } = await login(username, password);
+      const { user, token } = await login(email, password);
       loginStore(user, token);
       navigate(ROLE_LANDING[user.role], { replace: true });
     } catch {
-      setError('Invalid username or password');
+      setError('Invalid email or password');
     } finally { setLoading(false); }
   }
 
@@ -55,13 +51,13 @@ export default function LoginPage() {
 
       <form onSubmit={handleSubmit} className="space-y-5" noValidate>
         <Input
-          label="Username"
-          type="text"
-          value={username}
-          onChange={e => setUsername(e.target.value)}
-          autoComplete="username"
+          label="Email"
+          type="email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          autoComplete="email"
           autoFocus
-          placeholder="Enter your username"
+          placeholder="Enter your email"
         />
         <Input
           label="Password"
@@ -86,26 +82,6 @@ export default function LoginPage() {
           Forgot your password?
         </Link>
       </p>
-
-      {/* Demo credentials */}
-      <div className="mt-8 p-5 bg-panel-alt rounded-2xl border border-border-soft">
-        <p className="text-sm font-semibold text-text-muted uppercase tracking-wide mb-4">
-          Demo Accounts
-        </p>
-        <div className="grid grid-cols-1 gap-2">
-          {DEMO_USERS.map(({ u, p, role }) => (
-            <button
-              key={u}
-              type="button"
-              onClick={() => { setUsername(u); setPassword(p); setError(''); }}
-              className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-panel-hover transition-all duration-200 text-left border border-transparent hover:border-border-soft"
-            >
-              <span className="text-sm text-text-secondary font-mono font-medium">{u}</span>
-              <span className="text-sm text-text-muted">{role}</span>
-            </button>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

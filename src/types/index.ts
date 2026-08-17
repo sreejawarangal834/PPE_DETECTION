@@ -10,15 +10,18 @@ export interface AuthUser {
   name: string;
   email: string;
   role: UserRole;
-  assignedZones: string[]; // zone IDs — non-empty for site_supervisor
+  assignedZones: string[]; // zone IDs — non-empty for `operator`
   lastLogin: string;       // ISO string
   status: 'active' | 'inactive';
 }
 
-export interface MockToken {
-  userId: string;
-  issuedAt: number;
-  expiresAt: number;
+// Real JWT access token + opaque refresh token (Phase 4 — replaces the old client-only
+// MockToken). `expiresAt` is decoded client-side from the access JWT's `exp` claim (see
+// src/api/authApi.ts) rather than duplicated from a backend config constant.
+export interface AuthToken {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number; // ms epoch
 }
 
 /* ─── Zone ───────────────────────────────────────────────── */

@@ -129,7 +129,7 @@ export default function MonitoringPage() {
     staleTime: 30000,
   });
 
-  const filteredCameras = user?.role === 'site_supervisor' && user.assignedZones?.length
+  const filteredCameras = user?.role === 'operator' && user.assignedZones?.length
     ? cameras.filter(c => user.assignedZones!.includes(c.zoneId))
     : cameras;
 
@@ -234,7 +234,7 @@ export default function MonitoringPage() {
               <h1 className="text-3xl font-bold text-text-primary">Live Monitoring</h1>
               <p className="text-base text-text-muted mt-1">
                 Real-time camera feeds and violation tracking
-                {user?.role === 'site_supervisor' && user.assignedZones?.length
+                {user?.role === 'operator' && user.assignedZones?.length
                   ? ` · Zones: ${user.assignedZones.join(', ')}`
                   : ''}
               </p>

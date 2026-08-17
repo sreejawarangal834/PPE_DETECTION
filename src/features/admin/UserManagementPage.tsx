@@ -58,7 +58,7 @@ export default function UserManagementPage() {
     { key: 'status',  header: 'Status',    render: r => <Badge variant={r.status} /> },
     { key: 'lastLogin', header: 'Last Login', className: 'text-sm' },
     { key: 'assignedZones', header: 'Assigned Zones', render: r => {
-      if (r.role !== 'site_supervisor' || !r.assignedZones?.length) return <span className="text-text-muted">—</span>;
+      if (r.role !== 'operator' || !r.assignedZones?.length) return <span className="text-text-muted">—</span>;
       const names = r.assignedZones.map(id => ZONES.find(z => z.id === id)?.name ?? id);
       const shown = names.slice(0, 3);
       return (
