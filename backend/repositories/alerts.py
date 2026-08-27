@@ -40,7 +40,7 @@ _STATUS_DB_TO_API = {
 _STATUS_API_TO_DB = {"open": "pending", "acknowledged": "acknowledged", "resolved": "resolved"}
 
 _SELECT = """
-    SELECT a.id, a.created_at, a.severity, a.status, a.metadata,
+    SELECT a.id, a.created_at, a.severity, a.status, a.metadata, a.frame_reference,
            a.acknowledged_by, a.acknowledged_at, a.resolved_by, a.resolved_at,
            c.code AS camera_code, z.slug AS zone_slug, z.name AS zone_name,
            ua.name AS acknowledged_by_name, ur.name AS resolved_by_name
@@ -70,6 +70,11 @@ def _row_to_api(row: asyncpg.Record) -> dict[str, Any]:
         "confidence": round(float(meta.get("confidence") or 0.0), 2),
         "severity": row["severity"],
         "status": _STATUS_DB_TO_API.get(row["status"], row["status"]),
+        # None (not a placeholder path) for every alert with no captured snapshot — most
+        # importantly the 298 legacy-imported alerts (see scripts/import_json_stores.py),
+        # which predate this feature entirely and will never have one. The frontend renders
+        # an honest "No snapshot captured" state on None rather than a broken <img>.
+        "snapshotUrl": f"/api/snapshots/{row['id']}" if row["frame_reference"] else None,
         **({"acknowledgedBy": row["acknowledged_by_name"]} if row["acknowledged_by_name"] else {}),
         **({"acknowledgedAt": row["acknowledged_at"].isoformat()} if row["acknowledged_at"] else {}),
         **({"resolvedBy": row["resolved_by_name"]} if row["resolved_by_name"] else {}),
@@ -113,6 +118,16 @@ async def get_alert(alert_id: str) -> dict[str, Any] | None:
     pool = get_pool()
     row = await pool.fetchrow(_SELECT + " AND a.id = $1", uid)
     return _row_to_api(row) if row else None
+
+
+async def get_frame_reference(alert_id: str) -> str | None:
+    """Backs GET /api/snapshots/{alert_id} — a tiny dedicated lookup rather than reusing
+    get_alert()'s full join, since the snapshot endpoint is hit once per <img> render."""
+    uid = _parse_uuid(alert_id)
+    if uid is None:
+        return None
+    pool = get_pool()
+    return await pool.fetchval("SELECT frame_reference FROM alerts WHERE id = $1 AND source_uc = 'uc3'", uid)
 
 
 async def acknowledge(alert_id: str, actor_user_id: str | None, actor_name: str) -> dict[str, Any] | None:

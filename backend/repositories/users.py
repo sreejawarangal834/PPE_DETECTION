@@ -148,3 +148,55 @@ async def update_user(user_id: str, name: str | None, role: str | None, zone_slu
         "id": str(row["id"]), "name": row["name"], "email": row["email"], "role": row["role"],
         "assignedZones": await get_zone_slugs(user_id),
     }
+
+
+async def update_own_profile(user_id: str, name: str | None, email: str | None) -> dict[str, Any] | None:
+    """Backs PUT /api/auth/me (fake-frontend audit — ProfilePage's edit form used to call an
+    authApi.ts function that always threw). Only the fields actually supplied are changed."""
+    pool = get_pool()
+    uid = UUID(user_id)
+    existing = await pool.fetchrow("SELECT id, name, email FROM users WHERE id = $1", uid)
+    if existing is None:
+        return None
+    if email and email.lower() != existing["email"].lower():
+        clash = await pool.fetchval("SELECT 1 FROM users WHERE lower(email) = lower($1) AND id != $2", email, uid)
+        if clash:
+            raise ValueError("A user with that email already exists")
+    await pool.execute(
+        "UPDATE users SET name = $2, email = $3, updated_at = now() WHERE id = $1",
+        uid, name or existing["name"], email or existing["email"],
+    )
+    row = await pool.fetchrow("SELECT id, name, email, role FROM users WHERE id = $1", uid)
+    return dict(row)
+
+
+async def update_password(user_id: UUID, new_password_hash: str) -> None:
+    pool = get_pool()
+    await pool.execute("UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1", user_id, new_password_hash)
+
+
+# ─── Password reset (fake-frontend audit) ────────────────────────────────────────
+
+async def create_password_reset_token(user_id: str, token_hash: str, ttl_seconds: int) -> UUID:
+    pool = get_pool()
+    return await pool.fetchval(
+        """
+        INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+        VALUES ($1, $2, now() + $3 * interval '1 second')
+        RETURNING id
+        """,
+        UUID(user_id), token_hash, ttl_seconds,
+    )
+
+
+async def find_reset_token_by_hash(token_hash: str) -> dict[str, Any] | None:
+    pool = get_pool()
+    row = await pool.fetchrow(
+        "SELECT id, user_id, expires_at, used_at FROM password_reset_tokens WHERE token_hash = $1", token_hash,
+    )
+    return dict(row) if row else None
+
+
+async def mark_reset_token_used(token_id: UUID) -> None:
+    pool = get_pool()
+    await pool.execute("UPDATE password_reset_tokens SET used_at = now() WHERE id = $1", token_id)

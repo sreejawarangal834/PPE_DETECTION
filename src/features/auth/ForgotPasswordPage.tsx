@@ -16,12 +16,12 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     setError('');
     try {
-      // Not implemented on the backend yet (see src/api/authApi.ts) — there is no email-reset
-      // infrastructure wired up (MailHog is used for compliance-alert email, not this flow).
+      // Real backend endpoint (POST /api/auth/forgot-password) — sends a genuine reset
+      // email via SMTP (MailHog in dev), a real token hashed into password_reset_tokens.
       await forgotPassword(email);
       setSent(true);
-    } catch {
-      setError('Password reset by email is not available yet. Contact an administrator.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }

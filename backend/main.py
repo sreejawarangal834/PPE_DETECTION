@@ -33,16 +33,19 @@ from fastapi import (
     Depends, FastAPI, File, Form, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect,
 )
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from ultralytics import YOLO
 
 import db
 import escalation
+import snapshots
 from auth import security as auth_security
 from auth.dependencies import get_current_user, require_role
 from repositories import alerts, cameras, zones
 from repositories import audit
 from repositories import audit_query
 from repositories import compliance as session_repo
+from repositories import live_stats
 from repositories import persons as persons_repo
 from repositories import reports as reports_repo
 from repositories import users as users_repo
@@ -51,7 +54,7 @@ from repositories import writer as write_queue
 from compliance import evaluate_compliance, new_session_state, _iou, Box
 from frame_source import FrameSource, FileVideoSource, RTSPSource
 from notifications import notifier
-from config import JWT_REFRESH_TTL_SECONDS
+from config import JWT_REFRESH_TTL_SECONDS, PASSWORD_RESET_TTL_SECONDS, FRONTEND_BASE_URL
 from reid import resolver as reid_resolver
 from reid.embedder import OsnetEmbedder, get_embedder
 from config import (
@@ -213,6 +216,19 @@ def _reid_process_frame(
         if ready_flag and centroid is not None:
             ready.append({"track_id": tid, "embedding": centroid.tolist(), "quality": quality})
     return ready
+
+
+def _snapshot_crop_for_track(frame: np.ndarray, detections: list[dict], track_id: int) -> np.ndarray:
+    """Find the person detection matching this violation's track_id (if any is present in
+    THIS frame — compliance.py's hysteresis means the raise can be a frame or two behind the
+    most recent detection of that exact box) and hand back a padded crop via snapshots.py.
+    Cheap (numpy slice only, no encode) — safe to call inline on the hot path, same as the
+    Re-ID crop in _reid_process_frame above."""
+    box = next(
+        (d["box"] for d in detections if d.get("label") == "person" and d.get("_track_id") == track_id),
+        None,
+    )
+    return snapshots.crop_for_violation(frame, tuple(box) if box else None)
 
 
 # ─── FastAPI app ──────────────────────────────────────────────────────────────
@@ -625,6 +641,23 @@ async def resolve_alert_endpoint(alert_id: str, payload: dict, user: dict = Depe
     return updated
 
 
+# ─── Violation snapshots ──────────────────────────────────────────────────────
+# Authenticated (any logged-in role — a snapshot is evidence a supervisor/viewer should be
+# able to see, not an admin-only resource), and deliberately NOT `app.mount()`-ed as a static
+# directory: serving backend/snapshots/ as raw static files would let anyone who guesses (or
+# scrapes from a shared link) an event id fetch violation imagery with no auth check at all.
+
+@app.get("/api/snapshots/{alert_id}")
+async def get_snapshot_endpoint(alert_id: str, user: dict = Depends(get_current_user)):
+    frame_reference = await alerts.get_frame_reference(alert_id)
+    if not frame_reference:
+        raise HTTPException(status_code=404, detail="No snapshot available for this alert")
+    path = snapshots.resolve_reference(frame_reference)
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Snapshot file is missing on disk")
+    return FileResponse(path, media_type="image/jpeg")
+
+
 # ─── Auth (Phase 4) ───────────────────────────────────────────────────────────
 # Real argon2id + JWT access/opaque-refresh-token auth, replacing the plaintext seed
 # users that used to live in src/api/authApi.ts (deleted — see that file's history).
@@ -713,6 +746,69 @@ async def me_endpoint(user: dict = Depends(get_current_user)):
     if full is None:
         raise HTTPException(status_code=401, detail="User not found")
     return await _user_payload(full)
+
+
+@app.put("/api/auth/me")
+async def update_me_endpoint(payload: dict, user: dict = Depends(get_current_user)):
+    """Backs ProfilePage.tsx's account-details form (fake-frontend audit — this used to call
+    an authApi.ts function that always threw "not implemented")."""
+    try:
+        updated = await users_repo.update_own_profile(user["id"], payload.get("name"), payload.get("email"))
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    if updated is None:
+        raise HTTPException(status_code=401, detail="User not found")
+    await audit.write("profile_update", "user", user["id"], user_id=user["id"])
+    return await _user_payload(updated)
+
+
+@app.post("/api/auth/forgot-password")
+async def forgot_password_endpoint(payload: dict):
+    """Always returns the same success response regardless of whether the email exists —
+    doing otherwise would let an attacker enumerate registered accounts."""
+    email = payload.get("email")
+    if not email:
+        raise HTTPException(status_code=400, detail="email is required")
+    user = await users_repo.get_by_email(email)
+    if user is not None:
+        token = auth_security.new_refresh_token()  # same opaque-random-token primitive
+        await users_repo.create_password_reset_token(
+            str(user["id"]), auth_security.hash_refresh_token(token), PASSWORD_RESET_TTL_SECONDS,
+        )
+        reset_link = f"{FRONTEND_BASE_URL}/reset-password?token={token}"
+        try:
+            await notifier.send_plain_email(
+                user["email"], "Reset your PPE Compliance password",
+                f"A password reset was requested for this account.\n\n"
+                f"Reset your password: {reset_link}\n\n"
+                f"This link expires in {PASSWORD_RESET_TTL_SECONDS // 60} minutes. "
+                f"If you didn't request this, you can safely ignore this email.",
+            )
+        except Exception:
+            log.exception("Failed to send password reset email to %s", email)
+        await audit.write("password_reset_requested", "user", str(user["id"]), user_id=user["id"])
+    return {"status": "ok"}
+
+
+@app.post("/api/auth/reset-password")
+async def reset_password_endpoint(payload: dict):
+    token = payload.get("token")
+    new_password = payload.get("newPassword") or payload.get("password")
+    if not token or not new_password:
+        raise HTTPException(status_code=400, detail="token and newPassword are required")
+
+    record = await users_repo.find_reset_token_by_hash(auth_security.hash_refresh_token(token))
+    if record is None or record["used_at"] is not None or users_repo.session_expired(record):
+        raise HTTPException(status_code=400, detail="Invalid or expired reset link")
+
+    password_hash = await auth_security.hash_password(new_password)
+    await users_repo.update_password(record["user_id"], password_hash)
+    await users_repo.mark_reset_token_used(record["id"])
+    # A password reset is exactly the kind of event that should invalidate every existing
+    # session, the same way refresh-token-reuse detection does.
+    await users_repo.revoke_all_sessions_for_user(record["user_id"])
+    await audit.write("password_reset_completed", "user", str(record["user_id"]), user_id=record["user_id"])
+    return {"status": "ok"}
 
 
 # ─── Admin: users (Phase 4 — minimal, backs UserManagementPage) ─────────────
@@ -838,6 +934,24 @@ async def get_worker_zone_log_endpoint(
     return await workers_repo.get_worker_zone_log(worker_id, zone=zone, page=page, page_size=pageSize)
 
 
+# ─── Live monitoring stats (fake-frontend audit) ─────────────────────────────
+# Real replacement for src/lib/websocket/mockWebSocketService.ts's fabricated
+# zone_compliance_update/top_zones_update event streams — see repositories/live_stats.py
+# for the honest metric definition (a proxy, explicitly documented as one, not a duration
+# rate this schema can't yet produce).
+
+@app.get("/api/analytics/live-stats")
+async def live_stats_endpoint(
+    user: dict = Depends(get_current_user), windowMinutes: int = Query(60),
+):
+    zone_stats, overall, timeline = await asyncio.gather(
+        live_stats.get_zone_stats(windowMinutes),
+        live_stats.get_overall_compliance(max(windowMinutes, 240)),
+        live_stats.get_violation_timeline(60),
+    )
+    return {"overallCompliance": overall, "zoneStats": zone_stats, "timeline": timeline}
+
+
 # ─── In-app alert delivery (Phase 4) ──────────────────────────────────────────
 # Retires src/lib/alerts/alertStore.ts's 5s GET /api/alerts poll — new alerts now push over
 # this socket the moment repositories/writer.py's notifier.notify_violation() fires.
@@ -921,6 +1035,9 @@ async def detect_live_ws(websocket: WebSocket, camera_id: str | None = None):
                 detections, worker_states, now, required_ppe=required_ppe,
             )
             for wv in worker_violations:
+                # Cheap numpy slice, no encode/IO — call inline, same reasoning as
+                # _snapshot_crop_for_track's own docstring (matches the Re-ID crop's cost class).
+                snapshot_crop = _snapshot_crop_for_track(resized, detections, wv["worker_id"])
                 write_queue.submit({
                     "kind": "violation",
                     "camera_code": camera_id or "unassigned",
@@ -928,6 +1045,7 @@ async def detect_live_ws(websocket: WebSocket, camera_id: str | None = None):
                     "track_id": wv["worker_id"], "ppe_type": wv["ppe_type"],
                     "severity": severity, "confidence": wv["confidence"],
                     "session_id": session_uuid, "loop_index": 0,
+                    "snapshot_crop": snapshot_crop,
                 })
             if REID_ENABLED and session_uuid is not None:
                 reid_ready = await asyncio.to_thread(
@@ -1208,6 +1326,7 @@ async def _run_detection_session(
                     detections, worker_states, now, required_ppe=required_ppe,
                 )
                 for wv in worker_violations:
+                    snapshot_crop = _snapshot_crop_for_track(frame, detections, wv["worker_id"])
                     write_queue.submit({
                         "kind": "violation",
                         "camera_code": camera_id or "unassigned",
@@ -1215,6 +1334,7 @@ async def _run_detection_session(
                         "track_id": wv["worker_id"], "ppe_type": wv["ppe_type"],
                         "severity": severity, "confidence": wv["confidence"],
                         "session_id": session_uuid, "loop_index": loop_index,
+                        "snapshot_crop": snapshot_crop,
                     })
                 if REID_ENABLED and session_uuid is not None:
                     reid_ready = await asyncio.to_thread(

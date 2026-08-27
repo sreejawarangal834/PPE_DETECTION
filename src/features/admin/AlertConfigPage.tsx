@@ -26,7 +26,7 @@ export default function AlertConfigPage() {
     setSaving(true);
     await saveAdminAlertConfig(working, actor);
     qc.invalidateQueries({ queryKey: ['admin', 'alert-config'] });
-    toast.success('Alert configuration saved.');
+    toast('Kept for this browser session only — see the notice above.', { icon: '⚠️' });
     setSaving(false);
   }
 
@@ -39,6 +39,24 @@ export default function AlertConfigPage() {
         <h1 className="text-2xl font-semibold text-text-primary">Alert Severity & Thresholds</h1>
         <p className="text-sm text-text-muted mt-1">Configure detection confidence and escalation settings per zone</p>
       </div>
+
+      {/* Honest disclosure — found during a fake-frontend audit: neither field on this page
+          is backed by real persistence or reads by the live pipeline yet. Detection
+          confidence is a single global PPE_CONF_THRESHOLD env var (backend/config.py), not
+          configurable per zone; escalation delay is a real, working input to
+          backend/escalation.py, but that module currently reads a hardcoded mirror of
+          src/data/alertConfig.ts's defaults, not this page's edits. Making that explicit
+          here rather than letting "Save Changes" imply either field has a live effect. */}
+      <div className="bg-status-warn/10 border border-status-warn/30 rounded-xl p-4 text-sm text-status-warn">
+        <p className="font-semibold mb-1">Not yet connected to the live pipeline</p>
+        <p className="text-text-secondary">
+          Changes on this page are kept only in this browser tab (they reset on reload) and do
+          not currently affect detection confidence or server-side escalation timing — both are
+          still controlled by fixed backend configuration. Treat this page as a preview of a
+          planned feature, not a working control.
+        </p>
+      </div>
+
       <div className="flex items-center justify-between">
         <Button size="sm" loading={saving} onClick={handleSave}>Save Changes</Button>
       </div>

@@ -168,3 +168,7 @@ SMTP_USE_TLS: bool = _bool("PPE_SMTP_USE_TLS", False)
 # The docstring in notifications/notifier.py already documented this as
 # env-configurable; the code just never read the env var. Fixed here.
 NOTIFY_EMAIL_TO: str = os.environ.get("PPE_NOTIFY_EMAIL_TO", "safety-team@ppe-compliance.local")
+
+# ── Password reset (fake-frontend audit — replaces the dead-end Forgot/Reset password forms) ──
+PASSWORD_RESET_TTL_SECONDS: int = _int("PPE_PASSWORD_RESET_TTL_SECONDS", 30 * 60)
+FRONTEND_BASE_URL: str = os.environ.get("PPE_FRONTEND_BASE_URL", "http://localhost:5173")

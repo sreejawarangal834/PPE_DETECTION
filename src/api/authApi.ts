@@ -73,19 +73,26 @@ export async function getProfile(accessToken: string): Promise<AuthUser> {
   return toAuthUser(res);
 }
 
-// No backend endpoint yet for profile self-edit / forgot-password / reset-password flows —
-// those pages (ProfilePage's name/email edit, ForgotPasswordPage, ResetPasswordPage) predate
-// this pass and weren't in IMPLEMENTATION_PLAN.md's Phase 4 scope. Left as clearly-labelled
-// stubs rather than silently wired to a fake success, so it's obvious they still need a real
-// backend endpoint before shipping.
-export async function updateProfile(_name: string, _email: string): Promise<AuthUser> {
-  throw new Error('Profile self-edit is not implemented on the backend yet.');
+// Real backend endpoints (fake-frontend audit — these three used to always throw
+// "not implemented" behind a caught error, which is better than a fake success but still
+// left dead-end forms in the product; PUT /api/auth/me and the password-reset endpoints
+// below now genuinely work, verified via MailHog end-to-end).
+
+export async function updateProfile(accessToken: string, name: string, email: string): Promise<AuthUser> {
+  const res = await request<BackendUser>('/api/auth/me', {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ name, email }),
+  });
+  return toAuthUser(res);
 }
 
-export async function forgotPassword(_email: string): Promise<void> {
-  throw new Error('Password reset is not implemented on the backend yet.');
+export async function forgotPassword(email: string): Promise<void> {
+  // Always resolves the same way regardless of whether the email exists — the backend
+  // deliberately returns an identical response either way (no account enumeration).
+  await request('/api/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) });
 }
 
-export async function resetPassword(_token: string, _newPassword: string): Promise<void> {
-  throw new Error('Password reset is not implemented on the backend yet.');
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  await request('/api/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, newPassword }) });
 }

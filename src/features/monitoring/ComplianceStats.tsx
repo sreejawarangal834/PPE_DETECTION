@@ -1,15 +1,11 @@
-import { useState, useEffect } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, Area, AreaChart,
 } from 'recharts';
-import { mockWsService } from '../../lib/websocket/mockWebSocketService';
-import { ZONES } from '../../data/zones';
+import { useQuery } from '@tanstack/react-query';
+import { getLiveStats } from '../../api/analyticsApi';
 import ComplianceGauge from '../../components/widgets/ComplianceGauge';
-import type { WsEvent } from '../../types';
-
-interface ZoneBar  { name: string; violations: number; }
-interface TimeLine { t: string; violations: number; }
+import LoadingSkeleton from '../../components/ui/LoadingSkeleton';
 
 const TT = {
   contentStyle: {
@@ -22,42 +18,25 @@ const TT = {
   cursor: { stroke: 'var(--color-border)', strokeWidth: 1 },
 };
 
-function buildTimeline(): TimeLine[] {
-  const now = Date.now();
-  return Array.from({ length: 12 }, (_, i) => ({
-    t: new Date(now - (11 - i) * 5 * 60_000)
-      .toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-    violations: Math.floor(Math.random() * 5),
-  }));
-}
-
+/**
+ * Real site-wide/per-zone/timeline stats (GET /api/analytics/live-stats — see
+ * backend/repositories/live_stats.py). Previously seeded with Math.random() at mount and
+ * "updated" by a fabricated zone_compliance_update event every few seconds
+ * (mockWebSocketService.ts) — a compliance dashboard is exactly the place that must never
+ * make numbers up.
+ */
 export default function ComplianceStats() {
-  const [overall, setOverall]   = useState(78);
-  const [zoneBars, setZoneBars] = useState<ZoneBar[]>(() =>
-    ZONES.map(z => ({ name: z.name.split(' ')[0], violations: Math.floor(Math.random() * 4) }))
-  );
-  const [timeline, setTimeline] = useState<TimeLine[]>(buildTimeline);
+  const { data, isLoading } = useQuery({
+    queryKey: ['analytics', 'live-stats'],
+    queryFn: () => getLiveStats(60),
+    refetchInterval: 20_000,
+    staleTime: 15_000,
+  });
 
-  useEffect(() => {
-    function handler(e: WsEvent) {
-      if (e.type !== 'zone_compliance_update') return;
-      const p = e.payload as { zoneId: string; compliancePercent: number; violations: number };
-      setOverall(prev => Math.round(prev * 0.85 + p.compliancePercent * 0.15));
-      setZoneBars(prev => prev.map(z => {
-        const zone = ZONES.find(z2 => z2.name.startsWith(z.name));
-        return zone?.id === p.zoneId ? { ...z, violations: p.violations } : z;
-      }));
-      setTimeline(prev => [
-        ...prev.slice(1),
-        {
-          t: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-          violations: p.violations,
-        },
-      ]);
-    }
-    mockWsService.onMessage(handler);
-    return () => { mockWsService.removeAllHandlers(); };
-  }, []);
+  if (isLoading || !data) return <LoadingSkeleton variant="chart" />;
+
+  const overall = data.overallCompliance;
+  const zoneBars = data.zoneStats.map(z => ({ name: z.zoneName.split(' ')[0], violations: z.violations }));
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr_1.4fr] gap-4">
@@ -68,9 +47,16 @@ export default function ComplianceStats() {
           Overall Compliance
         </p>
         <div className="flex-1 flex flex-col items-center justify-center">
-          <ComplianceGauge value={overall} size={160} label="" />
+          {overall !== null ? (
+            <ComplianceGauge value={overall} size={160} label="" />
+          ) : (
+            <div className="flex flex-col items-center gap-2 text-text-muted">
+              <ComplianceGauge value={0} size={160} label="" />
+              <p className="text-xs">No tracked activity yet</p>
+            </div>
+          )}
           <p className="text-xs text-text-muted mt-2 text-center">
-            Site-wide · All active zones
+            Site-wide · Last 4 hours
           </p>
         </div>
       </div>
@@ -78,7 +64,7 @@ export default function ComplianceStats() {
       {/* Card 2 — Violations per Zone */}
       <div className="bg-panel border border-border-soft rounded-xl p-4 flex flex-col">
         <p className="text-xs font-medium uppercase tracking-wide text-text-muted mb-3">
-          Violations Per Zone
+          Violations Per Zone — Last Hour
         </p>
         <div className="flex-1">
           <ResponsiveContainer width="100%" height={220}>
@@ -89,7 +75,7 @@ export default function ComplianceStats() {
                 axisLine={false} tickLine={false} />
               <YAxis
                 tick={{ fill: 'var(--color-chart-tick)', fontSize: 10 }}
-                axisLine={false} tickLine={false} width={24} />
+                axisLine={false} tickLine={false} width={24} allowDecimals={false} />
               <Tooltip {...TT} />
               <Bar dataKey="violations" fill="var(--color-chart-4)"
                 radius={[3, 3, 0, 0]} name="Violations" />
@@ -104,27 +90,33 @@ export default function ComplianceStats() {
           Violations — Last 60 Min
         </p>
         <div className="flex-1">
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={timeline} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
-              <defs>
-                <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="var(--color-chart-1)" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="var(--color-chart-1)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="2 4" stroke="var(--color-chart-grid)" vertical={false} />
-              <XAxis dataKey="t"
-                tick={{ fill: 'var(--color-chart-tick)', fontSize: 9 }}
-                axisLine={false} tickLine={false} interval={3} />
-              <YAxis
-                tick={{ fill: 'var(--color-chart-tick)', fontSize: 10 }}
-                axisLine={false} tickLine={false} width={24} />
-              <Tooltip {...TT} />
-              <Area type="monotone" dataKey="violations"
-                stroke="var(--color-chart-1)" strokeWidth={2}
-                fill="url(#areaFill)" dot={false} name="Violations" />
-            </AreaChart>
-          </ResponsiveContainer>
+          {data.timeline.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-xs text-text-muted">
+              No violations in the last hour
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={data.timeline} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="var(--color-chart-1)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--color-chart-1)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="2 4" stroke="var(--color-chart-grid)" vertical={false} />
+                <XAxis dataKey="t"
+                  tick={{ fill: 'var(--color-chart-tick)', fontSize: 9 }}
+                  axisLine={false} tickLine={false} interval={3} />
+                <YAxis
+                  tick={{ fill: 'var(--color-chart-tick)', fontSize: 10 }}
+                  axisLine={false} tickLine={false} width={24} allowDecimals={false} />
+                <Tooltip {...TT} />
+                <Area type="monotone" dataKey="violations"
+                  stroke="var(--color-chart-1)" strokeWidth={2}
+                  fill="url(#areaFill)" dot={false} name="Violations" />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
     </div>

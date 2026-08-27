@@ -10,6 +10,7 @@ import { formatDate } from '../../lib/utils';
 import { PPE_LABEL } from '../../constants/ppeTypes';
 import { useAuthStore } from '../../lib/auth/authStore';
 import { hasCapability } from '../../constants/permissions';
+import SnapshotImage from '../../components/ui/SnapshotImage';
 
 interface Props { alert: Alert; onClose: () => void; onUpdate: (a: Alert) => void; }
 
@@ -37,10 +38,8 @@ export default function AlertDetailPanel({ alert, onClose, onUpdate }: Props) {
         )}
 
         <div className="px-4 py-4 space-y-4">
-          {/* Snapshot placeholder */}
-          <div className="h-36 bg-panel-alt border border-border-soft rounded-lg flex items-center justify-center text-text-muted text-sm">
-            📷 CCTV snapshot — {alert.timestamp}
-          </div>
+          {/* Real violation snapshot (or an honest empty state — see SnapshotImage) */}
+          <SnapshotImage snapshotUrl={alert.snapshotUrl} alt={`Snapshot for alert ${alert.id}`} height={144} />
 
           {/* Details grid */}
           <div className="grid grid-cols-2 gap-3">

@@ -4,13 +4,19 @@
  * Generates a self-contained HTML string for the daily compliance PDF.
  * Called by DailyReport.tsx → passed to printReport() → injected into iframe.
  *
- * No JSX — pure string so it works inside a plain .ts file.
+ * No JSX — pure string so it works inside a plain .ts file. Async because real snapshot
+ * images (GET /api/snapshots/{id}, authenticated) have to be fetched and base64-inlined
+ * before the HTML string can be complete — a plain <img src="/api/snapshots/..."> wouldn't
+ * carry the Authorization header the endpoint requires, and an iframe's srcdoc has no
+ * access to this page's fetch credentials either way, so the image bytes must already be
+ * embedded as a data: URL by the time this string is built.
  */
 import type { DailyReport } from '../../types';
 import type { Alert } from '../../types';
 import { PPE_LABEL } from '../../constants/ppeTypes';
 import { SITE_NAME } from '../../constants/app';
 import { formatDate } from '../utils';
+import { fetchSnapshotDataUrl } from '../http';
 
 function complianceColor(v: number) {
   if (v >= 80) return '#4F9E7C';
@@ -31,38 +37,25 @@ function statusColor(s: string) {
   return m[s] ?? '#A8A296';
 }
 
-/** Inline SVG CCTV snapshot */
-function snapshotSVG(alertId: string, severity: string): string {
-  const bc = severityColor(severity);
+/** Real snapshot (base64-inlined) when one was captured, or an honest "no snapshot" note —
+ * never a fabricated graphic. `dataUrl` is null both while there's genuinely no snapshot AND
+ * if the fetch failed; either way this renders the same honest empty state. */
+function snapshotBlock(dataUrl: string | null): string {
+  if (dataUrl) {
+    return `<img src="${dataUrl}" alt="Violation snapshot" style="display:block;width:100%;height:140px;object-fit:contain;border-radius:5px;background:#1a1d23;" />`;
+  }
   return `
-<svg width="100%" viewBox="0 0 320 140" xmlns="http://www.w3.org/2000/svg"
-  style="display:block;border-radius:5px;background:#1a1d23;width:100%;height:140px;">
-  <defs>
-    <pattern id="s${alertId}" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-      <rect width="3" height="6" fill="#24211C"/>
-      <rect x="3" width="3" height="6" fill="#15130F"/>
-    </pattern>
-  </defs>
-  <rect width="320" height="140" fill="url(#s${alertId})"/>
-  <rect x="8" y="8" width="46" height="18" rx="3" fill="rgba(0,0,0,0.75)"/>
-  <circle cx="18" cy="17" r="4" fill="#4F9E7C"/>
-  <text x="26" y="21" fill="#4F9E7C" font-size="9" font-family="monospace" font-weight="700">LIVE</text>
-  <rect x="95" y="28" width="68" height="88" rx="2" fill="none" stroke="${bc}" stroke-width="2.5"/>
-  <rect x="95" y="17" width="96" height="15" rx="2" fill="${bc}" opacity="0.9"/>
-  <text x="99" y="27" fill="white" font-size="8" font-family="monospace">PPE VIOLATION ${(0.85 + Math.random() * 0.12).toFixed(2)}</text>
-  <rect x="190" y="42" width="52" height="72" rx="2" fill="none" stroke="#9C4A4F" stroke-width="1.5"/>
-  <text x="8" y="134" fill="#A8A296" font-size="8" font-family="monospace" opacity="0.7">
-    CCTV CAPTURE — ${new Date().toLocaleTimeString('en-GB')}
-  </text>
-</svg>`;
+<div style="display:flex;align-items:center;justify-content:center;width:100%;height:140px;border-radius:5px;background:#F3F4F6;color:#9CA3AF;font-size:9pt;">
+  No snapshot captured
+</div>`;
 }
 
-export function buildDailyReportHTML(
+export async function buildDailyReportHTML(
   report: DailyReport,
   date: string,
   alerts: Alert[],
   userName: string
-): string {
+): Promise<string> {
   const topAlerts = alerts.slice(0, 6);
   const reportDate = new Date(date).toLocaleDateString('en-GB', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
@@ -140,7 +133,14 @@ export function buildDailyReportHTML(
 </table>`;
 
   /* ── Alert Snapshots ─────────────────────────────────── */
-  const alertCards = topAlerts.map(a => {
+  // Fetch every real snapshot up front (in parallel) so the HTML string below can be built
+  // synchronously — null for alerts with no snapshotUrl (honest empty state) and for any
+  // fetch failure (network error, 404 file-missing-on-disk).
+  const snapshotDataUrls = await Promise.all(
+    topAlerts.map(a => (a.snapshotUrl ? fetchSnapshotDataUrl(a.snapshotUrl) : Promise.resolve(null)))
+  );
+
+  const alertCards = topAlerts.map((a, i) => {
     const sc = severityColor(a.severity);
     const stc = statusColor(a.status);
     const missing = a.missingPpe.map(p => PPE_LABEL[p] ?? p).join(', ');
@@ -161,7 +161,7 @@ export function buildDailyReportHTML(
     <span class="status-pill" style="border:1px solid ${stc};color:${stc}">${a.status}</span>
   </div>
   <div class="alert-card-body">
-    <div class="snapshot">${snapshotSVG(a.id, a.severity)}</div>
+    <div class="snapshot">${snapshotBlock(snapshotDataUrls[i])}</div>
     <div class="meta-grid">
       <p><span>Zone: </span><strong>${a.zoneName}</strong></p>
       <p><span>Camera: </span><strong style="font-family:monospace">${a.cameraId}</strong></p>
@@ -180,7 +180,7 @@ export function buildDailyReportHTML(
 <div class="page-break"></div>
 <h2>PPE Violation Snapshots (${topAlerts.length} alerts)</h2>
 <p style="font-size:10pt;color:#6B7280;margin-bottom:14px">
-  CCTV captures recorded at the time of each PPE violation detection.
+  Snapshots captured at the time of each PPE violation detection, where one exists.
 </p>
 <div class="alert-grid">${alertCards}</div>` : '';
 

@@ -8,9 +8,7 @@ import {
 import { useAuthStore } from '../lib/auth/authStore';
 import { useWsStore } from '../lib/websocket/wsStore';
 import { useNotificationStore } from '../lib/notifications/notificationStore';
-import { useAlertStore } from '../lib/alerts/alertStore';
-import { useWebSocket } from '../lib/websocket/useWebSocket';
-import { startAlertLiveFeed, stopAlertLiveFeed } from '../lib/alerts/alertStore';
+import { useAlertStore, startAlertLiveFeed, stopAlertLiveFeed } from '../lib/alerts/alertStore';
 import { ROUTE_PERMISSIONS } from '../constants/permissions';
 import { ROUTES } from '../constants/routes';
 import { ROLE_LABELS, ROLE_BADGE_COLOR } from '../constants/roles';
@@ -214,10 +212,10 @@ export default function AppLayout() {
     document.addEventListener('mouseup', onUp);
   }
 
-  useWebSocket();
-  // Escalation moved server-side (backend/escalation.py) — this just listens for the
-  // alert_new / alert_escalated events it (and repositories/writer.py) broadcast over
-  // /ws/alerts, retiring the old 5s GET /api/alerts poll entirely.
+  // Escalation moved server-side (backend/escalation.py) — this listens for the
+  // alert_new / alert_escalated events it (and repositories/writer.py) broadcast over the
+  // real /ws/alerts socket (src/lib/alerts/alertStore.ts), retiring both the old 5s
+  // GET /api/alerts poll and the fabricated mockWebSocketService.ts stream entirely.
   useEffect(() => { startAlertLiveFeed(); return () => stopAlertLiveFeed(); }, []);
 
   // Close profile on outside click

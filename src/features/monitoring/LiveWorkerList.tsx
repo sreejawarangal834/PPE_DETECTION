@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { WORKERS } from '../../data/workers';
-import { mockWsService } from '../../lib/websocket/mockWebSocketService';
+import { useQuery } from '@tanstack/react-query';
+import { getWorkers } from '../../api/workersApi';
 import { useDetectionStore } from '../../state/DetectionStore';
 import type { Detection } from '../../hooks/useDetectionSocket';
-import type { WsEvent, Worker } from '../../types';
+import type { Worker } from '../../types';
 import { ROUTES } from '../../constants/routes';
 import { Users, Zap } from 'lucide-react';
 
@@ -20,11 +19,17 @@ interface Props { selectedZone: string | null; assignedZones?: string[]; }
 
 export default function LiveWorkerList({ selectedZone, assignedZones }: Props) {
   const navigate = useNavigate();
-  const [workers, setWorkers] = useState<Worker[]>(() =>
-    WORKERS.filter(w => w.currentZoneId)
-  );
 
-  // YOLO26 live detection from store
+  // Real worker roster (GET /api/workers — backend/repositories/workers.py), replacing the
+  // src/data/workers.ts static array this used to filter directly.
+  const { data: workers = [] } = useQuery({
+    queryKey: ['workers', 'live-list'],
+    queryFn: () => getWorkers(),
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+  });
+
+  // YOLO26 live detection from store (already real — unchanged)
   const { liveCamera } = useDetectionStore();
   const isLiveActive = liveCamera !== null && (
     liveCamera.status === 'streaming' || liveCamera.jpeg !== undefined
@@ -48,22 +53,6 @@ export default function LiveWorkerList({ selectedZone, assignedZones }: Props) {
           zonesVisited:    [],
         }))
     : null;
-
-  // Mock worker updates from WebSocket
-  useEffect(() => {
-    if (isLiveActive) return;     // don't overwrite live data with mock updates
-    function handler(e: WsEvent) {
-      if (e.type !== 'worker_update') return;
-      const p = e.payload as { workerId: string; zoneId: string; complianceStatus: string };
-      setWorkers(prev => prev.map(w =>
-        w.id === p.workerId
-          ? { ...w, currentZoneId: p.zoneId, complianceRate: p.complianceStatus === 'compliant' ? 90 : 45 }
-          : w
-      ));
-    }
-    mockWsService.onMessage(handler);
-    return () => { mockWsService.removeAllHandlers(); };
-  }, [isLiveActive]);
 
   // Which workers to display — typed union so .map callback is typed
   const displayWorkers: (Worker | LiveWorker)[] =

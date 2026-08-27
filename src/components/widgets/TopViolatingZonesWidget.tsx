@@ -1,59 +1,42 @@
-import { useState, useEffect } from 'react';
-import { mockWsService } from '../../lib/websocket/mockWebSocketService';
-import { ZONES } from '../../data/zones';
-import { ALERTS } from '../../data/mockData';
-import type { WsEvent } from '../../types';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { getLiveStats } from '../../api/analyticsApi';
 
-interface ZoneViolation { zoneId: string; zoneName: string; violations: number; }
 type Window = 'last_hour' | 'last_4h' | 'last_8h' | 'today';
 
-const WINDOWS: { id: Window; label: string }[] = [
-  { id: 'last_hour', label: 'Last Hour' },
-  { id: 'last_4h',  label: 'Last 4h'   },
-  { id: 'last_8h',  label: 'Last 8h'   },
-  { id: 'today',    label: 'Today'      },
+const WINDOWS: { id: Window; label: string; minutes: number }[] = [
+  { id: 'last_hour', label: 'Last Hour', minutes: 60 },
+  { id: 'last_4h',  label: 'Last 4h',   minutes: 4 * 60 },
+  { id: 'last_8h',  label: 'Last 8h',   minutes: 8 * 60 },
+  { id: 'today',    label: 'Today',      minutes: 24 * 60 },
 ];
-
-function seedCounts(assignedZones?: string[]): ZoneViolation[] {
-  const counts: Record<string, number> = {};
-  ALERTS.filter(a => a.status !== 'resolved').forEach(a => {
-    if (assignedZones?.length && !assignedZones.includes(a.zoneId)) return;
-    counts[a.zoneId] = (counts[a.zoneId] ?? 0) + 1;
-  });
-  return ZONES
-    .filter(z => !assignedZones?.length || assignedZones.includes(z.id))
-    .map(z => ({ zoneId: z.id, zoneName: z.name, violations: counts[z.id] ?? 0 }))
-    .sort((a, b) => b.violations - a.violations)
-    .slice(0, 5);
-}
 
 interface Props { onZoneClick: (zoneId: string) => void; assignedZones?: string[]; }
 
+/**
+ * Real per-zone violation counts (GET /api/analytics/live-stats). Previously seeded from
+ * src/data/mockData.ts's fabricated ALERTS array and "updated" by a fake top_zones_update
+ * event whose window selector was purely decorative (the seed/mock update never actually
+ * varied by the selected window) — this version's window selector is real: it's the query
+ * parameter sent to the backend.
+ */
 export default function TopViolatingZonesWidget({ onZoneClick, assignedZones }: Props) {
   const [window_, setWindow] = useState<Window>('last_hour');
-  const [zones, setZones]    = useState<ZoneViolation[]>(() => seedCounts(assignedZones));
+  const minutes = WINDOWS.find(w => w.id === window_)!.minutes;
 
-  useEffect(() => {
-    function handler(e: WsEvent) {
-      if (e.type !== 'top_zones_update') return;
-      const p = e.payload as { zones: { zoneId: string; violations: number }[] };
-      setZones(
-        p.zones
-          .filter(z => !assignedZones?.length || assignedZones.includes(z.zoneId))
-          .map(z => ({
-            zoneId:    z.zoneId,
-            zoneName:  ZONES.find(z2 => z2.id === z.zoneId)?.name ?? z.zoneId,
-            violations: z.violations,
-          }))
-          .sort((a, b) => b.violations - a.violations)
-          .slice(0, 5)
-      );
-    }
-    mockWsService.onMessage(handler);
-    return () => { mockWsService.removeAllHandlers(); };
-  }, [assignedZones]);
+  const { data } = useQuery({
+    queryKey: ['analytics', 'live-stats', minutes],
+    queryFn: () => getLiveStats(minutes),
+    refetchInterval: 20_000,
+    staleTime: 15_000,
+  });
 
-  const maxV  = Math.max(...zones.map(z => z.violations), 1);
+  const zones = (data?.zoneStats ?? [])
+    .filter(z => !assignedZones?.length || assignedZones.includes(z.zoneId))
+    .sort((a, b) => b.violations - a.violations)
+    .slice(0, 5);
+
+  const maxV = Math.max(...zones.map(z => z.violations), 1);
   const hasAny = zones.some(z => z.violations > 0);
 
   return (

@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { ZONES } from '../../data/zones';
-import { mockWsService } from '../../lib/websocket/mockWebSocketService';
-import type { WsEvent } from '../../types';
+import { getLiveStats } from '../../api/analyticsApi';
 
-function zoneColor(v: number) {
+function zoneColor(v: number | null) {
+  if (v === null) return 'var(--color-text-muted)';
   if (v >= 80) return 'var(--color-compliance-good)';
   if (v >= 60) return 'var(--color-compliance-warn)';
   return 'var(--color-compliance-bad)';
@@ -14,20 +14,21 @@ interface PlantLayoutWidgetProps {
   readonly?: boolean;
 }
 
+/**
+ * `ZONES` here supplies only the SVG layout geometry (`svgCoordinates` — x/y/w/h per zone),
+ * which has no backend equivalent yet and is genuinely just presentation data, not a live
+ * data source (the distinction the Task 2 audit draws — see src/data/zones.ts). The
+ * compliance percentages painted onto it are real (GET /api/analytics/live-stats), replacing
+ * a fabricated zone_compliance_update stream that used to drive this same map.
+ */
 export default function PlantLayoutWidget({ onZoneClick, readonly = false }: PlantLayoutWidgetProps) {
-  const [statuses, setStatuses] = useState<Record<string, number>>(() =>
-    Object.fromEntries(ZONES.map(z => [z.id, 78]))
-  );
-
-  useEffect(() => {
-    function handler(e: WsEvent) {
-      if (e.type !== 'zone_compliance_update') return;
-      const p = e.payload as { zoneId: string; compliancePercent: number };
-      setStatuses(prev => ({ ...prev, [p.zoneId]: p.compliancePercent }));
-    }
-    mockWsService.onMessage(handler);
-    return () => { mockWsService.removeAllHandlers(); };
-  }, []);
+  const { data } = useQuery({
+    queryKey: ['analytics', 'live-stats'],
+    queryFn: () => getLiveStats(60),
+    refetchInterval: 20_000,
+    staleTime: 15_000,
+  });
+  const statsByZone = new Map((data?.zoneStats ?? []).map(s => [s.zoneId, s]));
 
   return (
     <div className="bg-panel border border-border-soft rounded-xl p-4">
@@ -37,7 +38,7 @@ export default function PlantLayoutWidget({ onZoneClick, readonly = false }: Pla
         {ZONES.map(z => {
           if (!z.svgCoordinates) return null;
           const { x, y, w, h } = z.svgCoordinates;
-          const compliance = statuses[z.id] ?? 78;
+          const compliance = statsByZone.get(z.id)?.compliancePercent ?? null;
           const color = zoneColor(compliance);
           const clickable = !readonly && !!onZoneClick;
 
@@ -45,7 +46,7 @@ export default function PlantLayoutWidget({ onZoneClick, readonly = false }: Pla
             <g key={z.id}
               onClick={() => clickable && onZoneClick?.(z.id)}
               style={{ cursor: clickable ? 'pointer' : 'default' }}
-              aria-label={`${z.name} — ${compliance}% compliant`}
+              aria-label={compliance !== null ? `${z.name} — ${compliance}% compliant` : `${z.name} — no data`}
               role={clickable ? 'button' : undefined}
               tabIndex={clickable ? 0 : undefined}
               onKeyDown={e => { if (clickable && (e.key === 'Enter' || e.key === ' ')) onZoneClick?.(z.id); }}
@@ -55,16 +56,15 @@ export default function PlantLayoutWidget({ onZoneClick, readonly = false }: Pla
                 fill={color} fillOpacity="0.12"
                 stroke={color} strokeWidth="1.5" strokeOpacity="0.6"
               />
-              {/* Hover tint (pure SVG can't do hover easily, handled via opacity on click) */}
               {/* Zone name */}
               <text x={x + w / 2} y={y + h / 2 - 8} textAnchor="middle"
                 fill="var(--color-text-secondary)" fontSize="11" fontFamily="IBM Plex Sans, sans-serif" fontWeight="500">
                 {z.name.split(' ').slice(0, 2).join(' ')}
               </text>
-              {/* Compliance % */}
+              {/* Compliance % (or an honest "no data" dash) */}
               <text x={x + w / 2} y={y + h / 2 + 10} textAnchor="middle"
                 fill={color} fontSize="13" fontFamily="IBM Plex Mono, monospace" fontWeight="700">
-                {compliance}%
+                {compliance !== null ? `${compliance}%` : '—'}
               </text>
             </g>
           );

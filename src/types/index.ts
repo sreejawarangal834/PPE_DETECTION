@@ -70,6 +70,12 @@ export interface Alert {
   resolvedAt?: string;
   resolutionNotes?: string;
   escalatedAt?: string;
+  // Authenticated backend endpoint path (GET /api/snapshots/{id}), or null when no real
+  // snapshot was captured — most importantly every legacy-imported alert (see
+  // scripts/import_json_stores.py), which predates real capture entirely. Never a browser
+  // path/URL you can drop straight into <img src>: the endpoint requires a Bearer token,
+  // so consumers must fetch() it themselves (see AlertDetailPanel.tsx).
+  snapshotUrl?: string | null;
 }
 
 /* ─── Worker ─────────────────────────────────────────────── */

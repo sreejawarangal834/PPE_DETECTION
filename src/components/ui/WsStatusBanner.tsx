@@ -1,7 +1,12 @@
 import { useWsStore } from '../../lib/websocket/wsStore';
-import { mockWsService } from '../../lib/websocket/mockWebSocketService';
+import { retryAlertLiveFeed } from '../../lib/alerts/alertStore';
 import Spinner from './Spinner';
 
+/**
+ * Reflects the real /ws/alerts connection (see src/lib/alerts/alertStore.ts) — previously
+ * driven by mockWebSocketService.ts's own fabricated disconnect/reconnect timer, which had
+ * no relationship to whether anything was actually connected.
+ */
 export default function WsStatusBanner() {
   const status = useWsStore(s => s.status);
 
@@ -26,7 +31,7 @@ export default function WsStatusBanner() {
       <span className={`text-xs font-mono ${cfg.text}`}>{cfg.label}</span>
       {status === 'disconnected' && (
         <button
-          onClick={() => mockWsService.connect()}
+          onClick={retryAlertLiveFeed}
           className="text-xs text-accent hover:underline ml-1"
           aria-label="Retry connection"
         >

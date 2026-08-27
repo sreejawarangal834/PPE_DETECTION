@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PPE Analytics Dashboard Preview</title>
+  
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  @keyframes pulseBorder { 0%,100% { box-shadow: 0 0 0 0 rgba(194,84,80,0.55); } 50% { box-shadow: 0 0 0 5px rgba(194,84,80,0); } }
+  @keyframes shimmerMove { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+  body { margin: 0; background: #15130F; font-family: 'IBM Plex Sans', system-ui, sans-serif; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #322D26; border-radius: 4px; }
+  a { color: #9C4A4F; text-decoration: none; }
+  a:hover { color: #B15D62; text-decoration: underline; }
+</style>
+
+</head>
+<body>
+  
+
+<div style="display:flex; width:100%; min-height:100vh; background:#15130F; color:#EDEAE2; font-family:'IBM Plex Sans',system-ui,sans-serif;">
+
+  <!-- Sidebar -->
+  <aside style="width:240px; flex-shrink:0; background:#1D1A16; border-right:1px solid #322D26; display:flex; flex-direction:column; height:100vh; position:sticky; top:0;">
+    <div style="height:57px; display:flex; align-items:center; gap:10px; padding:0 16px; border-bottom:1px solid #282420;">
+      <div style="width:28px;height:28px;border-radius:6px;background:#9C4A4F; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; color:#15130F; font-family:'IBM Plex Mono',monospace;">SG</div>
+      <span style="font-size:14px; font-weight:600; color:#EDEAE2;">SafeGuard AI</span>
+    </div>
+    <nav style="flex:1; padding:12px 8px; display:flex; flex-direction:column; gap:2px;">
+      
+        <div style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:6px; font-size:14px; cursor:pointer;"
+             style-hover="background:#2B2620; color:#EDEAE2;"
+             style="color:#A8A296;">
+          <span style="width:18px; height:18px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:13px;" aria-hidden="true">◧</span>
+          <span>Live Monitoring</span>
+        </div>
+      
+        <div style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:6px; font-size:14px; cursor:pointer;"
+             style-hover="background:#2B2620; color:#EDEAE2;"
+             style="background:rgba(156,74,79,0.16);color:#9C4A4F;">
+          <span style="width:18px; height:18px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:13px;" aria-hidden="true">▤</span>
+          <span>Analytics</span>
+        </div>
+      
+        <div style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:6px; font-size:14px; cursor:pointer;"
+             style-hover="background:#2B2620; color:#EDEAE2;"
+             style="color:#A8A296;">
+          <span style="width:18px; height:18px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:13px;" aria-hidden="true">⚠</span>
+          <span>Alerts & Violations</span>
+        </div>
+      
+        <div style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:6px; font-size:14px; cursor:pointer;"
+             style-hover="background:#2B2620; color:#EDEAE2;"
+             style="color:#A8A296;">
+          <span style="width:18px; height:18px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:13px;" aria-hidden="true">◎</span>
+          <span>Worker Tracking</span>
+        </div>
+      
+        <div style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:6px; font-size:14px; cursor:pointer;"
+             style-hover="background:#2B2620; color:#EDEAE2;"
+             style="color:#A8A296;">
+          <span style="width:18px; height:18px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:13px;" aria-hidden="true">▥</span>
+          <span>Reports & Analytics</span>
+        </div>
+      
+        <div style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:6px; font-size:14px; cursor:pointer;"
+             style-hover="background:#2B2620; color:#EDEAE2;"
+             style="color:#A8A296;">
+          <span style="width:18px; height:18px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:13px;" aria-hidden="true">◈</span>
+          <span>KPI Summary</span>
+        </div>
+      
+        <div style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:6px; font-size:14px; cursor:pointer;"
+             style-hover="background:#2B2620; color:#EDEAE2;"
+             style="color:#A8A296;">
+          <span style="width:18px; height:18px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:13px;" aria-hidden="true">⚙</span>
+          <span>Admin Console</span>
+        </div>
+      
+      <div style="flex:1;"></div>
+      <div style="border-top:1px solid #282420; margin-top:8px; padding-top:8px; display:flex; flex-direction:column; gap:2px;">
+        <div style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:6px; font-size:14px; color:#A8A296;" style-hover="background:#2B2620; color:#EDEAE2;">
+          <span style="width:18px;">◔</span><span>Profile</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:6px; font-size:14px; color:#A8A296;" style-hover="background:#2B2620; color:#EDEAE2;">
+          <span style="width:18px;">⏻</span><span>Logout</span>
+        </div>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- Main column -->
+  <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+
+    <!-- Header -->
+    <header style="height:56px; flex-shrink:0; background:#1D1A16; border-bottom:1px solid #282420; display:flex; align-items:center; padding:0 24px; gap:20px;">
+      <div style="flex:1;"></div>
+      <div role="status" aria-live="polite" style="display:flex; align-items:center; gap:6px; font-size:13px; color:#4F9E7C;">
+        <span style="width:8px; height:8px; border-radius:50%; background:#4F9E7C; display:inline-block;"></span>
+        <span>Live</span>
+      </div>
+      <button aria-label="Notifications — 4 unread" style="position:relative; background:none; border:none; color:#A8A296; cursor:pointer; padding:8px; border-radius:8px; display:flex;" style-hover="background:#2B2620; color:#EDEAE2;">
+        <span style="font-size:18px;">🔔</span>
+        <span style="position:absolute; top:2px; right:2px; min-width:16px; height:16px; background:#C25450; color:white; font-size:10px; font-weight:700; border-radius:9999px; display:flex; align-items:center; justify-content:center; padding:0 3px;">4</span>
+      </button>
+      <div style="display:flex; align-items:center; gap:10px; padding-left:12px; border-left:1px solid #322D26; cursor:pointer;">
+        <div style="width:32px; height:32px; border-radius:50%; background:#24211C; display:flex; align-items:center; justify-content:center; color:#9C4A4F; font-weight:600; font-size:13px;">SO</div>
+        <div style="line-height:1.25;">
+          <div style="font-size:13px; font-weight:500; color:#EDEAE2;">Sarah Okafor</div>
+          <div style="font-size:11px; color:#6E685D;">Safety Officer</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main style="flex:1; padding:24px; overflow:auto;">
+
+      <div style="margin-bottom:24px;">
+        <h1 style="font-size:24px; font-weight:600; color:#EDEAE2; margin:0;">Analytics</h1>
+        <p style="font-size:13px; color:#6E685D; margin:4px 0 0;">Live compliance statistics and zone health</p>
+      </div>
+
+      <!-- Row 1: Compliance stats -->
+      <div style="display:grid; grid-template-columns:1fr 1.4fr 1.4fr; gap:16px; margin-bottom:16px;">
+
+        <!-- Gauge -->
+        <div style="background:#1D1A16; border:1px solid #282420; border-radius:12px; padding:16px; display:flex; flex-direction:column;">
+          <div style="font-size:11px; color:#6E685D; font-weight:500; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px;">Overall Compliance</div>
+          <div style="flex:1; display:flex; align-items:center; justify-content:center; position:relative; min-height:120px;">
+            <svg width="160" height="96" viewBox="0 0 160 96">
+              <path d="M 14 90 A 66 66 0 0 1 146 90" fill="none" stroke="#24211C" stroke-width="14" stroke-linecap="round"></path>
+              <path d="M 14 90 A 66 66 0 0 1 146 90" fill="none" stroke="#4F9E7C" stroke-width="14" stroke-linecap="round" stroke-dasharray="207" style="stroke-dashoffset:37.25999999999999;"></path>
+            </svg>
+            <div style="position:absolute; bottom:6px; text-align:center;">
+              <div style="font-size:26px; font-weight:700; font-family:'IBM Plex Mono',monospace; color:#4F9E7C;">82%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bar chart -->
+        <div style="background:#1D1A16; border:1px solid #282420; border-radius:12px; padding:16px;">
+          <div style="font-size:11px; color:#6E685D; font-weight:500; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:12px;">Violations per Zone</div>
+          <div style="height:150px; display:flex; align-items:flex-end; gap:10px; padding:0 4px;">
+            
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; height:100%; justify-content:flex-end;">
+                <div style="font-size:11px; color:#A8A296; font-family:'IBM Plex Mono',monospace;">1</div>
+                <div style="width:100%; max-width:28px; border-radius:3px 3px 0 0; height:16.666666666666664%;background:#D9A441;"></div>
+                <div style="font-size:10px; color:#6E685D; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:56px;">Assembly</div>
+              </div>
+            
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; height:100%; justify-content:flex-end;">
+                <div style="font-size:11px; color:#A8A296; font-family:'IBM Plex Mono',monospace;">6</div>
+                <div style="width:100%; max-width:28px; border-radius:3px 3px 0 0; height:100%;background:#C25450;"></div>
+                <div style="font-size:10px; color:#6E685D; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:56px;">Welding</div>
+              </div>
+            
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; height:100%; justify-content:flex-end;">
+                <div style="font-size:11px; color:#A8A296; font-family:'IBM Plex Mono',monospace;">3</div>
+                <div style="width:100%; max-width:28px; border-radius:3px 3px 0 0; height:50%;background:#D9A441;"></div>
+                <div style="font-size:10px; color:#6E685D; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:56px;">Paint</div>
+              </div>
+            
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; height:100%; justify-content:flex-end;">
+                <div style="font-size:11px; color:#A8A296; font-family:'IBM Plex Mono',monospace;">0</div>
+                <div style="width:100%; max-width:28px; border-radius:3px 3px 0 0; height:6%;background:#4F9E7C;"></div>
+                <div style="font-size:10px; color:#6E685D; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:56px;">Warehouse</div>
+              </div>
+            
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; height:100%; justify-content:flex-end;">
+                <div style="font-size:11px; color:#A8A296; font-family:'IBM Plex Mono',monospace;">4</div>
+                <div style="width:100%; max-width:28px; border-radius:3px 3px 0 0; height:66.66666666666666%;background:#C25450;"></div>
+                <div style="font-size:10px; color:#6E685D; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:56px;">Loading</div>
+              </div>
+            
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; height:100%; justify-content:flex-end;">
+                <div style="font-size:11px; color:#A8A296; font-family:'IBM Plex Mono',monospace;">2</div>
+                <div style="width:100%; max-width:28px; border-radius:3px 3px 0 0; height:33.33333333333333%;background:#D9A441;"></div>
+                <div style="font-size:10px; color:#6E685D; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:56px;">Machine</div>
+              </div>
+            
+          </div>
+        </div>
+
+        <!-- Area/line chart -->
+        <div style="background:#1D1A16; border:1px solid #282420; border-radius:12px; padding:16px;">
+          <div style="font-size:11px; color:#6E685D; font-weight:500; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:12px;">Violations — Last 60 Min</div>
+          <svg width="100%" height="150" viewBox="0 0 300 150" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#9C4A4F" stop-opacity="0.3"></stop>
+                <stop offset="100%" stop-color="#9C4A4F" stop-opacity="0"></stop>
+              </linearGradient>
+            </defs>
+            <line x1="0" y1="112" x2="300" y2="112" stroke="#282420" stroke-dasharray="2 4"></line>
+            <line x1="0" y1="75" x2="300" y2="75" stroke="#282420" stroke-dasharray="2 4"></line>
+            <line x1="0" y1="38" x2="300" y2="38" stroke="#282420" stroke-dasharray="2 4"></line>
+            <polygon points="0,140 0.0,88.2 21.4,83.8 42.9,91.5 64.3,75.0 85.7,81.6 107.1,64.0 128.6,69.5 150.0,53.0 171.4,77.2 192.9,57.4 214.3,86.0 235.7,66.2 257.1,72.8 278.6,48.6 300.0,80.5 300,140" fill="url(#areaFill)"></polygon>
+            <polyline points="0.0,88.2 21.4,83.8 42.9,91.5 64.3,75.0 85.7,81.6 107.1,64.0 128.6,69.5 150.0,53.0 171.4,77.2 192.9,57.4 214.3,86.0 235.7,66.2 257.1,72.8 278.6,48.6 300.0,80.5" fill="none" stroke="#9C4A4F" stroke-width="2"></polyline>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Row 2: worker status | camera status | top violating zones -->
+      <div style="display:grid; grid-template-columns:1fr 1fr 2fr; gap:16px; margin-bottom:16px;">
+
+        <!-- Worker status -->
+        <div style="background:#1D1A16; border:1px solid #282420; border-radius:12px; padding:16px;">
+          <div style="font-size:11px; color:#6E685D; font-weight:500; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:12px;">Worker Status</div>
+          <div style="display:flex; align-items:center; gap:16px;">
+            <div style="width:88px; height:88px; border-radius:50%; flex-shrink:0; position:relative; background: conic-gradient(#4F9E7C 0deg 299.15492957746477deg, #C25450 299.15492957746477deg 347.32394366197184deg, #6E685D 347.32394366197184deg 360deg);">
+              <div style="position:absolute; inset:12px; border-radius:50%; background:#1D1A16; display:flex; align-items:center; justify-content:center; flex-direction:column;">
+                <div style="font-size:18px; font-weight:700; color:#EDEAE2;">142</div>
+                <div style="font-size:9px; color:#6E685D;">total</div>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px; flex:1; min-width:0;">
+              
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px;">
+                  <div style="display:flex; align-items:center; gap:6px; color:#A8A296; min-width:0;">
+                    <span style="width:8px; height:8px; border-radius:2px; flex-shrink:0; background:#4F9E7C;"></span>
+                    <span style="white-space:nowrap;">Compliant</span>
+                  </div>
+                  <span style="color:#EDEAE2; font-weight:600; font-family:'IBM Plex Mono',monospace;">118</span>
+                </div>
+              
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px;">
+                  <div style="display:flex; align-items:center; gap:6px; color:#A8A296; min-width:0;">
+                    <span style="width:8px; height:8px; border-radius:2px; flex-shrink:0; background:#C25450;"></span>
+                    <span style="white-space:nowrap;">Non-Compliant</span>
+                  </div>
+                  <span style="color:#EDEAE2; font-weight:600; font-family:'IBM Plex Mono',monospace;">19</span>
+                </div>
+              
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px;">
+                  <div style="display:flex; align-items:center; gap:6px; color:#A8A296; min-width:0;">
+                    <span style="width:8px; height:8px; border-radius:2px; flex-shrink:0; background:#6E685D;"></span>
+                    <span style="white-space:nowrap;">Unknown</span>
+                  </div>
+                  <span style="color:#EDEAE2; font-weight:600; font-family:'IBM Plex Mono',monospace;">5</span>
+                </div>
+              
+            </div>
+          </div>
+        </div>
+
+        <!-- Camera status -->
+        <div style="background:#1D1A16; border:1px solid #282420; border-radius:12px; padding:16px;">
+          <div style="font-size:11px; color:#6E685D; font-weight:500; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:12px;">Camera Status</div>
+          <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;">
+            
+              <div style="aspect-ratio:1; border-radius:8px; background:#24211C; border:1px solid #322D26; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;" title="Camera 1 — online">
+                <span style="width:8px; height:8px; border-radius:50%; background:#4F9E7C;"></span>
+                <span style="font-size:10px; font-family:'IBM Plex Mono',monospace; color:#A8A296;">CAM-01</span>
+              </div>
+            
+              <div style="aspect-ratio:1; border-radius:8px; background:#24211C; border:1px solid #322D26; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;" title="Camera 2 — online">
+                <span style="width:8px; height:8px; border-radius:50%; background:#4F9E7C;"></span>
+                <span style="font-size:10px; font-family:'IBM Plex Mono',monospace; color:#A8A296;">CAM-02</span>
+              </div>
+            
+              <div style="aspect-ratio:1; border-radius:8px; background:#24211C; border:1px solid #322D26; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;" title="Camera 3 — online">
+                <span style="width:8px; height:8px; border-radius:50%; background:#4F9E7C;"></span>
+                <span style="font-size:10px; font-family:'IBM Plex Mono',monospace; color:#A8A296;">CAM-03</span>
+              </div>
+            
+              <div style="aspect-ratio:1; border-radius:8px; background:#24211C; border:1px solid #322D26; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;" title="Camera 4 — offline">
+                <span style="width:8px; height:8px; border-radius:50%; background:#C25450;"></span>
+                <span style="font-size:10px; font-family:'IBM Plex Mono',monospace; color:#A8A296;">CAM-04</span>
+              </div>
+            
+              <div style="aspect-ratio:1; border-radius:8px; background:#24211C; border:1px solid #322D26; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;" title="Camera 5 — online">
+                <span style="width:8px; height:8px; border-radius:50%; background:#4F9E7C;"></span>
+                <span style="font-size:10px; font-family:'IBM Plex Mono',monospace; color:#A8A296;">CAM-05</span>
+              </div>
+            
+              <div style="aspect-ratio:1; border-radius:8px; background:#24211C; border:1px solid #322D26; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;" title="Camera 6 — error">
+                <span style="width:8px; height:8px; border-radius:50%; background:#D9A441;"></span>
+                <span style="font-size:10px; font-family:'IBM Plex Mono',monospace; color:#A8A296;">CAM-06</span>
+              </div>
+            
+              <div style="aspect-ratio:1; border-radius:8px; background:#24211C; border:1px solid #322D26; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;" title="Camera 7 — online">
+                <span style="width:8px; height:8px; border-radius:50%; background:#4F9E7C;"></span>
+                <span style="font-size:10px; font-family:'IBM Plex Mono',monospace; color:#A8A296;">CAM-07</span>
+              </div>
+            
+              <div style="aspect-ratio:1; border-radius:8px; background:#24211C; border:1px solid #322D26; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;" title="Camera 8 — online">
+                <span style="width:8px; height:8px; border-radius:50%; background:#4F9E7C;"></span>
+                <span style="font-size:10px; font-family:'IBM Plex Mono',monospace; color:#A8A296;">CAM-08</span>
+              </div>
+            
+          </div>
+        </div>
+
+        <!-- Top violating zones -->
+        <div style="background:#1D1A16; border:1px solid #282420; border-radius:12px; padding:16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+            <div style="font-size:11px; color:#6E685D; font-weight:500; text-transform:uppercase; letter-spacing:0.06em;">Top Violating Zones</div>
+            <select style="background:#24211C; border:1px solid #322D26; color:#A8A296; font-size:12px; border-radius:6px; padding:4px 8px;">
+              <option>Last Hour</option>
+              <option>Last 4 Hours</option>
+              <option>Last 8 Hours</option>
+              <option>Today</option>
+            </select>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            
+              <div style="display:flex; align-items:center; gap:12px; cursor:pointer;" style-hover="opacity:0.85;">
+                <span style="font-size:13px; color:#EDEAE2; width:120px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Welding Zone</span>
+                <div style="flex:1; height:8px; border-radius:4px; background:#24211C; overflow:hidden;">
+                  <div style="height:100%; border-radius:4px; background:#C25450; width:100%;"></div>
+                </div>
+                <span style="font-size:12px; font-family:'IBM Plex Mono',monospace; color:#A8A296; width:24px; text-align:right;">6</span>
+              </div>
+            
+              <div style="display:flex; align-items:center; gap:12px; cursor:pointer;" style-hover="opacity:0.85;">
+                <span style="font-size:13px; color:#EDEAE2; width:120px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Loading Dock</span>
+                <div style="flex:1; height:8px; border-radius:4px; background:#24211C; overflow:hidden;">
+                  <div style="height:100%; border-radius:4px; background:#C25450; width:66.66666666666666%;"></div>
+                </div>
+                <span style="font-size:12px; font-family:'IBM Plex Mono',monospace; color:#A8A296; width:24px; text-align:right;">4</span>
+              </div>
+            
+              <div style="display:flex; align-items:center; gap:12px; cursor:pointer;" style-hover="opacity:0.85;">
+                <span style="font-size:13px; color:#EDEAE2; width:120px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Paint Shop</span>
+                <div style="flex:1; height:8px; border-radius:4px; background:#24211C; overflow:hidden;">
+                  <div style="height:100%; border-radius:4px; background:#C25450; width:50%;"></div>
+                </div>
+                <span style="font-size:12px; font-family:'IBM Plex Mono',monospace; color:#A8A296; width:24px; text-align:right;">3</span>
+              </div>
+            
+              <div style="display:flex; align-items:center; gap:12px; cursor:pointer;" style-hover="opacity:0.85;">
+                <span style="font-size:13px; color:#EDEAE2; width:120px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Machine Shop</span>
+                <div style="flex:1; height:8px; border-radius:4px; background:#24211C; overflow:hidden;">
+                  <div style="height:100%; border-radius:4px; background:#C25450; width:33.33333333333333%;"></div>
+                </div>
+                <span style="font-size:12px; font-family:'IBM Plex Mono',monospace; color:#A8A296; width:24px; text-align:right;">2</span>
+              </div>
+            
+              <div style="display:flex; align-items:center; gap:12px; cursor:pointer;" style-hover="opacity:0.85;">
+                <span style="font-size:13px; color:#EDEAE2; width:120px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Assembly Line</span>
+                <div style="flex:1; height:8px; border-radius:4px; background:#24211C; overflow:hidden;">
+                  <div style="height:100%; border-radius:4px; background:#C25450; width:16.666666666666664%;"></div>
+                </div>
+                <span style="font-size:12px; font-family:'IBM Plex Mono',monospace; color:#A8A296; width:24px; text-align:right;">1</span>
+              </div>
+            
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: Zone grid -->
+      <div style="font-size:11px; color:#6E685D; font-weight:500; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px;">Zone Compliance</div>
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px;">
+        
+          <div style="background:#1D1A16; border:1px solid #282420; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:8px; cursor:pointer; transition:border-color 0.2s;" style-hover="border-color:#322D26;" style="">
+            <div style="display:flex; align-items:center; justify-content:between; justify-content:space-between; gap:8px;">
+              <span style="font-size:14px; font-weight:600; color:#EDEAE2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Assembly Line</span>
+              
+                <span style="font-size:11px; font-weight:500; padding:2px 6px; border-radius:4px; background:#C2545033;color:#C25450;">1</span>
+              
+            </div>
+            <div style="font-size:22px; font-weight:700; font-family:'IBM Plex Mono',monospace; color:#4F9E7C;">91%</div>
+            <div style="height:4px; border-radius:9999px; background:#24211C; overflow:hidden;">
+              <div style="height:100%; border-radius:9999px; transition:width 0.7s; width:91%;background:#4F9E7C;"></div>
+            </div>
+            <div style="font-size:11px; color:#6E685D;">24 workers</div>
+          </div>
+        
+          <div style="background:#1D1A16; border:1px solid #282420; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:8px; cursor:pointer; transition:border-color 0.2s;" style-hover="border-color:#322D26;" style="animation:pulseBorder 1.8s ease-in-out infinite;">
+            <div style="display:flex; align-items:center; justify-content:between; justify-content:space-between; gap:8px;">
+              <span style="font-size:14px; font-weight:600; color:#EDEAE2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Welding Zone</span>
+              
+                <span style="font-size:11px; font-weight:500; padding:2px 6px; border-radius:4px; background:#C2545033;color:#C25450;">6</span>
+              
+            </div>
+            <div style="font-size:22px; font-weight:700; font-family:'IBM Plex Mono',monospace; color:#C25450;">58%</div>
+            <div style="height:4px; border-radius:9999px; background:#24211C; overflow:hidden;">
+              <div style="height:100%; border-radius:9999px; transition:width 0.7s; width:58%;background:#C25450;"></div>
+            </div>
+            <div style="font-size:11px; color:#6E685D;">14 workers</div>
+          </div>
+        
+          <div style="background:#1D1A16; border:1px solid #282420; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:8px; cursor:pointer; transition:border-color 0.2s;" style-hover="border-color:#322D26;" style="">
+            <div style="display:flex; align-items:center; justify-content:between; justify-content:space-between; gap:8px;">
+              <span style="font-size:14px; font-weight:600; color:#EDEAE2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Paint Shop</span>
+              
+                <span style="font-size:11px; font-weight:500; padding:2px 6px; border-radius:4px; background:#C2545033;color:#C25450;">3</span>
+              
+            </div>
+            <div style="font-size:22px; font-weight:700; font-family:'IBM Plex Mono',monospace; color:#D9A441;">74%</div>
+            <div style="height:4px; border-radius:9999px; background:#24211C; overflow:hidden;">
+              <div style="height:100%; border-radius:9999px; transition:width 0.7s; width:74%;background:#D9A441;"></div>
+            </div>
+            <div style="font-size:11px; color:#6E685D;">11 workers</div>
+          </div>
+        
+          <div style="background:#1D1A16; border:1px solid #282420; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:8px; cursor:pointer; transition:border-color 0.2s;" style-hover="border-color:#322D26;" style="">
+            <div style="display:flex; align-items:center; justify-content:between; justify-content:space-between; gap:8px;">
+              <span style="font-size:14px; font-weight:600; color:#EDEAE2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Warehouse</span>
+              
+            </div>
+            <div style="font-size:22px; font-weight:700; font-family:'IBM Plex Mono',monospace; color:#4F9E7C;">96%</div>
+            <div style="height:4px; border-radius:9999px; background:#24211C; overflow:hidden;">
+              <div style="height:100%; border-radius:9999px; transition:width 0.7s; width:96%;background:#4F9E7C;"></div>
+            </div>
+            <div style="font-size:11px; color:#6E685D;">19 workers</div>
+          </div>
+        
+          <div style="background:#1D1A16; border:1px solid #282420; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:8px; cursor:pointer; transition:border-color 0.2s;" style-hover="border-color:#322D26;" style="">
+            <div style="display:flex; align-items:center; justify-content:between; justify-content:space-between; gap:8px;">
+              <span style="font-size:14px; font-weight:600; color:#EDEAE2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Loading Dock</span>
+              
+                <span style="font-size:11px; font-weight:500; padding:2px 6px; border-radius:4px; background:#C2545033;color:#C25450;">4</span>
+              
+            </div>
+            <div style="font-size:22px; font-weight:700; font-family:'IBM Plex Mono',monospace; color:#D9A441;">67%</div>
+            <div style="height:4px; border-radius:9999px; background:#24211C; overflow:hidden;">
+              <div style="height:100%; border-radius:9999px; transition:width 0.7s; width:67%;background:#D9A441;"></div>
+            </div>
+            <div style="font-size:11px; color:#6E685D;">9 workers</div>
+          </div>
+        
+          <div style="background:#1D1A16; border:1px solid #282420; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:8px; cursor:pointer; transition:border-color 0.2s;" style-hover="border-color:#322D26;" style="">
+            <div style="display:flex; align-items:center; justify-content:between; justify-content:space-between; gap:8px;">
+              <span style="font-size:14px; font-weight:600; color:#EDEAE2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Machine Shop</span>
+              
+                <span style="font-size:11px; font-weight:500; padding:2px 6px; border-radius:4px; background:#C2545033;color:#C25450;">2</span>
+              
+            </div>
+            <div style="font-size:22px; font-weight:700; font-family:'IBM Plex Mono',monospace; color:#4F9E7C;">83%</div>
+            <div style="height:4px; border-radius:9999px; background:#24211C; overflow:hidden;">
+              <div style="height:100%; border-radius:9999px; transition:width 0.7s; width:83%;background:#4F9E7C;"></div>
+            </div>
+            <div style="font-size:11px; color:#6E685D;">17 workers</div>
+          </div>
+        
+      </div>
+
+    </main>
+  </div>
+</div>
+
+
+  <!-- Interactive script for style-hover -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('[style-hover]').forEach(el => {
+        const hoverStyle = el.getAttribute('style-hover');
+        const originalStyle = el.getAttribute('style') || '';
+        el.addEventListener('mouseenter', () => {
+          el.setAttribute('style', originalStyle + ';' + hoverStyle);
+        });
+        el.addEventListener('mouseleave', () => {
+          el.setAttribute('style', originalStyle);
+        });
+      });
+    });
+  </script>
+</body>
+</html>

@@ -50,6 +50,7 @@ from uuid import UUID
 import asyncpg
 import numpy as np
 
+import snapshots
 from config import DB_WRITE_QUEUE_SIZE
 from notifications import notifier
 from reid import resolver as reid_resolver
@@ -201,6 +202,24 @@ async def _persist_violation(conn: asyncpg.Connection, event: dict[str, Any]) ->
             conn, alert_uuid, label, zone_name, event["ppe_type"], alert_severity,
             event.get("camera_code"), f"{label} missing {event['ppe_type']} in {zone_name}",
         )
+
+    # Snapshot capture happens AFTER the transaction commits — deliberately, so a slow
+    # JPEG encode+fwrite never holds a Postgres transaction open, and a snapshot failure
+    # can never roll back a compliance_events/alerts row that was otherwise written
+    # successfully. The encode+write itself runs off the writer_task's own event-loop turn
+    # via asyncio.to_thread (see snapshots.py's module docstring for why that specific hazard
+    # matters here: writer_task is the single consumer for every concurrent session).
+    crop = event.get("snapshot_crop")
+    if crop is not None:
+        path = snapshots.snapshot_path(str(event_id))
+        ok = await asyncio.to_thread(snapshots.encode_and_save, crop, path)
+        if ok:
+            frame_reference = snapshots.relative_reference(path)
+            await conn.execute("UPDATE compliance_events SET frame_reference = $1 WHERE id = $2", frame_reference, event_id)
+            await conn.execute(
+                "UPDATE alerts SET frame_reference = $1, frame_provider = 'local' WHERE id = $2",
+                frame_reference, alert_uuid,
+            )
 
 
 async def _persist_reid_resolve(conn: asyncpg.Connection, event: dict[str, Any]) -> None:

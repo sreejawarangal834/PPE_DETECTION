@@ -1,9 +1,8 @@
-export const SESSION_TTL_MS      = 8 * 60 * 60 * 1000;  // 8 hours
+// SESSION_TTL_MS and the WS_MOCK_*/WS_EVENT_INTERVAL_* constants that used to live here were
+// only ever consumed by the mock auth token / mockWebSocketService.ts, both removed (real
+// JWT expiry and the real /ws/alerts socket replaced them respectively) — removed rather
+// than left as unused dead constants.
 export const EXPIRY_CHECK_MS     = 60 * 1_000;           // 60 seconds
-export const WS_RECONNECT_MAX_MS = 30 * 1_000;           // 30 seconds
-export const WS_EVENT_INTERVAL_MIN_MS = 2_000;
-export const WS_EVENT_INTERVAL_MAX_MS = 4_000;
-export const WS_MOCK_DISCONNECT_INTERVAL_MS = 90_000;
 
 export const PAGE_SIZE_DEFAULT  = 25;
 export const PAGE_SIZE_AUDIT    = 50;

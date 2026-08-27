@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc><helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  @keyframes pulseBorder { 0%,100% { box-shadow: 0 0 0 0 rgba(194,84,80,0.55); } 50% { box-shadow: 0 0 0 5px rgba(194,84,80,0); } }
+  @keyframes shimmerMove { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+  body { margin: 0; background: #15130F; font-family: 'IBM Plex Sans', system-ui, sans-serif; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #322D26; border-radius: 4px; }
+  a { color: #9C4A4F; text-decoration: none; }
+  a:hover { color: #B15D62; text-decoration: underline; }
+</style>
+</helmet>
+
+<div style="display:flex; width:100%; min-height:100vh; background:#15130F; color:#EDEAE2; font-family:'IBM Plex Sans',system-ui,sans-serif;">
+
+  <!-- Sidebar -->
+  <aside style="width:240px; flex-shrink:0; background:#1D1A16; border-right:1px solid #322D26; display:flex; flex-direction:column; height:100vh; position:sticky; top:0;">
+    <div style="height:57px; display:flex; align-items:center; gap:10px; padding:0 16px; border-bottom:1px solid #282420;">
+      <div style="width:28px;height:28px;border-radius:6px;background:#9C4A4F; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; color:#15130F; font-family:'IBM Plex Mono',monospace;">SG</div>
+      <span style="font-size:14px; font-weight:600; color:#EDEAE2;">SafeGuard AI</span>
+    </div>
+    <nav style="flex:1; padding:12px 8px; display:flex; flex-direction:column; gap:2px;">
+      <sc-for list="{{ navItems }}" as="item" hint-placeholder-count="7">
+        <div style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:6px; font-size:14px; cursor:pointer;"
+             style-hover="background:#2B2620; color:#EDEAE2;"
+             style="{{ item.style }}">
+          <span style="width:18px; height:18px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:13px;" aria-hidden="true">{{ item.icon }}</span>
+          <span>{{ item.label }}</span>
+        </div>
+      </sc-for>
+      <div style="flex:1;"></div>
+      <div style="border-top:1px solid #282420; margin-top:8px; padding-top:8px; display:flex; flex-direction:column; gap:2px;">
+        <div style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:6px; font-size:14px; color:#A8A296;" style-hover="background:#2B2620; color:#EDEAE2;">
+          <span style="width:18px;">◔</span><span>Profile</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:6px; font-size:14px; color:#A8A296;" style-hover="background:#2B2620; color:#EDEAE2;">
+          <span style="width:18px;">⏻</span><span>Logout</span>
+        </div>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- Main column -->
+  <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+
+    <!-- Header -->
+    <header style="height:56px; flex-shrink:0; background:#1D1A16; border-bottom:1px solid #282420; display:flex; align-items:center; padding:0 24px; gap:20px;">
+      <div style="flex:1;"></div>
+      <div role="status" aria-live="polite" style="display:flex; align-items:center; gap:6px; font-size:13px; color:#4F9E7C;">
+        <span style="width:8px; height:8px; border-radius:50%; background:#4F9E7C; display:inline-block;"></span>
+        <span>Live</span>
+      </div>
+      <button aria-label="Notifications — 4 unread" style="position:relative; background:none; border:none; color:#A8A296; cursor:pointer; padding:8px; border-radius:8px; display:flex;" style-hover="background:#2B2620; color:#EDEAE2;">
+        <span style="font-size:18px;">🔔</span>
+        <span style="position:absolute; top:2px; right:2px; min-width:16px; height:16px; background:#C25450; color:white; font-size:10px; font-weight:700; border-radius:9999px; display:flex; align-items:center; justify-content:center; padding:0 3px;">4</span>
+      </button>
+      <div style="display:flex; align-items:center; gap:10px; padding-left:12px; border-left:1px solid #322D26; cursor:pointer;">
+        <div style="width:32px; height:32px; border-radius:50%; background:#24211C; display:flex; align-items:center; justify-content:center; color:#9C4A4F; font-weight:600; font-size:13px;">SO</div>
+        <div style="line-height:1.25;">
+          <div style="font-size:13px; font-weight:500; color:#EDEAE2;">Sarah Okafor</div>
+          <div style="font-size:11px; color:#6E685D;">Safety Officer</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main style="flex:1; padding:24px; overflow:auto;">
+
+      <div style="margin-bottom:24px;">
+        <h1 style="font-size:24px; font-weight:600; color:#EDEAE2; margin:0;">Analytics</h1>
+        <p style="font-size:13px; color:#6E685D; margin:4px 0 0;">Live compliance statistics and zone health</p>
+      </div>
+
+      <!-- Row 1: Compliance stats -->
+      <div style="display:grid; grid-template-columns:1fr 1.4fr 1.4fr; gap:16px; margin-bottom:16px;">
+
+        <!-- Gauge -->
+        <div style="background:#1D1A16; border:1px solid #282420; border-radius:12px; padding:16px; display:flex; flex-direction:column;">
+          <div style="font-size:11px; color:#6E685D; font-weight:500; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px;">Overall Compliance</div>
+          <div style="flex:1; display:flex; align-items:center; justify-content:center; position:relative; min-height:120px;">
+            <svg width="160" height="96" viewBox="0 0 160 96">
+              <path d="M 14 90 A 66 66 0 0 1 146 90" fill="none" stroke="#24211C" stroke-width="14" stroke-linecap="round"></path>
+              <path d="M 14 90 A 66 66 0 0 1 146 90" fill="none" stroke="{{ complianceColor }}" stroke-width="14" stroke-linecap="round" stroke-dasharray="207" style="{{ gaugeDashStyle }}"></path>
+            </svg>
+            <div style="position:absolute; bottom:6px; text-align:center;">
+              <div style="font-size:26px; font-weight:700; font-family:'IBM Plex Mono',monospace; color:{{ complianceColor }};">{{ compliancePct }}%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bar chart -->
+        <div style="background:#1D1A16; border:1px solid #282420; border-radius:12px; padding:16px;">
+          <div style="font-size:11px; color:#6E685D; font-weight:500; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:12px;">Violations per Zone</div>
+          <div style="height:150px; display:flex; align-items:flex-end; gap:10px; padding:0 4px;">
+            <sc-for list="{{ barZones }}" as="z" hint-placeholder-count="6">
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; height:100%; justify-content:flex-end;">
+                <div style="font-size:11px; color:#A8A296; font-family:'IBM Plex Mono',monospace;">{{ z.violations }}</div>
+                <div style="width:100%; max-width:28px; border-radius:3px 3px 0 0; {{ z.barStyle }}"></div>
+                <div style="font-size:10px; color:#6E685D; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:56px;">{{ z.short }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <!-- Area/line chart -->
+        <div style="background:#1D1A16; border:1px solid #282420; border-radius:12px; padding:16px;">
+          <div style="font-size:11px; color:#6E685D; font-weight:500; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:12px;">Violations — Last 60 Min</div>
+          <svg width="100%" height="150" viewBox="0 0 300 150" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#9C4A4F" stop-opacity="0.3"></stop>
+                <stop offset="100%" stop-color="#9C4A4F" stop-opacity="0"></stop>
+              </linearGradient>
+            </defs>
+            <line x1="0" y1="112" x2="300" y2="112" stroke="#282420" stroke-dasharray="2 4"></line>
+            <line x1="0" y1="75" x2="300" y2="75" stroke="#282420" stroke-dasharray="2 4"></line>
+            <line x1="0" y1="38" x2="300" y2="38" stroke="#282420" stroke-dasharray="2 4"></line>
+            <polygon points="{{ areaPolygonPoints }}" fill="url(#areaFill)"></polygon>
+            <polyline points="{{ areaLinePoints }}" fill="none" stroke="#9C4A4F" stroke-width="2"></polyline>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Row 2: worker status | camera status | top violating zones -->
+      <div style="display:grid; grid-template-columns:1fr 1fr 2fr; gap:16px; margin-bottom:16px;">
+
+        <!-- Worker status -->
+        <div style="background:#1D1A16; border:1px solid #282420; border-radius:12px; padding:16px;">
+          <div style="font-size:11px; color:#6E685D; font-weight:500; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:12px;">Worker Status</div>
+          <div style="display:flex; align-items:center; gap:16px;">
+            <div style="width:88px; height:88px; border-radius:50%; flex-shrink:0; position:relative; {{ donutStyle }}">
+              <div style="position:absolute; inset:12px; border-radius:50%; background:#1D1A16; display:flex; align-items:center; justify-content:center; flex-direction:column;">
+                <div style="font-size:18px; font-weight:700; color:#EDEAE2;">{{ workerStatus.total }}</div>
+                <div style="font-size:9px; color:#6E685D;">total</div>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px; flex:1; min-width:0;">
+              <sc-for list="{{ workerLegend }}" as="w" hint-placeholder-count="3">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px;">
+                  <div style="display:flex; align-items:center; gap:6px; color:#A8A296; min-width:0;">
+                    <span style="width:8px; height:8px; border-radius:2px; flex-shrink:0; {{ w.dotStyle }}"></span>
+                    <span style="white-space:nowrap;">{{ w.label }}</span>
+                  </div>
+                  <span style="color:#EDEAE2; font-weight:600; font-family:'IBM Plex Mono',monospace;">{{ w.count }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <!-- Camera status -->
+        <div style="background:#1D1A16; border:1px solid #282420; border-radius:12px; padding:16px;">
+          <div style="font-size:11px; color:#6E685D; font-weight:500; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:12px;">Camera Status</div>
+          <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;">
+            <sc-for list="{{ cameras }}" as="cam" hint-placeholder-count="8">
+              <div style="aspect-ratio:1; border-radius:8px; background:#24211C; border:1px solid #322D26; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;" title="{{ cam.name }}">
+                <span style="width:8px; height:8px; border-radius:50%; {{ cam.dotStyle }}"></span>
+                <span style="font-size:10px; font-family:'IBM Plex Mono',monospace; color:#A8A296;">{{ cam.id }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <!-- Top violating zones -->
+        <div style="background:#1D1A16; border:1px solid #282420; border-radius:12px; padding:16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+            <div style="font-size:11px; color:#6E685D; font-weight:500; text-transform:uppercase; letter-spacing:0.06em;">Top Violating Zones</div>
+            <select style="background:#24211C; border:1px solid #322D26; color:#A8A296; font-size:12px; border-radius:6px; padding:4px 8px;">
+              <option>Last Hour</option>
+              <option>Last 4 Hours</option>
+              <option>Last 8 Hours</option>
+              <option>Today</option>
+            </select>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <sc-for list="{{ topZones }}" as="tz" hint-placeholder-count="5">
+              <div style="display:flex; align-items:center; gap:12px; cursor:pointer;" style-hover="opacity:0.85;">
+                <span style="font-size:13px; color:#EDEAE2; width:120px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ tz.name }}</span>
+                <div style="flex:1; height:8px; border-radius:4px; background:#24211C; overflow:hidden;">
+                  <div style="height:100%; border-radius:4px; background:#C25450; {{ tz.barStyle }}"></div>
+                </div>
+                <span style="font-size:12px; font-family:'IBM Plex Mono',monospace; color:#A8A296; width:24px; text-align:right;">{{ tz.count }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: Zone grid -->
+      <div style="font-size:11px; color:#6E685D; font-weight:500; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px;">Zone Compliance</div>
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px;">
+        <sc-for list="{{ zones }}" as="zone" hint-placeholder-count="6">
+          <div style="background:#1D1A16; border:1px solid #282420; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:8px; cursor:pointer; transition:border-color 0.2s;" style-hover="border-color:#322D26;" style="{{ zone.pulseStyle }}">
+            <div style="display:flex; align-items:center; justify-content:between; justify-content:space-between; gap:8px;">
+              <span style="font-size:14px; font-weight:600; color:#EDEAE2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ zone.name }}</span>
+              <sc-if value="{{ zone.hasViolations }}" hint-placeholder-val="{{ false }}">
+                <span style="font-size:11px; font-weight:500; padding:2px 6px; border-radius:4px; {{ zone.badgeStyle }}">{{ zone.violations }}</span>
+              </sc-if>
+            </div>
+            <div style="font-size:22px; font-weight:700; font-family:'IBM Plex Mono',monospace; color:{{ zone.color }};">{{ zone.compliance }}%</div>
+            <div style="height:4px; border-radius:9999px; background:#24211C; overflow:hidden;">
+              <div style="height:100%; border-radius:9999px; transition:width 0.7s; {{ zone.progressStyle }}"></div>
+            </div>
+            <div style="font-size:11px; color:#6E685D;">{{ zone.workers }} workers</div>
+          </div>
+        </sc-for>
+      </div>
+
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>class Component extends DCLogic {
+  renderVals() {
+    const good = '#4F9E7C', warn = '#D9A441', bad = '#C25450';
+    const complianceColorFor = (pct) => pct >= 80 ? good : pct >= 60 ? warn : bad;
+
+    const navLabels = [
+      ['\u25E7', 'Live Monitoring', false],
+      ['\u25A4', 'Analytics', true],
+      ['\u26A0', 'Alerts & Violations', false],
+      ['\u25CE', 'Worker Tracking', false],
+      ['\u25A5', 'Reports & Analytics', false],
+      ['\u25C8', 'KPI Summary', false],
+      ['\u2699', 'Admin Console', false],
+    ];
+    const navItems = [];
+    for (let i = 0; i < navLabels.length; i++) {
+      const row = navLabels[i];
+      navItems.push({
+        icon: row[0],
+        label: row[1],
+        style: row[2] ? 'background:rgba(156,74,79,0.16);color:#9C4A4F;' : 'color:#A8A296;'
+      });
+    }
+
+    const compliancePct = 82;
+    const complianceColor = complianceColorFor(compliancePct);
+    // semicircle path length ~ 207; dash offset for filled portion
+    const dashOffset = 207 - (207 * compliancePct / 100);
+    const gaugeDashStyle = `stroke-dashoffset:${dashOffset};`;
+
+    const zonesRaw = [
+      { name: 'Assembly Line', compliance: 91, workers: 24, violations: 1 },
+      { name: 'Welding Zone', compliance: 58, workers: 14, violations: 6 },
+      { name: 'Paint Shop', compliance: 74, workers: 11, violations: 3 },
+      { name: 'Warehouse', compliance: 96, workers: 19, violations: 0 },
+      { name: 'Loading Dock', compliance: 67, workers: 9, violations: 4 },
+      { name: 'Machine Shop', compliance: 83, workers: 17, violations: 2 },
+    ];
+    const zones = [];
+    for (let i = 0; i < zonesRaw.length; i++) {
+      const z = zonesRaw[i];
+      const color = complianceColorFor(z.compliance);
+      zones.push({
+        name: z.name,
+        compliance: z.compliance,
+        workers: z.workers,
+        violations: z.violations,
+        color: color,
+        hasViolations: z.violations > 0,
+        badgeStyle: 'background:' + bad + '33;color:' + bad + ';',
+        progressStyle: 'width:' + z.compliance + '%;background:' + color + ';',
+        pulseStyle: z.compliance < 60 ? 'animation:pulseBorder 1.8s ease-in-out infinite;' : ''
+      });
+    }
+
+    let maxViol = 1;
+    for (let i = 0; i < zonesRaw.length; i++) { if (zonesRaw[i].violations > maxViol) maxViol = zonesRaw[i].violations; }
+    const barZones = [];
+    for (let i = 0; i < zonesRaw.length; i++) {
+      const z = zonesRaw[i];
+      const barColor = z.violations > 3 ? bad : (z.violations > 0 ? warn : good);
+      barZones.push({
+        violations: z.violations,
+        short: z.name.split(' ')[0],
+        barStyle: 'height:' + Math.max(6, (z.violations / maxViol) * 100) + '%;background:' + barColor + ';'
+      });
+    }
+
+    // simple synthetic 60-min line data
+    const pts = [38,42,35,50,44,60,55,70,48,66,40,58,52,74,45];
+    const stepX = 300 / (pts.length - 1);
+    const ptStrs = [];
+    for (let i = 0; i < pts.length; i++) {
+      const y = 130 - (pts[i] / 100) * 110;
+      ptStrs.push((i * stepX).toFixed(1) + ',' + y.toFixed(1));
+    }
+    const linePts = ptStrs.join(' ');
+    const areaLinePoints = linePts;
+    const areaPolygonPoints = '0,140 ' + linePts + ' 300,140';
+
+    const workerStatus = { total: 142, compliant: 118, nonCompliant: 19, unknown: 5 };
+    const wc = workerStatus.compliant, wn = workerStatus.nonCompliant, wu = workerStatus.unknown, wt = workerStatus.total;
+    const p1 = (wc / wt) * 360;
+    const p2 = p1 + (wn / wt) * 360;
+    const donutStyle = 'background: conic-gradient(' + good + ' 0deg ' + p1 + 'deg, ' + bad + ' ' + p1 + 'deg ' + p2 + 'deg, #6E685D ' + p2 + 'deg 360deg);';
+    const workerLegend = [
+      { label: 'Compliant', count: wc, dotStyle: 'background:' + good + ';' },
+      { label: 'Non-Compliant', count: wn, dotStyle: 'background:' + bad + ';' },
+      { label: 'Unknown', count: wu, dotStyle: 'background:#6E685D;' },
+    ];
+
+    const camStatuses = ['online','online','online','offline','online','error','online','online'];
+    const cameras = [];
+    for (let i = 0; i < camStatuses.length; i++) {
+      const s = camStatuses[i];
+      const dotColor = s === 'online' ? good : (s === 'error' ? warn : bad);
+      cameras.push({
+        id: 'CAM-0' + (i + 1),
+        name: 'Camera ' + (i + 1) + ' — ' + s,
+        dotStyle: 'background:' + dotColor + ';'
+      });
+    }
+
+    const topZonesRaw = [
+      { name: 'Welding Zone', count: 6 },
+      { name: 'Loading Dock', count: 4 },
+      { name: 'Paint Shop', count: 3 },
+      { name: 'Machine Shop', count: 2 },
+      { name: 'Assembly Line', count: 1 },
+    ];
+    let maxTop = 1;
+    for (let i = 0; i < topZonesRaw.length; i++) { if (topZonesRaw[i].count > maxTop) maxTop = topZonesRaw[i].count; }
+    const topZones = [];
+    for (let i = 0; i < topZonesRaw.length; i++) {
+      const t = topZonesRaw[i];
+      topZones.push({ name: t.name, count: t.count, barStyle: 'width:' + ((t.count / maxTop) * 100) + '%;' });
+    }
+
+    return {
+      navItems, compliancePct, complianceColor, gaugeDashStyle,
+      zones, barZones, areaLinePoints, areaPolygonPoints,
+      workerStatus, workerLegend, donutStyle, cameras, topZones,
+    };
+  }
+}
+</script>
+</body>
+</html>

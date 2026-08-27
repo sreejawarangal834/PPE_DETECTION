@@ -44,10 +44,13 @@ export default function DailyReport() {
   if (!report) return null;
 
   /** Generate HTML string → inject into iframe → print */
-  function handlePDFExport() {
+  async function handlePDFExport() {
     setIsPrinting(true);
     try {
-      const html = buildDailyReportHTML(report!, date, alerts, user?.name ?? 'System');
+      // Async now — real snapshot images (GET /api/snapshots/{id}) are fetched and
+      // base64-inlined before the HTML string is complete (see buildDailyReportHTML's
+      // docstring for why an <img src="/api/..."> alone wouldn't work here).
+      const html = await buildDailyReportHTML(report!, date, alerts, user?.name ?? 'System');
       printReport(html, `Daily Compliance Report — ${date}`);
     } finally {
       // Re-enable button after a short delay (iframe handles its own cleanup)

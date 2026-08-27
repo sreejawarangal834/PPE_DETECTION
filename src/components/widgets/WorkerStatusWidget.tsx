@@ -1,32 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { WORKERS } from '../../data/workers';
-import { mockWsService } from '../../lib/websocket/mockWebSocketService';
-import type { WsEvent } from '../../types';
+import { getWorkers } from '../../api/workersApi';
 
-interface Counts { total: number; compliant: number; nonCompliant: number; unknown: number; }
-
-function computeCounts(zones?: string[]): Counts {
-  const ws = WORKERS.filter(w => !zones?.length || (w.currentZoneId && zones.includes(w.currentZoneId)));
-  const tracked = ws.filter(w => w.currentZoneId);
-  return {
-    total:        ws.length,
-    compliant:    tracked.filter(w => w.complianceRate >= 80).length,
-    nonCompliant: tracked.filter(w => w.complianceRate < 80).length,
-    unknown:      ws.filter(w => !w.currentZoneId).length,
-  };
-}
-
+/**
+ * Real worker compliance counts (GET /api/workers — backend/repositories/workers.py).
+ * Previously computed from src/data/workers.ts's static WORKERS array and "refreshed" by a
+ * fake worker_update event that recomputed from that same static array (so the WS
+ * subscription changed nothing — decorative only).
+ */
 export default function WorkerStatusWidget({ assignedZones }: { assignedZones?: string[] }) {
-  const [counts, setCounts] = useState<Counts>(() => computeCounts(assignedZones));
+  const { data: workers = [] } = useQuery({
+    queryKey: ['workers', 'status-widget'],
+    queryFn: () => getWorkers(),
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+  });
 
-  useEffect(() => {
-    function handler(e: WsEvent) {
-      if (e.type === 'worker_update') setCounts(computeCounts(assignedZones));
-    }
-    mockWsService.onMessage(handler);
-    return () => { mockWsService.removeAllHandlers(); };
-  }, [assignedZones]);
+  const scoped = workers.filter(w => !assignedZones?.length || (w.currentZoneId && assignedZones.includes(w.currentZoneId)));
+  const tracked = scoped.filter(w => w.currentZoneId);
+  const counts = {
+    total: scoped.length,
+    compliant: tracked.filter(w => w.complianceRate >= 80).length,
+    nonCompliant: tracked.filter(w => w.complianceRate < 80).length,
+    unknown: scoped.length - tracked.length,
+  };
 
   const data = [
     { name: 'Compliant',     value: counts.compliant,    color: 'var(--color-compliance-good)' },

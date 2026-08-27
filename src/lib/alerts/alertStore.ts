@@ -1,7 +1,12 @@
 import { create } from 'zustand';
+import toast from 'react-hot-toast';
 import type { Alert } from '../../types';
 import type { AlertStatus } from '../../constants/alertStatus';
 import { getAlerts } from '../../api/alertsApi';
+import { useWsStore } from '../websocket/wsStore';
+import { useNotificationStore } from '../notifications/notificationStore';
+import { showAlertToast, showEscalationToast, type AlertNewPayload } from './alertToasts';
+import { ROUTES } from '../../constants/routes';
 
 interface AlertState {
   alerts: Alert[];
@@ -67,7 +72,10 @@ export const useAlertStore = create<AlertState>()((set, get) => ({
 // ─── Live feed over /ws/alerts (Phase 4) ─────────────────────────────────────
 // Replaces both the old 5s GET /api/alerts poll AND the client-side escalation
 // setInterval (IMPLEMENTATION_PLAN.md §7.1 — escalation now runs server-side, see
-// backend/escalation.py; this only reacts to the events it broadcasts).
+// backend/escalation.py; this only reacts to the events it broadcasts). Also now the
+// source of truth for useWsStore's status (WsStatusBanner.tsx) — that used to reflect
+// mockWebSocketService.ts's own fabricated disconnect/reconnect cycle, which had nothing to
+// do with whether anything was actually connected.
 let _ws: WebSocket | null = null;
 let _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -78,27 +86,54 @@ function wsUrl(): string {
 
 function connect(): void {
   if (_ws) return;
+  useWsStore.getState().setStatus('reconnecting');
   const ws = new WebSocket(wsUrl());
   _ws = ws;
 
   ws.onopen = () => {
+    useWsStore.getState().setStatus('connected');
+    toast.dismiss('ws-disconnect');
     useAlertStore.getState().loadAlerts(); // reconcile full state on (re)connect
   };
   ws.onmessage = (evt) => {
     try {
       const msg = JSON.parse(evt.data);
       if (msg.type === 'alert_new') {
-        useAlertStore.getState().loadAlerts(); // simplest correct reaction: refetch the list
+        const payload = msg as AlertNewPayload;
+        useAlertStore.getState().loadAlerts(); // reconcile the full list
+        useNotificationStore.getState().addItem({
+          type:      'alert_new',
+          title:     `New Alert — ${payload.severity.toUpperCase()}`,
+          body:      `${payload.zoneName ?? 'Unknown zone'} · ${payload.personLabel ?? 'Unknown worker'} · ${payload.description ?? ''}`,
+          timestamp: Date.now(),
+          linkTo:    ROUTES.ALERTS,
+        });
+        if (payload.severity === 'high' || payload.severity === 'critical' || payload.severity === 'medium') {
+          showAlertToast(payload);
+        }
       } else if (msg.type === 'alert_escalated' && msg.alertId) {
         useAlertStore.getState().markEscalated(msg.alertId);
+        useNotificationStore.getState().addItem({
+          type:      'alert_escalated',
+          title:     'Alert Escalated',
+          body:      `Alert ${msg.alertId} has exceeded response time and requires immediate action.`,
+          timestamp: Date.now(),
+          linkTo:    ROUTES.ALERTS,
+        });
+        showEscalationToast(msg.alertId);
       }
     } catch {
       // ignore malformed frames
     }
   };
   ws.onclose = () => {
+    const wasConnected = _ws !== null;
     _ws = null;
-    if (_reconnectTimer) clearTimeout(_reconnectTimer);
+    useWsStore.getState().setStatus('reconnecting'); // always retried below — never a
+    if (wasConnected) {
+      toast.error('Live feed disconnected — attempting to reconnect.', { id: 'ws-disconnect', duration: Infinity });
+    }
+    if (_reconnectTimer) clearTimeout(_reconnectTimer); // permanent "disconnected" state
     _reconnectTimer = setTimeout(connect, 5000);
   };
   ws.onerror = () => ws.close();
@@ -109,7 +144,16 @@ export function startAlertLiveFeed(): void {
   connect();
 }
 
+/** Force an immediate reconnect attempt (WsStatusBanner's "Retry" button) instead of waiting
+ * out the automatic 5s backoff. */
+export function retryAlertLiveFeed(): void {
+  if (_reconnectTimer) { clearTimeout(_reconnectTimer); _reconnectTimer = null; }
+  if (_ws) { _ws.onclose = null; _ws.close(); _ws = null; }
+  connect();
+}
+
 export function stopAlertLiveFeed(): void {
   if (_reconnectTimer) { clearTimeout(_reconnectTimer); _reconnectTimer = null; }
   if (_ws) { _ws.onclose = null; _ws.close(); _ws = null; }
+  useWsStore.getState().setStatus('disconnected');
 }

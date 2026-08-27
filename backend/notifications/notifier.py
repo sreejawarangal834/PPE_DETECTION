@@ -85,6 +85,20 @@ async def _log_attempt(
     )
 
 
+async def send_plain_email(to: str, subject: str, body: str) -> None:
+    """Public, generic send — used for anything that isn't a violation alert (password
+    reset, etc.), where the recipient is a specific user, not the fixed team inbox."""
+    msg = EmailMessage()
+    msg["From"] = SMTP_FROM
+    msg["To"] = to
+    msg["Subject"] = subject
+    msg.set_content(body)
+    await aiosmtplib.send(
+        msg, hostname=SMTP_HOST, port=SMTP_PORT,
+        username=SMTP_USERNAME, password=SMTP_PASSWORD, start_tls=SMTP_USE_TLS,
+    )
+
+
 async def _send_email(subject: str, body: str) -> None:
     msg = EmailMessage()
     msg["From"] = SMTP_FROM

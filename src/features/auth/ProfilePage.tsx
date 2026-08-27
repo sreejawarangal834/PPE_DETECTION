@@ -9,7 +9,7 @@ import PageShell from '../../components/ui/PageShell';
 import toast from 'react-hot-toast';
 
 export default function ProfilePage() {
-  const { user, updateUser } = useAuthStore();
+  const { user, token, updateUser } = useAuthStore();
   const [name,      setName]      = useState(user?.name ?? '');
   const [email,     setEmail]     = useState(user?.email ?? '');
   const [saving,    setSaving]    = useState(false);
@@ -20,16 +20,14 @@ export default function ProfilePage() {
 
   async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !token) return;
     setSaving(true);
     try {
-      // Not implemented on the backend yet (see src/api/authApi.ts) — surfaced honestly
-      // rather than silently pretending to succeed the way the old mock did.
-      const updated = await updateProfile(name, email);
+      const updated = await updateProfile(token.accessToken, name, email);
       updateUser(updated);
       toast.success('Profile updated.');
-    } catch {
-      toast.error('Profile editing is not available yet.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update profile.');
     } finally {
       setSaving(false);
     }

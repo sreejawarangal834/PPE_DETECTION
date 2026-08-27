@@ -18,6 +18,7 @@ import { formatDate } from '../../lib/utils';
 import { PPE_LABEL } from '../../constants/ppeTypes';
 import { useAlertStore } from '../../lib/alerts/alertStore';
 import { useAuthStore } from '../../lib/auth/authStore';
+import SnapshotImage from './SnapshotImage';
 
 interface Props {
   report: DailyReport;
@@ -53,46 +54,6 @@ function StatusPill({ status }: { status: string }) {
     }}>
       {status}
     </span>
-  );
-}
-
-/** Simulated CCTV snapshot as an inline SVG */
-function CctvSnapshot({ alertId, severity }: { alertId: string; severity: string }) {
-  const borderCol = severityColor(severity);
-  return (
-    <svg
-      width="100%"
-      viewBox="0 0 320 180"
-      xmlns="http://www.w3.org/2000/svg"
-      style={{ display: 'block', borderRadius: 6, border: '1px solid #e5e7eb', background: '#1a1d23' }}
-    >
-      {/* Diagonal stripe background */}
-      <defs>
-        <pattern id={`stripe-${alertId}`} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <rect width="3" height="6" fill="#24211C" />
-          <rect x="3" width="3" height="6" fill="#15130F" />
-        </pattern>
-      </defs>
-      <rect width="320" height="180" fill={`url(#stripe-${alertId})`} />
-
-      {/* LIVE badge */}
-      <rect x="10" y="10" width="46" height="20" rx="4" fill="rgba(0,0,0,0.7)" />
-      <circle cx="21" cy="20" r="4" fill="#4F9E7C" />
-      <text x="29" y="24" fill="#4F9E7C" fontSize="10" fontFamily="monospace" fontWeight="bold">LIVE</text>
-
-      {/* Bounding box — violation */}
-      <rect x="100" y="40" width="70" height="100" rx="2" fill="none" stroke={borderCol} strokeWidth="2" />
-      <rect x="100" y="30" width="100" height="16" rx="2" fill={borderCol} opacity="0.85" />
-      <text x="104" y="41" fill="white" fontSize="9" fontFamily="monospace">NO-PPE 0.91</text>
-
-      {/* Worker bounding box */}
-      <rect x="195" y="55" width="55" height="80" rx="2" fill="none" stroke="#9C4A4F" strokeWidth="1.5" />
-
-      {/* Timestamp watermark */}
-      <text x="10" y="170" fill="#A8A296" fontSize="9" fontFamily="monospace" opacity="0.7">
-        CCTV CAPTURE — {new Date().toLocaleTimeString('en-GB')}
-      </text>
-    </svg>
   );
 }
 
@@ -235,9 +196,9 @@ export default function ReportPDFGenerator({ report, date, reportId }: Props) {
                   <StatusPill status={alert.status} />
                 </div>
 
-                {/* CCTV Snapshot */}
+                {/* Real violation snapshot, or an honest "no snapshot" state */}
                 <div style={{ padding: '10px 12px 4px' }}>
-                  <CctvSnapshot alertId={alert.id} severity={alert.severity} />
+                  <SnapshotImage snapshotUrl={alert.snapshotUrl} alt={`Snapshot for alert ${alert.id}`} height={140} />
                 </div>
 
                 {/* Alert metadata */}
