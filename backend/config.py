@@ -40,7 +40,17 @@ INFER_QUEUE_SIZE: int = _int("PPE_INFER_QUEUE_SIZE", 8)
 SEND_QUEUE_SIZE:  int = _int("PPE_SEND_QUEUE_SIZE",  4)
 
 # ── Frame skip ─────────────────────────────────────────────────────────────────
-FRAME_SKIP: int = _int("PPE_FRAME_SKIP", 0)
+# Default derived from benchmark_latency.py against the current best.pt on a
+# 24fps/4K sample: GPU inference (~9.4ms/frame, ~106 FPS capacity) has plenty
+# of headroom for one stream, but CPU fallback (~59.8ms/frame, ~16.7 FPS
+# capacity) can't keep up with a 24fps source in real time. Skipping every
+# other frame (process 1 in 2) roughly halves detector calls, which brings a
+# CPU-mode stream back under real-time (~12 required detector-calls/sec vs
+# ~16.7 FPS capacity) and doubles how many concurrent GPU streams the service
+# can sustain — see benchmark_results.md for the full table. Still fully
+# overridable via PPE_FRAME_SKIP (e.g. back to 0 for a low-camera-count GPU
+# deployment where per-frame detection is preferred).
+FRAME_SKIP: int = _int("PPE_FRAME_SKIP", 1)
 
 # ── Uploaded-video playback ────────────────────────────────────────────────────
 LOOP_VIDEO: bool = _bool("PPE_LOOP_VIDEO", True)
@@ -172,3 +182,44 @@ NOTIFY_EMAIL_TO: str = os.environ.get("PPE_NOTIFY_EMAIL_TO", "safety-team@ppe-co
 # ── Password reset (fake-frontend audit — replaces the dead-end Forgot/Reset password forms) ──
 PASSWORD_RESET_TTL_SECONDS: int = _int("PPE_PASSWORD_RESET_TTL_SECONDS", 30 * 60)
 FRONTEND_BASE_URL: str = os.environ.get("PPE_FRONTEND_BASE_URL", "http://localhost:5173")
+
+# ── Platform integration: Redis (frames:{camera_id} + events:ppe/events:compliance) ──
+REDIS_URL: str = os.environ.get("PPE_REDIS_URL", "redis://localhost:6379/0")
+# Cap each frames:{camera_id} list so a stalled consumer can't grow it unbounded —
+# publisher trims to this length on every push (see scripts/publish_frames_to_redis.py).
+FRAMES_STREAM_MAXLEN: int = _int("PPE_FRAMES_STREAM_MAXLEN", 2)
+# Redis Streams (events:ppe/events:compliance) are capped similarly, but can afford a
+# much longer history since they're small JSON facts, not JPEG frames.
+EVENTS_STREAM_MAXLEN: int = _int("PPE_EVENTS_STREAM_MAXLEN", 10_000)
+
+# ── Platform integration: MinIO evidence storage ──────────────────────────────
+# Disabled by default so local dev without a MinIO container keeps writing
+# snapshots to local disk exactly as before (see snapshots.py).
+MINIO_ENABLED: bool = _bool("PPE_MINIO_ENABLED", False)
+MINIO_ENDPOINT: str = os.environ.get("PPE_MINIO_ENDPOINT", "localhost:9000")
+MINIO_ACCESS_KEY: str = os.environ.get("PPE_MINIO_ACCESS_KEY", "ppe-minio")
+MINIO_SECRET_KEY: str = os.environ.get("PPE_MINIO_SECRET_KEY", "ppe-minio-secret")
+MINIO_BUCKET: str = os.environ.get("PPE_MINIO_BUCKET", "uc3-evidence")
+MINIO_SECURE: bool = _bool("PPE_MINIO_SECURE", False)
+
+# ── Platform integration: external Camera Registry Service (platform-owned) ───
+# Unset by default — the platform team's registry doesn't exist yet, so UC3
+# keeps using its local `cameras` table (repositories/cameras.py's _SEED) as
+# the source of truth. Once a real registry is deployed, pointing this at it
+# makes startup sync from it instead (see repositories/camera_registry_client.py).
+CAMERA_REGISTRY_URL: str | None = os.environ.get("PPE_CAMERA_REGISTRY_URL") or None
+# Sent as `Authorization: Bearer <token>` on every registry call — real
+# service-to-service platform APIs require this; unset (None) sends no header,
+# which is only appropriate against an unauthenticated dev/test registry.
+CAMERA_REGISTRY_API_KEY: str | None = os.environ.get("PPE_CAMERA_REGISTRY_API_KEY") or None
+# How often the background task re-syncs from the registry (see
+# camera_registry_client.registry_sync_task) — independent of the manual
+# POST /api/cameras/sync trigger and the one-shot startup sync.
+CAMERA_REGISTRY_SYNC_INTERVAL_SECONDS: int = _int("PPE_CAMERA_REGISTRY_SYNC_INTERVAL_SECONDS", 300)
+
+# ── Snapshot retention (local disk AND MinIO — see snapshots.py) ─────────────
+# Applied two ways: a MinIO bucket lifecycle rule (server-side expiration, set
+# once at startup) for the MinIO path, and a periodic cleanup task for the
+# local-disk fallback path (object storage has no such task, doesn't need one).
+SNAPSHOT_RETENTION_DAYS: int = _int("PPE_SNAPSHOT_RETENTION_DAYS", 90)
+SNAPSHOT_CLEANUP_INTERVAL_SECONDS: int = _int("PPE_SNAPSHOT_CLEANUP_INTERVAL_SECONDS", 6 * 3600)

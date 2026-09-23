@@ -43,15 +43,18 @@ or frame delivery.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
 import asyncpg
 import numpy as np
 
+import redis_client
 import snapshots
-from config import DB_WRITE_QUEUE_SIZE
+from config import DB_WRITE_QUEUE_SIZE, EVENTS_STREAM_MAXLEN, MINIO_ENABLED
 from notifications import notifier
 from reid import resolver as reid_resolver
 from repositories.cameras import get_camera_id, set_status as _set_camera_status
@@ -203,6 +206,13 @@ async def _persist_violation(conn: asyncpg.Connection, event: dict[str, Any]) ->
             event.get("camera_code"), f"{label} missing {event['ppe_type']} in {zone_name}",
         )
 
+    # Internal event streams (events:ppe / events:compliance — Platform Integration
+    # Strategy doc §6.1, explicitly UC3-internal implementation details, not a
+    # platform integration contract) — published AFTER commit, same reasoning as
+    # snapshot capture below: never let a Redis hiccup roll back a Postgres row
+    # that was otherwise written successfully.
+    await _publish_events(event, event_id, alert_uuid, person_id, camera_id, zone_id, alert_severity)
+
     # Snapshot capture happens AFTER the transaction commits — deliberately, so a slow
     # JPEG encode+fwrite never holds a Postgres transaction open, and a snapshot failure
     # can never roll back a compliance_events/alerts row that was otherwise written
@@ -211,15 +221,64 @@ async def _persist_violation(conn: asyncpg.Connection, event: dict[str, Any]) ->
     # matters here: writer_task is the single consumer for every concurrent session).
     crop = event.get("snapshot_crop")
     if crop is not None:
-        path = snapshots.snapshot_path(str(event_id))
-        ok = await asyncio.to_thread(snapshots.encode_and_save, crop, path)
-        if ok:
-            frame_reference = snapshots.relative_reference(path)
+        frame_reference: str | None = None
+        provider = "local"
+        if MINIO_ENABLED:
+            # MinIO evidence storage (Platform Integration Strategy doc §8.3).
+            # Falls through to the local-disk path below on any failure —
+            # never lets a MinIO outage silently drop the snapshot entirely.
+            object_key = snapshots.minio_object_key(str(event_id))
+            if await asyncio.to_thread(snapshots.upload_to_minio, crop, object_key):
+                frame_reference, provider = object_key, "minio"
+            else:
+                log.warning("MinIO upload failed for event_id=%s — falling back to local disk", event_id)
+        if frame_reference is None:
+            path = snapshots.snapshot_path(str(event_id))
+            if await asyncio.to_thread(snapshots.encode_and_save, crop, path):
+                frame_reference, provider = snapshots.relative_reference(path), "local"
+        if frame_reference is not None:
             await conn.execute("UPDATE compliance_events SET frame_reference = $1 WHERE id = $2", frame_reference, event_id)
             await conn.execute(
-                "UPDATE alerts SET frame_reference = $1, frame_provider = 'local' WHERE id = $2",
-                frame_reference, alert_uuid,
+                "UPDATE alerts SET frame_reference = $1, frame_provider = $2 WHERE id = $3",
+                frame_reference, provider, alert_uuid,
             )
+
+
+async def _publish_events(
+    event: dict[str, Any], event_id: UUID, alert_uuid: UUID,
+    person_id: UUID, camera_id: UUID | None, zone_id: UUID | None, severity: str,
+) -> None:
+    """XADD to events:ppe (raw detection-level fact) and events:compliance (the
+    state transition just persisted) — reuses the same event dict already built
+    for the DB write, no new data plumbing. Best-effort only: a Redis outage
+    must never affect the Postgres write it mirrors (matches how
+    notifier.notify_violation and snapshot writes are already treated in this
+    file — see _persist_violation above)."""
+    client = redis_client.get_client()
+    if client is None:
+        return
+    now_iso = datetime.now(timezone.utc).isoformat()
+    ppe_payload = {
+        "event_id": str(event_id),
+        "camera_id": str(camera_id) if camera_id else "",
+        "zone_id": str(zone_id) if zone_id else "",
+        "person_id": str(person_id),
+        "ppe_type": event["ppe_type"],
+        "confidence": event.get("confidence") or 0,
+        "track_id": event.get("track_id") or "",
+        "occurred_at": now_iso,
+    }
+    compliance_payload = {
+        **ppe_payload,
+        "alert_id": str(alert_uuid),
+        "state": "violation",
+        "severity": severity,
+    }
+    try:
+        await client.xadd("events:ppe", {"data": json.dumps(ppe_payload)}, maxlen=EVENTS_STREAM_MAXLEN, approximate=True)
+        await client.xadd("events:compliance", {"data": json.dumps(compliance_payload)}, maxlen=EVENTS_STREAM_MAXLEN, approximate=True)
+    except Exception:
+        log.exception("Failed to publish events:ppe/events:compliance for event_id=%s", event_id)
 
 
 async def _persist_reid_resolve(conn: asyncpg.Connection, event: dict[str, Any]) -> None:

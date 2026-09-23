@@ -14,5 +14,39 @@ services:
   mailhog:
     image: mailhog/mailhog               # SMTP :1025, web UI :8025
     ports: ["1025:1025", "8025:8025"]
+  redis:
+    image: redis:7-alpine                # frames:{camera_id} lists, events:ppe/events:compliance streams
+    # --requirepass "" (the unset default) disables auth entirely, matching
+    # REDIS_URL's own no-password default — fine for local dev, not for
+    # anything real. Set PPE_REDIS_PASSWORD AND update PPE_REDIS_URL to
+    # redis://:<password>@<host>:6379/0 together (both are required — this
+    # only configures the container side) for a real deployment.
+    command: ["redis-server", "--requirepass", "${PPE_REDIS_PASSWORD:-}"]
+    ports: ["6379:6379"]
+    # NOTE: this healthcheck's unauthenticated `PING` will itself start
+    # failing once PPE_REDIS_PASSWORD is set — add `-a "${PPE_REDIS_PASSWORD}"`
+    # to the test command at the same time you set that var.
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+  minio:
+    image: quay.io/minio/minio   # minio/minio was retired from Docker Hub; quay.io is MinIO's current registry
+    command: server /data --console-address ":9001"
+    environment:
+      # Same env vars config.py reads (PPE_MINIO_ACCESS_KEY/SECRET_KEY) so the
+      # container and the app agree by construction, not by two independently
+      # hardcoded values that happen to match. Falls back to the same dev
+      # defaults config.py uses when unset — copy .env.example to .env and
+      # override both for anything beyond local dev.
+      MINIO_ROOT_USER: ${PPE_MINIO_ACCESS_KEY:-ppe-minio}
+      MINIO_ROOT_PASSWORD: ${PPE_MINIO_SECRET_KEY:-ppe-minio-secret}
+    ports: ["9000:9000", "9001:9001"]    # 9000 = S3 API, 9001 = console
+    volumes: ["miniodata:/data"]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      retries: 10
 volumes:
   pgdata: {}
+  miniodata: {}

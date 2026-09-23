@@ -38,12 +38,14 @@ from ultralytics import YOLO
 
 import db
 import escalation
+import redis_client
 import snapshots
 from auth import security as auth_security
 from auth.dependencies import get_current_user, require_role
 from repositories import alerts, cameras, zones
 from repositories import audit
 from repositories import audit_query
+from repositories import camera_registry_client
 from repositories import compliance as session_repo
 from repositories import live_stats
 from repositories import persons as persons_repo
@@ -52,9 +54,11 @@ from repositories import users as users_repo
 from repositories import workers as workers_repo
 from repositories import writer as write_queue
 from compliance import evaluate_compliance, new_session_state, _iou, Box
-from frame_source import FrameSource, FileVideoSource, RTSPSource
+from frame_source import FrameSource, FileVideoSource, RTSPSource, RedisFrameSource
 from notifications import notifier
-from config import JWT_REFRESH_TTL_SECONDS, PASSWORD_RESET_TTL_SECONDS, FRONTEND_BASE_URL
+from config import (
+    JWT_REFRESH_TTL_SECONDS, PASSWORD_RESET_TTL_SECONDS, FRONTEND_BASE_URL, REDIS_URL, CAMERA_REGISTRY_URL,
+)
 from reid import resolver as reid_resolver
 from reid.embedder import OsnetEmbedder, get_embedder
 from config import (
@@ -167,7 +171,7 @@ log.info("Model loaded. Classes: %s", list(_names_model.names.values())[:10])
 # corrupt one) disables Re-ID rather than failing startup — Phase 1's
 # violation->Postgres->alert path has no dependency on this succeeding.
 _reid_torch_device = "cuda:0" if _device == 0 else _device
-REID_ENABLED = True
+REID_ENABLED = False  # disabled for perf — halves per-frame GPU cost
 _reid_embedder: OsnetEmbedder | None = None
 try:
     _reid_embedder = get_embedder(device=_reid_torch_device)
@@ -234,6 +238,8 @@ def _snapshot_crop_for_track(frame: np.ndarray, detections: list[dict], track_id
 # ─── FastAPI app ──────────────────────────────────────────────────────────────
 _writer_task: asyncio.Task | None = None
 _escalation_task: asyncio.Task | None = None
+_camera_registry_sync_task: asyncio.Task | None = None
+_snapshot_cleanup_task: asyncio.Task | None = None
 
 
 @asynccontextmanager
@@ -242,22 +248,31 @@ async def lifespan(app: FastAPI):
     task (see repositories/writer.py) before accepting traffic; tear both down
     on shutdown. write_queue.init() must run on THIS event loop, since it's
     what submit_threadsafe() later hands work back to from other threads."""
-    global _writer_task, _escalation_task
+    global _writer_task, _escalation_task, _camera_registry_sync_task, _snapshot_cleanup_task
     pool = await db.connect()
+    await redis_client.connect()
     write_queue.init(asyncio.get_running_loop())
     _writer_task = asyncio.create_task(write_queue.writer_task(pool))
     _escalation_task = asyncio.create_task(escalation.escalation_task())
-    log.info("Compliance writer + escalation tasks started")
+    _snapshot_cleanup_task = asyncio.create_task(snapshots.cleanup_task())
+    log.info("Compliance writer + escalation + snapshot cleanup tasks started")
+    try:
+        await camera_registry_client.sync_cameras()
+    except Exception:
+        log.exception("Camera registry sync failed at startup — continuing with local cameras table")
+    if CAMERA_REGISTRY_URL:
+        _camera_registry_sync_task = asyncio.create_task(camera_registry_client.registry_sync_task())
     try:
         yield
     finally:
-        for task in (_writer_task, _escalation_task):
+        for task in (_writer_task, _escalation_task, _camera_registry_sync_task, _snapshot_cleanup_task):
             if task is not None:
                 task.cancel()
                 try:
                     await task
                 except asyncio.CancelledError:
                     pass
+        await redis_client.disconnect()
         await db.disconnect()
 
 
@@ -583,6 +598,17 @@ async def create_camera_endpoint(payload: dict, user: dict = Depends(require_rol
     result = await cameras.create_camera(payload)
     await audit.write("camera_create", "camera", result["id"], user_id=user["id"], metadata={"name": result["name"]})
     return result
+
+
+@app.post("/api/cameras/sync")
+async def sync_cameras_endpoint(user: dict = Depends(require_role("admin"))):
+    """Re-sync from the platform Camera Registry Service (see
+    repositories/camera_registry_client.py) without restarting the backend.
+    A no-op returning synced=0 when PPE_CAMERA_REGISTRY_URL isn't configured —
+    that's not an error, just "no registry to sync from yet"."""
+    n = await camera_registry_client.sync_cameras()
+    await audit.write("camera_registry_sync", "camera", "*", user_id=user["id"], metadata={"synced": n})
+    return {"synced": n}
 
 
 @app.put("/api/cameras/{camera_id}")
@@ -1146,6 +1172,43 @@ async def detect_rtsp_ws(websocket: WebSocket, url: str, camera_id: str | None =
         camera_id=camera_id,
     )
     if camera_id:
+        write_queue.submit_threadsafe({
+            "kind": "camera_status", "camera_code": camera_id, "status": "offline",
+        })
+
+
+@app.websocket("/ws/detect/redis")
+async def detect_redis_ws(websocket: WebSocket, camera_id: str):
+    """
+    Consume frames the platform's Ingestion Layer (or, for local dev,
+    scripts/publish_frames_to_redis.py standing in for it) publishes to the
+    `frames:{camera_id}` Redis list — the platform's frame-ingestion contract
+    (Platform Integration Strategy doc §5.5/§6), as an alternative to this
+    service pulling RTSP/files itself.
+
+    Registered before /ws/detect/{video_id} for the same routing-order reason
+    /ws/detect/live and /ws/detect/rtsp are: Starlette matches routes in
+    registration order, and the parameterized route would otherwise swallow
+    "redis" as a video_id.
+    """
+    await websocket.accept()
+    session_id = f"redis-{uuid4().hex[:8]}"
+    log.info("[%s] WebSocket connected (Redis frame source, camera=%s)", session_id, camera_id)
+
+    def _on_status(status: str) -> None:
+        # Fired from RedisFrameSource.frames(), which runs inside the
+        # frame_reader's asyncio.to_thread worker thread — a different OS
+        # thread than the event loop, so this must use the thread-safe entry
+        # point, same reasoning as detect_rtsp_ws's _on_status.
+        write_queue.submit_threadsafe({
+            "kind": "camera_status", "camera_code": camera_id, "status": status,
+        })
+
+    source = RedisFrameSource(camera_id, REDIS_URL, status_callback=_on_status)
+    try:
+        await _run_detection_session(websocket, session_id, source, camera_id=camera_id)
+    finally:
+        source.cleanup()
         write_queue.submit_threadsafe({
             "kind": "camera_status", "camera_code": camera_id, "status": "offline",
         })

@@ -17,3 +17,8 @@ pyjwt>=2.9.0
 aiosmtplib>=3.0.0
 pydantic-settings>=2.5.0
 
+# ── Platform integration (Redis frames/events, MinIO evidence, camera registry) ─
+redis>=5.0.0
+minio>=7.2.0
+httpx>=0.27.0
+

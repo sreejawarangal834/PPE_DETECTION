@@ -21,6 +21,7 @@ from typing import Callable, Iterator, Protocol
 
 import cv2
 import numpy as np
+import redis as redis_sync
 
 log = logging.getLogger("ppe_backend.frame_source")
 
@@ -199,3 +200,89 @@ class RTSPSource:
     def cleanup(self) -> None:
         """No uploaded file backs a live stream — nothing to remove."""
         pass
+
+
+class RedisFrameSource:
+    """
+    Reads frames the platform's Ingestion Layer publishes to the
+    `frames:{camera_id}` Redis list (see the Platform Integration Strategy
+    doc, §5.5/§6). Each list element is a JPEG-encoded frame, pushed with
+    `LPUSH` by the publisher and consumed here with `BRPOP` (FIFO order).
+
+    No real Ingestion Layer exists in this workspace yet — for local dev,
+    `scripts/publish_frames_to_redis.py` stands in for it (reads a video
+    file/RTSP URL exactly like FileVideoSource/RTSPSource do, and LPUSHes the
+    encoded frames instead of yielding them directly). Once a platform
+    Ingestion Layer is deployed, this class needs no changes — it only
+    depends on the `frames:{camera_id}` contract, not on who publishes to it.
+
+    Uses the synchronous `redis` client (not `redis.asyncio`) because, like
+    RTSPSource, `frames()` is a blocking generator advanced from a worker
+    thread via `asyncio.to_thread` in main.py's frame_reader — an async
+    client would need its own event loop on that thread for no benefit here.
+    """
+
+    def __init__(
+        self,
+        camera_id: str,
+        redis_url: str,
+        block_timeout_seconds: float = 2.0,
+        status_callback: Callable[[str], None] | None = None,
+    ) -> None:
+        self.camera_id = camera_id
+        self.key = f"frames:{camera_id}"
+        self._redis = redis_sync.from_url(redis_url, decode_responses=False)
+        self.block_timeout_seconds = block_timeout_seconds
+        self.status_callback = status_callback
+        self.fps: float = 0.0
+        # Same interface-symmetry/should_stop hooks as RTSPSource — main.py
+        # wires `should_stop` to the session's `_stop` asyncio.Event so a
+        # client disconnect is noticed within one BRPOP timeout instead of
+        # only at the next successfully-read frame.
+        self.on_loop: Callable[[], None] | None = None
+        self.should_stop: Callable[[], bool] | None = None
+
+    def _wants_stop(self) -> bool:
+        return self.should_stop is not None and self.should_stop()
+
+    def _notify(self, status: str) -> None:
+        if self.status_callback is not None:
+            try:
+                self.status_callback(status)
+            except Exception:
+                log.exception("RedisFrameSource status_callback raised for status=%s", status)
+
+    def frames(self) -> Iterator[np.ndarray]:
+        announced_online = False
+        while True:
+            if self._wants_stop():
+                log.info("Redis frame source stopping (should_stop): %s", self.key)
+                return
+            try:
+                item = self._redis.brpop([self.key], timeout=self.block_timeout_seconds)
+            except redis_sync.RedisError:
+                log.exception("Redis error reading %s — retrying in %.1fs", self.key, self.block_timeout_seconds)
+                self._notify("reconnecting")
+                time.sleep(self.block_timeout_seconds)
+                continue
+            if item is None:
+                # No publisher has pushed a frame within the timeout — not an
+                # error (the list is simply empty right now), just means no
+                # Ingestion Layer/dev publisher is currently feeding this
+                # camera_id. Loop back and try again.
+                continue
+            _key, payload = item
+            frame = cv2.imdecode(np.frombuffer(payload, dtype=np.uint8), cv2.IMREAD_COLOR)
+            if frame is None:
+                log.warning("Dropped undecodable frame from %s", self.key)
+                continue
+            if not announced_online:
+                self._notify("online")
+                announced_online = True
+            yield frame
+
+    def cleanup(self) -> None:
+        try:
+            self._redis.close()
+        except Exception:
+            pass

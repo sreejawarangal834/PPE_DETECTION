@@ -14,23 +14,39 @@ Split in two, for the same non-blocking reason as everywhere else in this pipeli
   blocking it on an encode+fwrite would stall every other pending write behind it, not just
   this one. Always call it via asyncio.to_thread.
 
-Honest gap (flagged, not silently left as a surprise): there is no retention/cleanup here.
-Every violation that gets a snapshot writes one more JPEG that stays on disk forever. Crops
-(not full frames) keep individual files small (~5-30KB typically at quality=85), but disk
-usage is still unbounded over the lifetime of a real deployment. A real follow-up would be a
-periodic task deleting snapshots older than N days (mirroring escalation.py's shape — a
-background asyncio task started in main.py's lifespan) or capping total directory size;
-neither is built here.
+Retention: every violation that gets a snapshot writes one more JPEG — crops (not full
+frames) keep individual files small (~5-30KB typically at quality=85), but disk/bucket usage
+is still unbounded without an expiry policy. Handled two ways, matching where each backend's
+lifecycle management actually belongs:
+  - MinIO: a server-side bucket lifecycle rule (`_apply_lifecycle_policy`, set once when the
+    bucket is created/confirmed) expires objects under MINIO_OBJECT_PREFIX after
+    config.SNAPSHOT_RETENTION_DAYS — MinIO/S3 enforce this natively, no application code needs
+    to run for it to happen.
+  - Local disk: no such native mechanism, so `cleanup_task()` (mirroring escalation.py's
+    background-task shape) periodically deletes day-directories older than the same retention
+    window. Started in main.py's lifespan.
 """
 
 from __future__ import annotations
 
+import asyncio
+import io
 import logging
-from datetime import datetime, timezone
+import shutil
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import cv2
 import numpy as np
+from minio import Minio
+from minio.commonconfig import ENABLED, Filter
+from minio.error import S3Error
+from minio.lifecycleconfig import Expiration, LifecycleConfig, Rule
+
+from config import (
+    MINIO_ACCESS_KEY, MINIO_BUCKET, MINIO_ENABLED, MINIO_ENDPOINT, MINIO_SECRET_KEY, MINIO_SECURE,
+    SNAPSHOT_CLEANUP_INTERVAL_SECONDS, SNAPSHOT_RETENTION_DAYS,
+)
 
 log = logging.getLogger("ppe_backend.snapshots")
 
@@ -40,6 +56,58 @@ SNAPSHOT_DIR = Path(__file__).parent / "snapshots"
 # brim, a glove at the frame boundary) isn't clipped out of the evidence crop.
 CROP_PADDING_FRACTION = 0.15
 JPEG_QUALITY = 85
+
+# Object key convention (Platform Integration Strategy doc §8.3 — "platform
+# storage contracts and object key conventions"): uc3/snapshots/<date>/<event_id>.jpg,
+# mirroring SNAPSHOT_DIR's local-disk layout so relative_reference/resolve_reference
+# need only a storage-backend prefix change, not a redesign.
+MINIO_OBJECT_PREFIX = "uc3/snapshots"
+
+_minio_client: Minio | None = None
+
+
+def _apply_lifecycle_policy(client: Minio) -> None:
+    """Server-side expiration for everything under MINIO_OBJECT_PREFIX — set once
+    (idempotent: re-applying the same rule on every startup is a no-op change-wise)
+    rather than relying on any application code running later to enforce it."""
+    try:
+        client.set_bucket_lifecycle(
+            MINIO_BUCKET,
+            LifecycleConfig([
+                Rule(
+                    ENABLED,
+                    rule_filter=Filter(prefix=f"{MINIO_OBJECT_PREFIX}/"),
+                    rule_id="uc3-snapshot-retention",
+                    expiration=Expiration(days=SNAPSHOT_RETENTION_DAYS),
+                ),
+            ]),
+        )
+        log.info("MinIO lifecycle policy applied: expire %s/* after %d day(s)",
+                 MINIO_OBJECT_PREFIX, SNAPSHOT_RETENTION_DAYS)
+    except S3Error:
+        # Non-fatal — uploads still work without a lifecycle policy, they just
+        # won't auto-expire. Some S3-compatible backends (or a locked-down
+        # MinIO deployment where UC3's credentials aren't lifecycle-admin)
+        # may reject this; that must not block snapshot capture from working.
+        log.exception("Failed to apply MinIO bucket lifecycle policy (uploads still work, just won't auto-expire)")
+
+
+def _get_minio_client() -> Minio:
+    global _minio_client
+    if _minio_client is None:
+        client = Minio(
+            MINIO_ENDPOINT, access_key=MINIO_ACCESS_KEY, secret_key=MINIO_SECRET_KEY, secure=MINIO_SECURE,
+        )
+        if not client.bucket_exists(MINIO_BUCKET):
+            client.make_bucket(MINIO_BUCKET)
+        _apply_lifecycle_policy(client)
+        _minio_client = client
+    return _minio_client
+
+
+def minio_object_key(event_id: str, when: datetime | None = None) -> str:
+    day = (when or datetime.now(timezone.utc)).strftime("%Y-%m-%d")
+    return f"{MINIO_OBJECT_PREFIX}/{day}/{event_id}.jpg"
 
 
 def crop_for_violation(frame: np.ndarray, box_norm: tuple[float, float, float, float] | None) -> np.ndarray:
@@ -93,3 +161,72 @@ def encode_and_save(crop_bgr: np.ndarray, path: Path, quality: int = JPEG_QUALIT
     except Exception:
         log.exception("Failed to write snapshot %s", path)
         return False
+
+
+def upload_to_minio(crop_bgr: np.ndarray, object_key: str, quality: int = JPEG_QUALITY) -> bool:
+    """MinIO equivalent of encode_and_save — same "synchronous, call via
+    asyncio.to_thread, never raise into the caller" contract. Only called when
+    config.MINIO_ENABLED is True (see repositories/writer.py); encode_and_save's
+    local-disk path stays the unconditional fallback so a MinIO outage or an
+    unconfigured dev environment never breaks snapshot capture, just moves it
+    back to local disk exactly as it worked before MinIO existed."""
+    try:
+        ok, buf = cv2.imencode(".jpg", crop_bgr, [cv2.IMWRITE_JPEG_QUALITY, quality])
+        if not ok:
+            log.warning("cv2.imencode failed for MinIO snapshot %s", object_key)
+            return False
+        data = buf.tobytes()
+        client = _get_minio_client()
+        client.put_object(
+            MINIO_BUCKET, object_key, io.BytesIO(data), length=len(data), content_type="image/jpeg",
+        )
+        return True
+    except S3Error:
+        log.exception("MinIO upload failed for %s", object_key)
+        return False
+    except Exception:
+        log.exception("Unexpected error uploading snapshot to MinIO: %s", object_key)
+        return False
+
+
+def _delete_expired_local_snapshots(retention_days: int) -> int:
+    """Synchronous directory walk — call via asyncio.to_thread (see cleanup_task).
+    SNAPSHOT_DIR's layout is flat day-directories (YYYY-MM-DD/*.jpg, see
+    snapshot_path()), so this only needs to parse directory NAMES, never touch
+    file mtimes. Returns the number of day-directories removed."""
+    if not SNAPSHOT_DIR.is_dir():
+        return 0
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=retention_days)).strftime("%Y-%m-%d")
+    removed = 0
+    for day_dir in SNAPSHOT_DIR.iterdir():
+        if not day_dir.is_dir():
+            continue
+        # Directory names are strictly YYYY-MM-DD (snapshot_path()'s own format),
+        # so lexical comparison is equivalent to date comparison — skip anything
+        # that doesn't match rather than guessing at an unexpected entry.
+        if len(day_dir.name) == 10 and day_dir.name < cutoff:
+            try:
+                shutil.rmtree(day_dir)
+                removed += 1
+            except Exception:
+                log.exception("Failed to remove expired snapshot directory %s", day_dir)
+    return removed
+
+
+async def cleanup_task() -> None:
+    """Periodic local-disk snapshot retention (see module docstring — MinIO's
+    side of this is a server-side bucket lifecycle rule, not this task).
+    Mirrors escalation.py's background-task shape: log, sleep, repeat — one
+    failed cycle is logged and never kills the task."""
+    log.info(
+        "Snapshot cleanup task started (retention=%dd, interval=%ds)",
+        SNAPSHOT_RETENTION_DAYS, SNAPSHOT_CLEANUP_INTERVAL_SECONDS,
+    )
+    while True:
+        try:
+            n = await asyncio.to_thread(_delete_expired_local_snapshots, SNAPSHOT_RETENTION_DAYS)
+            if n:
+                log.info("Snapshot cleanup: removed %d expired local snapshot director(y/ies)", n)
+        except Exception:
+            log.exception("Snapshot cleanup cycle failed")
+        await asyncio.sleep(SNAPSHOT_CLEANUP_INTERVAL_SECONDS)
