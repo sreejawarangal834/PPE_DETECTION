@@ -249,13 +249,82 @@ _camera_registry_sync_task: asyncio.Task | None = None
 _snapshot_cleanup_task: asyncio.Task | None = None
 
 
+import httpx
+
+_headless_tasks: list[asyncio.Task] = []
+
+
+class HeadlessWebSocket:
+    """Headless adapter for WebSocket that discards outgoing frames."""
+    async def send_json(self, data: dict) -> None:
+        pass
+
+    async def close(self, code: int = 1000) -> None:
+        pass
+
+
+async def _resolve_headless_camera_ids() -> list[str]:
+    env_cams = os.environ.get("PPE_PLATFORM_CAMERA_IDS")
+    if env_cams and env_cams.strip():
+        return [c.strip() for c in env_cams.split(",") if c.strip()]
+
+    registry_url = CAMERA_REGISTRY_URL
+    if registry_url:
+        try:
+            url = f"{registry_url.rstrip('/')}/cameras/by-uc/uc3"
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                res = await client.get(url)
+                if res.status_code == 200:
+                    data = res.json()
+                    if isinstance(data, list):
+                        ids = [c["id"] if isinstance(c, dict) else str(c) for c in data]
+                        if ids:
+                            return ids
+        except Exception as exc:
+            log.warning("Failed to fetch camera list from camera registry URL %s: %s", registry_url, exc)
+
+    try:
+        cams = await cameras.list_cameras()
+        return [c["id"] for c in cams if c.get("id")]
+    except Exception as exc:
+        log.warning("Failed to list local cameras for headless mode: %s", exc)
+        return []
+
+
+async def _run_headless_camera_worker(camera_id: str) -> None:
+    backoff = 1.0
+    while True:
+        session_id = f"headless-{camera_id}-{uuid4().hex[:6]}"
+        log.info("Starting headless detection worker for camera=%s (session_id=%s)", camera_id, session_id)
+
+        def _on_status(status: str) -> None:
+            write_queue.submit_threadsafe({
+                "kind": "camera_status", "camera_code": camera_id, "status": status,
+            })
+
+        source = RedisFrameSource(camera_id, REDIS_URL, status_callback=_on_status)
+        ws = HeadlessWebSocket()
+        try:
+            await _run_detection_session(ws, session_id, source, camera_id=camera_id)
+            backoff = 1.0
+        except asyncio.CancelledError:
+            log.info("Headless detection worker cancelled for camera=%s", camera_id)
+            source.cleanup()
+            break
+        except Exception as exc:
+            log.exception("Headless detection worker crashed for camera=%s (error=%s), retrying in %.1fs", camera_id, exc, backoff)
+            source.cleanup()
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * 2.0, 30.0)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Open the Postgres pool and start the single compliance-write consumer
     task (see repositories/writer.py) before accepting traffic; tear both down
     on shutdown. write_queue.init() must run on THIS event loop, since it's
     what submit_threadsafe() later hands work back to from other threads."""
-    global _writer_task, _escalation_task, _camera_registry_sync_task, _snapshot_cleanup_task
+    global _writer_task, _escalation_task, _camera_registry_sync_task, _snapshot_cleanup_task, _headless_tasks
     pool = await db.connect()
     await redis_client.connect()
     write_queue.init(asyncio.get_running_loop())
@@ -269,9 +338,25 @@ async def lifespan(app: FastAPI):
         log.exception("Camera registry sync failed at startup — continuing with local cameras table")
     if CAMERA_REGISTRY_URL:
         _camera_registry_sync_task = asyncio.create_task(camera_registry_client.registry_sync_task())
+
+    _headless_tasks = []
+    if _bool("PPE_HEADLESS", False):
+        log.info("PPE_HEADLESS enabled — initializing headless camera workers")
+        cam_ids = await _resolve_headless_camera_ids()
+        log.info("Headless mode target camera IDs: %s", cam_ids)
+        for cid in cam_ids:
+            t = asyncio.create_task(_run_headless_camera_worker(cid))
+            _headless_tasks.append(t)
+
     try:
         yield
     finally:
+        for t in _headless_tasks:
+            t.cancel()
+            try:
+                await t
+            except asyncio.CancelledError:
+                pass
         for task in (_writer_task, _escalation_task, _camera_registry_sync_task, _snapshot_cleanup_task):
             if task is not None:
                 task.cancel()
@@ -281,6 +366,7 @@ async def lifespan(app: FastAPI):
                     pass
         await redis_client.disconnect()
         await db.disconnect()
+
 
 
 app = FastAPI(title="PPE Detection Backend", lifespan=lifespan)
