@@ -54,7 +54,11 @@ import numpy as np
 
 import redis_client
 import snapshots
-from config import DB_WRITE_QUEUE_SIZE, EVENTS_STREAM_MAXLEN, MINIO_ENABLED
+from config import (
+    DB_WRITE_QUEUE_SIZE, EVENTS_STREAM_MAXLEN, MINIO_ENABLED,
+    FACE_ENROLLED_THRESHOLD, FACE_VISITOR_THRESHOLD, FACE_MATCH_MARGIN,
+)
+from face import resolver as face_resolver
 from notifications import notifier
 from reid import resolver as reid_resolver
 from repositories.cameras import get_camera_id, set_status as _set_camera_status
@@ -114,6 +118,8 @@ async def writer_task(pool: asyncpg.Pool) -> None:
                     await _set_camera_status(event["camera_code"], event["status"])
                 elif kind == "reid_resolve":
                     await _persist_reid_resolve(conn, event)
+                elif kind == "face_resolve":
+                    await _persist_face_resolve(conn, event)
                 else:
                     log.warning("Unknown write-queue event kind: %r", kind)
         except Exception:
@@ -319,3 +325,54 @@ async def _persist_reid_resolve(conn: asyncpg.Connection, event: dict[str, Any])
                 person_id, track_segment_id,
             )
         reid_resolver.mark_resolved((str(session_id), loop_index, track_id), str(person_id))
+
+
+async def _persist_face_resolve(conn: asyncpg.Connection, event: dict[str, Any]) -> None:
+    """Face recognition (global ID + violation tagging): match/create-free identity
+    resolution for a single sampled face crop (face/sampling.py already decided this
+    particular frame was worth it — see face/model_loader.py and main.py's
+    _face_process_frame). Unlike _persist_reid_resolve, a below-threshold match does
+    NOT create a new person (see face/resolver.py's module docstring for why) — it
+    still gets recorded as identity_tag='unknown' via the backfill below.
+
+    Backfills any compliance_events already recorded against this track_segment under
+    the Phase-1 placeholder person, same reasoning as _persist_reid_resolve: resolution
+    happens after at least one crop has been sampled, so a violation raised in that
+    window would otherwise stay attributed to a throwaway `W-<track_id>` person even
+    after the real identity resolves. identity_tag/identity_similarity are backfilled
+    unconditionally (even on 'unknown') so the violation record honestly reflects
+    "we checked, and could not attribute this" rather than staying blank forever."""
+    session_id: UUID = event["session_id"]
+    track_id: int = event["track_id"]
+    loop_index: int = event.get("loop_index", 0)
+    embedding = np.asarray(event["embedding"], dtype=np.float32)
+
+    camera_id = await get_camera_id(event.get("camera_code"), executor=conn)
+    track_segment_id = await conn.fetchval(
+        "SELECT id FROM track_segments WHERE session_id = $1 AND loop_index = $2 AND track_id = $3",
+        session_id, loop_index, track_id,
+    )
+    async with conn.transaction():
+        person_id, identity_tag, similarity = await face_resolver.resolve(
+            conn, str(session_id), track_id, embedding, event["quality"], camera_id, track_segment_id,
+            event.get("refined_face_bbox"),
+            enrolled_threshold=FACE_ENROLLED_THRESHOLD,
+            visitor_threshold=FACE_VISITOR_THRESHOLD,
+            match_margin=FACE_MATCH_MARGIN,
+        )
+        if track_segment_id is not None:
+            if person_id is not None:
+                await conn.execute(
+                    "UPDATE track_segments SET person_id = $1 WHERE id = $2", person_id, track_segment_id,
+                )
+                await conn.execute(
+                    "UPDATE compliance_events SET person_id = $1 WHERE track_segment_id = $2 AND person_id != $1",
+                    person_id, track_segment_id,
+                )
+            await conn.execute(
+                """
+                UPDATE compliance_events SET identity_tag = $1::identity_tag, identity_similarity = $2
+                WHERE track_segment_id = $3
+                """,
+                identity_tag, similarity, track_segment_id,
+            )
