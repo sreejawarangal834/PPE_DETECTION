@@ -51,20 +51,36 @@ from uuid import UUID
 
 import asyncpg
 import numpy as np
+import redis.asyncio as aioredis
 
 import redis_client
 import snapshots
-from config import DB_WRITE_QUEUE_SIZE, EVENTS_STREAM_MAXLEN, MINIO_ENABLED
+from config import DB_WRITE_QUEUE_SIZE, EVENTS_STREAM_MAXLEN, MINIO_ENABLED, REDIS_URL
 from notifications import notifier
 from reid import resolver as reid_resolver
 from repositories.cameras import get_camera_id, set_status as _set_camera_status
 from repositories.persons import get_or_create_by_track_label
 from repositories.zones import get_zone_id
+from shared.contracts.alert_event import AlertEvent
+from shared.contracts.enums import AlertSeverity, AlertStatus, FrameProvider, SourceUC
+from shared.platform_client.alert_publisher import AlertPublisher
 
 log = logging.getLogger("ppe_backend.writer")
 
 _queue: asyncio.Queue[dict[str, Any]] | None = None
 _loop: asyncio.AbstractEventLoop | None = None
+
+_alert_publisher_redis: aioredis.Redis | None = None
+_alert_publisher: AlertPublisher | None = None
+
+
+def get_alert_publisher() -> AlertPublisher:
+    global _alert_publisher_redis, _alert_publisher
+    if _alert_publisher is None:
+        _alert_publisher_redis = aioredis.from_url(REDIS_URL, decode_responses=False)
+        _alert_publisher = AlertPublisher(_alert_publisher_redis)
+    return _alert_publisher
+
 
 
 def init(loop: asyncio.AbstractEventLoop) -> None:
@@ -182,66 +198,92 @@ async def _persist_violation(conn: asyncpg.Connection, event: dict[str, Any]) ->
             "confidence": confidence,
         }
 
-        alert_uuid = await conn.fetchval(
+        alert_title = f"PPE violation: missing {event['ppe_type']}"
+        alert_desc = f"{label} missing {event['ppe_type']} in {zone_name}"
+
+        alert_row = await conn.fetchrow(
             """
             INSERT INTO alerts
                 (alert_id, camera_id, source_uc, alert_type, severity, title, description,
                  source_event_id, status, metadata)
             VALUES (uuid_generate_v4(), $1, 'uc3', 'ppe_violation', $2, $3, $4, $5, 'pending', $6::jsonb)
-            RETURNING id
+            RETURNING id, alert_id
             """,
             camera_id, alert_severity,
-            f"PPE violation: missing {event['ppe_type']}",
-            f"{label} missing {event['ppe_type']} in {zone_name}",
+            alert_title, alert_desc,
             event_id, metadata,
         )
+        alert_db_id = alert_row["id"]
+        alert_uuid = alert_row["alert_id"]
 
-        await conn.execute("UPDATE compliance_events SET alert_id = $1 WHERE id = $2", alert_uuid, event_id)
+        await conn.execute("UPDATE compliance_events SET alert_id = $1 WHERE id = $2", alert_db_id, event_id)
 
         # Phase 4: fire in-app WS + (severity/cooldown-gated) email, every attempt logged to
         # notification_log regardless of outcome. Never allowed to raise into this transaction
-        # — see notifier.notify_violation's own docstring.
         await notifier.notify_violation(
-            conn, alert_uuid, label, zone_name, event["ppe_type"], alert_severity,
-            event.get("camera_code"), f"{label} missing {event['ppe_type']} in {zone_name}",
+            conn, alert_db_id, label, zone_name, event["ppe_type"], alert_severity,
+            event.get("camera_code"), alert_desc,
         )
 
-    # Internal event streams (events:ppe / events:compliance — Platform Integration
-    # Strategy doc §6.1, explicitly UC3-internal implementation details, not a
-    # platform integration contract) — published AFTER commit, same reasoning as
-    # snapshot capture below: never let a Redis hiccup roll back a Postgres row
-    # that was otherwise written successfully.
+    # Internal event streams (events:ppe / events:compliance) — published AFTER commit
     await _publish_events(event, event_id, alert_uuid, person_id, camera_id, zone_id, alert_severity)
 
-    # Snapshot capture happens AFTER the transaction commits — deliberately, so a slow
-    # JPEG encode+fwrite never holds a Postgres transaction open, and a snapshot failure
-    # can never roll back a compliance_events/alerts row that was otherwise written
-    # successfully. The encode+write itself runs off the writer_task's own event-loop turn
-    # via asyncio.to_thread (see snapshots.py's module docstring for why that specific hazard
-    # matters here: writer_task is the single consumer for every concurrent session).
+    # Snapshot capture (Task 4) happens BEFORE publishing AlertEvent
     crop = event.get("snapshot_crop")
+    frame_reference: str | None = None
+    frame_provider: FrameProvider | None = None
     if crop is not None:
-        frame_reference: str | None = None
-        provider = "local"
         if MINIO_ENABLED:
-            # MinIO evidence storage (Platform Integration Strategy doc §8.3).
-            # Falls through to the local-disk path below on any failure —
-            # never lets a MinIO outage silently drop the snapshot entirely.
-            object_key = snapshots.minio_object_key(str(event_id))
+            object_key = snapshots.minio_object_key(str(alert_uuid))
             if await asyncio.to_thread(snapshots.upload_to_minio, crop, object_key):
-                frame_reference, provider = object_key, "minio"
+                frame_reference = object_key
+                frame_provider = FrameProvider.MINIO
             else:
-                log.warning("MinIO upload failed for event_id=%s — falling back to local disk", event_id)
+                log.warning("MinIO upload failed for alert_uuid=%s — falling back to local disk", alert_uuid)
         if frame_reference is None:
             path = snapshots.snapshot_path(str(event_id))
             if await asyncio.to_thread(snapshots.encode_and_save, crop, path):
-                frame_reference, provider = snapshots.relative_reference(path), "local"
+                frame_reference = snapshots.relative_reference(path)
+                frame_provider = None
+
         if frame_reference is not None:
             await conn.execute("UPDATE compliance_events SET frame_reference = $1 WHERE id = $2", frame_reference, event_id)
+            provider_str = "minio" if frame_provider == FrameProvider.MINIO else "local"
             await conn.execute(
                 "UPDATE alerts SET frame_reference = $1, frame_provider = $2 WHERE id = $3",
-                frame_reference, provider, alert_uuid,
+                frame_reference, provider_str, alert_db_id,
             )
+
+    # Build and publish shared AlertEvent (Task 3)
+    pub_severity = AlertSeverity.MEDIUM if alert_severity == "medium" else AlertSeverity.HIGH
+    try:
+        publisher = get_alert_publisher()
+        alert_evt = AlertEvent(
+            alert_id=alert_uuid if isinstance(alert_uuid, UUID) else UUID(str(alert_uuid)),
+            camera_id=camera_id if isinstance(camera_id, UUID) else UUID(str(camera_id)),
+            timestamp=datetime.now(timezone.utc),
+            severity=pub_severity,
+            alert_type="ppe_violation",
+            title=alert_title[:200],
+            description=alert_desc[:2000],
+            source_event_id=event_id if isinstance(event_id, UUID) else UUID(str(event_id)),
+            source_uc=SourceUC.UC3,
+            frame_reference=frame_reference if frame_provider == FrameProvider.MINIO else None,
+            frame_provider=frame_provider if frame_provider == FrameProvider.MINIO else None,
+            status=AlertStatus.PENDING,
+            metadata={
+                "person_label": str(label),
+                "missing_ppe": [str(event["ppe_type"])],
+                "track_id": str(track_id) if track_id is not None else "",
+                "zone": str(zone_name),
+                "confidence": float(confidence or 0.0),
+                "compliance_score": 0.0,
+            },
+        )
+        await publisher.publish(alert_evt)
+    except Exception:
+        log.exception("Failed to publish platform AlertEvent for alert_uuid=%s", alert_uuid)
+
 
 
 async def _publish_events(

@@ -209,7 +209,7 @@ MINIO_ENABLED: bool = _bool("PPE_MINIO_ENABLED", False)
 MINIO_ENDPOINT: str = os.environ.get("PPE_MINIO_ENDPOINT", "localhost:9000")
 MINIO_ACCESS_KEY: str = os.environ.get("PPE_MINIO_ACCESS_KEY", "ppe-minio")
 MINIO_SECRET_KEY: str = os.environ.get("PPE_MINIO_SECRET_KEY", "ppe-minio-secret")
-MINIO_BUCKET: str = os.environ.get("PPE_MINIO_BUCKET", "uc3-evidence")
+MINIO_BUCKET: str = os.environ.get("PPE_MINIO_BUCKET", "innovision-snapshots")
 MINIO_SECURE: bool = _bool("PPE_MINIO_SECURE", False)
 
 # ── Platform integration: external Camera Registry Service (platform-owned) ───
