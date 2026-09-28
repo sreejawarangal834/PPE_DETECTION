@@ -352,6 +352,13 @@ class RedisFrameSource:
                         announced_online = True
 
                     try:
+                        from metrics import FRAMES_CONSUMED_TOTAL, update_stream_lag
+                        FRAMES_CONSUMED_TOTAL.labels(camera_id=str(self.camera_id)).inc()
+                        update_stream_lag(self._redis, str(self.camera_id), self.group_name)
+                    except Exception:
+                        pass
+
+                    try:
                         yield frame
                     finally:
                         try:

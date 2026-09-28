@@ -96,7 +96,14 @@ else:
 # ─── Paths ────────────────────────────────────────────────────────────────────
 BASE_DIR   = Path(__file__).parent
 MODEL_PATH = BASE_DIR / "models" / "best.pt"
+if not MODEL_PATH.exists():
+    _alt_onnx = BASE_DIR.parent / "model" / "best.onnx"
+    if _alt_onnx.exists():
+        MODEL_PATH = _alt_onnx
+    else:
+        MODEL_PATH = Path("yolov8n.pt")
 UPLOAD_DIR = BASE_DIR / "uploads"
+
 UPLOAD_DIR.mkdir(exist_ok=True)
 TRACKER_CONFIG_PATH = BASE_DIR / "tracker_config.yaml"
 
@@ -284,6 +291,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/health")
+@app.get("/api/health")
+def health():
+    return {"status": "ok", "service": "uc3"}
+
+
+@app.get("/metrics")
+def metrics():
+    from fastapi import Response
+    from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
 
 
 # ─── Helper utilities ─────────────────────────────────────────────────────────
@@ -1380,7 +1401,13 @@ async def _run_detection_session(
             try:
                 t0 = time.monotonic()
                 detections = await asyncio.to_thread(_run_inference, frame, model)
-                infer_ms = (time.monotonic() - t0) * 1000
+                latency_sec = time.monotonic() - t0
+                try:
+                    from metrics import PROCESSING_LATENCY_SECONDS
+                    PROCESSING_LATENCY_SECONDS.labels(camera_id=str(camera_id or "unassigned")).observe(latency_sec)
+                except Exception:
+                    pass
+                infer_ms = latency_sec * 1000
                 stats["infer_times"].append(infer_ms)
                 stats["frames_inferred"] += 1
 

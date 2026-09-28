@@ -24,6 +24,15 @@ class AlertPublisher:
                 "alert_published alert_id=%s uc=%s type=%s severity=%s",
                 alert.alert_id, alert.source_uc.value, alert.alert_type, alert.severity.value
             )
+            try:
+                from metrics import ALERTS_PUBLISHED_TOTAL
+                ALERTS_PUBLISHED_TOTAL.labels(
+                    source_uc=alert.source_uc.value,
+                    severity=alert.severity.value,
+                    alert_type=alert.alert_type,
+                ).inc()
+            except Exception:
+                pass
             return True
         except Exception as e:
             logger.error("alert_publish_failed alert_id=%s error=%s", alert.alert_id, e,)
