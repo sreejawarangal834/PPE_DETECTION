@@ -392,6 +392,12 @@ def metrics():
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
+@app.get("/uc3/compliance/ppe-summary")
+async def get_uc3_compliance_ppe_summary():
+    return await reports_repo.get_ppe_summary()
+
+
+
 
 # ─── Helper utilities ─────────────────────────────────────────────────────────
 

@@ -127,3 +127,58 @@ async def get_worker_compliance_rows(
         for r in rows
     ]
     return {"data": data, "total": total}
+
+
+async def get_ppe_summary() -> dict[str, Any]:
+    pool = get_pool()
+    row = await pool.fetchrow(
+        """
+        WITH stats AS (
+            SELECT
+                count(*) FILTER (WHERE state = 'violation') AS total_violations,
+                count(*) FILTER (WHERE state = 'violation' AND started_at >= now() - interval '24 hours') AS violations_24h,
+                count(*) AS total_events,
+                count(*) FILTER (WHERE state = 'compliant') AS compliant_events
+            FROM compliance_events
+        ),
+        active_w AS (
+            SELECT count(*) AS active_workers FROM persons WHERE status = 'active'
+        ),
+        top_ppe AS (
+            SELECT ppe_type::text AS top_type
+            FROM compliance_events
+            WHERE state = 'violation'
+            GROUP BY ppe_type
+            ORDER BY count(*) DESC
+            LIMIT 1
+        )
+        SELECT
+            COALESCE(s.total_violations, 0) AS total_violations,
+            COALESCE(s.violations_24h, 0) AS violations_last_24h,
+            CASE
+                WHEN COALESCE(s.total_events, 0) = 0 THEN 1.0
+                ELSE round((1.0 - (COALESCE(s.total_violations, 0)::numeric / s.total_events::numeric)), 4)::float
+            END AS compliance_rate,
+            COALESCE(w.active_workers, 0) AS active_workers,
+            COALESCE(t.top_type, 'none') AS top_missing_ppe
+        FROM stats s
+        CROSS JOIN active_w w
+        LEFT JOIN top_ppe t ON true
+        """
+    )
+    if not row:
+        return {
+            "total_violations": 0,
+            "violations_last_24h": 0,
+            "compliance_rate": 1.0,
+            "active_workers": 0,
+            "top_missing_ppe": "none",
+        }
+    return {
+        "total_violations": int(row["total_violations"]),
+        "violations_last_24h": int(row["violations_last_24h"]),
+        "compliance_rate": float(row["compliance_rate"]),
+        "active_workers": int(row["active_workers"]),
+        "top_missing_ppe": str(row["top_missing_ppe"]),
+    }
+
