@@ -28,22 +28,17 @@ from typing import Any
 import httpx
 
 from config import (
-    CAMERA_REGISTRY_API_KEY, CAMERA_REGISTRY_SYNC_INTERVAL_SECONDS, CAMERA_REGISTRY_URL,
+    ALLOW_SEED, CAMERA_REGISTRY_API_KEY, CAMERA_REGISTRY_SYNC_INTERVAL_SECONDS, CAMERA_REGISTRY_URL,
 )
 from db import get_pool
 
 log = logging.getLogger("ppe_backend.camera_registry_client")
 
-# Bounded retry with backoff on the registry call itself — a real platform
-# service can be transiently unavailable (deploy, restart, blip) without that
-# meaning "this registry doesn't exist, give up until next scheduled sync".
 _FETCH_RETRY_ATTEMPTS = 3
 _FETCH_RETRY_BASE_SECONDS = 1.0
 
 
 async def _upsert(pool, cam: dict[str, Any]) -> None:
-    """Same upsert shape as repositories/cameras.py's create_camera/update_camera —
-    matched by `code` (the registry's camera id), zone resolved by slug."""
     code = cam.get("id") or cam.get("code")
     if not code:
         log.warning("Camera registry entry missing id/code, skipping: %r", cam)
@@ -65,17 +60,17 @@ async def _upsert(pool, cam: dict[str, Any]) -> None:
 
 
 async def _fetch_cameras() -> list[dict[str, Any]] | None:
-    """GET {CAMERA_REGISTRY_URL}/cameras with bearer auth (when configured) and
-    bounded retry/backoff. Returns None (not raises) once retries are
-    exhausted — callers treat that as "sync failed, try again next cycle"."""
     headers = {"Authorization": f"Bearer {CAMERA_REGISTRY_API_KEY}"} if CAMERA_REGISTRY_API_KEY else {}
-    url = f"{CAMERA_REGISTRY_URL.rstrip('/')}/cameras"
+    url = f"{CAMERA_REGISTRY_URL.rstrip('/')}/cameras/by-uc/uc3"
     for attempt in range(1, _FETCH_RETRY_ATTEMPTS + 1):
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
                 resp = await client.get(url, headers=headers)
                 resp.raise_for_status()
-                return resp.json()
+                data = resp.json()
+                if isinstance(data, list):
+                    return data
+                return []
         except Exception:
             if attempt == _FETCH_RETRY_ATTEMPTS:
                 log.exception("Camera registry fetch failed after %d attempt(s) (%s)", attempt, url)
@@ -84,34 +79,40 @@ async def _fetch_cameras() -> list[dict[str, Any]] | None:
             log.warning("Camera registry fetch attempt %d/%d failed (%s) — retrying in %.1fs",
                         attempt, _FETCH_RETRY_ATTEMPTS, url, delay)
             await asyncio.sleep(delay)
-    return None  # unreachable, satisfies type checkers
+    return None
 
 
 async def sync_cameras() -> int:
-    """Fetch the registry's camera list and upsert into the local `cameras`
-    table. Returns the number synced (0 when the registry is unconfigured or
-    unreachable — never raises, since a missing/down registry must not take
-    down UC3's own camera list, which is what §3.2's "each use case owns its
-    internal service communication" is for)."""
     if not CAMERA_REGISTRY_URL:
-        log.info("PPE_CAMERA_REGISTRY_URL not set — skipping camera registry sync, using local cameras table")
+        log.info("PPE_CAMERA_REGISTRY_URL not set — skipping camera registry sync")
         return 0
 
     entries = await _fetch_cameras()
-    if entries is None:
-        log.warning("Camera registry sync failed (%s) — keeping existing local cameras table", CAMERA_REGISTRY_URL)
+    if entries is None or (not entries and not ALLOW_SEED):
+        log.warning("Camera registry sync returned 0 entries or failed and PPE_ALLOW_SEED is False — keeping existing local cameras")
         return 0
 
     pool = get_pool()
     n = 0
-    for cam in entries:
-        try:
-            await _upsert(pool, cam)
-            n += 1
-        except Exception:
-            log.exception("Failed to upsert camera from registry: %r", cam)
-    log.info("Camera registry sync: %d camera(s) synced from %s", n, CAMERA_REGISTRY_URL)
+    if entries:
+        for cam in entries:
+            try:
+                await _upsert(pool, cam)
+                n += 1
+            except Exception:
+                log.exception("Failed to upsert camera from registry: %r", cam)
+    elif ALLOW_SEED:
+        from repositories.cameras import _SEED
+        for cam in _SEED:
+            try:
+                await _upsert(pool, cam)
+                n += 1
+            except Exception:
+                log.exception("Failed to upsert seed camera: %r", cam)
+
+    log.info("Camera registry sync: %d camera(s) synced", n)
     return n
+
 
 
 async def registry_sync_task() -> None:

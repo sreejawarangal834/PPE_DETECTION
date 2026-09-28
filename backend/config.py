@@ -218,6 +218,8 @@ MINIO_SECURE: bool = _bool("PPE_MINIO_SECURE", False)
 # the source of truth. Once a real registry is deployed, pointing this at it
 # makes startup sync from it instead (see repositories/camera_registry_client.py).
 CAMERA_REGISTRY_URL: str | None = os.environ.get("PPE_CAMERA_REGISTRY_URL") or None
+ALLOW_SEED: bool = _bool("PPE_ALLOW_SEED", False)
+
 # Sent as `Authorization: Bearer <token>` on every registry call — real
 # service-to-service platform APIs require this; unset (None) sends no header,
 # which is only appropriate against an unauthenticated dev/test registry.
