@@ -98,16 +98,15 @@ def _get_minio_client() -> Minio:
         client = Minio(
             MINIO_ENDPOINT, access_key=MINIO_ACCESS_KEY, secret_key=MINIO_SECRET_KEY, secure=MINIO_SECURE,
         )
-        if not client.bucket_exists(MINIO_BUCKET):
-            client.make_bucket(MINIO_BUCKET)
         _apply_lifecycle_policy(client)
         _minio_client = client
     return _minio_client
 
 
-def minio_object_key(event_id: str, when: datetime | None = None) -> str:
+def minio_object_key(alert_id: str, when: datetime | None = None) -> str:
     day = (when or datetime.now(timezone.utc)).strftime("%Y-%m-%d")
-    return f"{MINIO_OBJECT_PREFIX}/{day}/{event_id}.jpg"
+    return f"uc3/alerts/{day}/{alert_id}.jpg"
+
 
 
 def crop_for_violation(frame: np.ndarray, box_norm: tuple[float, float, float, float] | None) -> np.ndarray:
