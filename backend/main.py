@@ -18,8 +18,10 @@ from __future__ import annotations
 import asyncio
 import base64
 import logging
+import os
 import shutil
 import time
+
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -246,10 +248,15 @@ def _snapshot_crop_for_track(frame: np.ndarray, detections: list[dict], track_id
 _writer_task: asyncio.Task | None = None
 _escalation_task: asyncio.Task | None = None
 _camera_registry_sync_task: asyncio.Task | None = None
-_snapshot_cleanup_task: asyncio.Task | None = None
+def _bool(key: str, default: bool = False) -> bool:
+    v = os.environ.get(key)
+    if v is None:
+        return default
+    return v.lower() in ("1", "true", "yes")
 
 
 import httpx
+
 
 _headless_tasks: list[asyncio.Task] = []
 
