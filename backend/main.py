@@ -397,6 +397,55 @@ async def get_uc3_compliance_ppe_summary():
     return await reports_repo.get_ppe_summary()
 
 
+LATEST_CAMERA_DETECTIONS: dict[str, dict[str, Any]] = {}
+
+
+def _update_latest_overlay_detections(camera_id: str | None, public_detections: list[dict]) -> None:
+    if not camera_id:
+        return
+    overlay_list = []
+    for d in public_detections:
+        box = d.get("box") or [0.0, 0.0, 0.0, 0.0]
+        label_str = str(d.get("label") or "person")
+        status_str = str(d.get("status") or "").lower()
+        is_viol = status_str == "violation" or label_str.startswith("NO ") or "missing" in label_str.lower()
+        color = "#FF0000" if is_viol else "#00FF00"
+        x1, y1, x2, y2 = [float(b) for b in box[:4]]
+        overlay_list.append({
+            "track_id": d.get("track_id") or d.get("_track_id") or 0,
+            "bbox": {
+                "x1": round(x1, 4),
+                "y1": round(y1, 4),
+                "x2": round(x2, 4),
+                "y2": round(y2, 4),
+            },
+            "label": label_str,
+            "color": color,
+            "metadata": {},
+        })
+
+    LATEST_CAMERA_DETECTIONS[camera_id] = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "camera_id": camera_id,
+        "detections": overlay_list,
+        "zones": [],
+    }
+
+
+@app.get("/uc3/cameras/{camera_id}/latest-detections")
+def get_uc3_latest_detections(camera_id: str):
+    data = LATEST_CAMERA_DETECTIONS.get(camera_id)
+    if data is not None:
+        return data
+    return {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "camera_id": camera_id,
+        "detections": [],
+        "zones": [],
+    }
+
+
+
 
 
 # ─── Helper utilities ─────────────────────────────────────────────────────────
@@ -1530,6 +1579,8 @@ async def _run_detection_session(
                         })
                 detections = _apply_ghost_boxes(detections, ghost_cache, now)
                 public_detections = _strip_internal(detections)
+                _update_latest_overlay_detections(camera_id, public_detections)
+
 
                 # Resize for WebSocket transmission (may differ from inference size)
                 send_frame = _resize_keep_aspect(frame, MAX_SEND_WIDTH)
