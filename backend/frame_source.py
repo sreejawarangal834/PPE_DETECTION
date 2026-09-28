@@ -205,21 +205,12 @@ class RTSPSource:
 class RedisFrameSource:
     """
     Reads frames the platform's Ingestion Layer publishes to the
-    `frames:{camera_id}` Redis list (see the Platform Integration Strategy
-    doc, §5.5/§6). Each list element is a JPEG-encoded frame, pushed with
-    `LPUSH` by the publisher and consumed here with `BRPOP` (FIFO order).
+    `frames:{camera_id}` Redis Stream contract (see Platform Integration strategy).
+    Consumes via consumer group `uc3_group` / worker `uc3_worker_1` using XREADGROUP.
 
-    No real Ingestion Layer exists in this workspace yet — for local dev,
-    `scripts/publish_frames_to_redis.py` stands in for it (reads a video
-    file/RTSP URL exactly like FileVideoSource/RTSPSource do, and LPUSHes the
-    encoded frames instead of yielding them directly). Once a platform
-    Ingestion Layer is deployed, this class needs no changes — it only
-    depends on the `frames:{camera_id}` contract, not on who publishes to it.
-
-    Uses the synchronous `redis` client (not `redis.asyncio`) because, like
-    RTSPSource, `frames()` is a blocking generator advanced from a worker
-    thread via `asyncio.to_thread` in main.py's frame_reader — an async
-    client would need its own event loop on that thread for no benefit here.
+    Uses the synchronous `redis` client (not `redis.asyncio`) because `frames()`
+    is a blocking generator advanced from a worker thread via `asyncio.to_thread`
+    in main.py's frame_reader.
     """
 
     def __init__(
@@ -229,18 +220,27 @@ class RedisFrameSource:
         block_timeout_seconds: float = 2.0,
         status_callback: Callable[[str], None] | None = None,
     ) -> None:
+        from minio import Minio
+        import config
+
         self.camera_id = camera_id
-        self.key = f"frames:{camera_id}"
+        self.stream_key = f"frames:{camera_id}"
+        self.group_name = "uc3_group"
+        self.consumer_name = "uc3_worker_1"
         self._redis = redis_sync.from_url(redis_url, decode_responses=False)
         self.block_timeout_seconds = block_timeout_seconds
         self.status_callback = status_callback
         self.fps: float = 0.0
-        # Same interface-symmetry/should_stop hooks as RTSPSource — main.py
-        # wires `should_stop` to the session's `_stop` asyncio.Event so a
-        # client disconnect is noticed within one BRPOP timeout instead of
-        # only at the next successfully-read frame.
         self.on_loop: Callable[[], None] | None = None
         self.should_stop: Callable[[], bool] | None = None
+
+        self._minio_client = Minio(
+            endpoint=config.MINIO_ENDPOINT,
+            access_key=config.MINIO_ACCESS_KEY,
+            secret_key=config.MINIO_SECRET_KEY,
+            secure=config.MINIO_SECURE,
+        )
+        self._group_created = False
 
     def _wants_stop(self) -> bool:
         return self.should_stop is not None and self.should_stop()
@@ -252,37 +252,116 @@ class RedisFrameSource:
             except Exception:
                 log.exception("RedisFrameSource status_callback raised for status=%s", status)
 
+    def _ensure_group(self) -> None:
+        if not self._group_created:
+            try:
+                self._redis.xgroup_create(self.stream_key, self.group_name, id="$", mkstream=True)
+            except redis_sync.ResponseError as e:
+                if "BUSYGROUP" not in str(e):
+                    log.warning("XGROUP CREATE warning on %s: %s", self.stream_key, e)
+            self._group_created = True
+
     def frames(self) -> Iterator[np.ndarray]:
+        from datetime import datetime, timezone
+        from shared.contracts.enums import FrameProvider
+        from shared.contracts.frame_event import FrameEvent
+
+        self._ensure_group()
         announced_online = False
         while True:
             if self._wants_stop():
-                log.info("Redis frame source stopping (should_stop): %s", self.key)
+                log.info("Redis frame source stopping (should_stop): %s", self.stream_key)
                 return
+
             try:
-                item = self._redis.brpop([self.key], timeout=self.block_timeout_seconds)
+                response = self._redis.xreadgroup(
+                    groupname=self.group_name,
+                    consumername=self.consumer_name,
+                    streams={self.stream_key: ">"},
+                    count=1,
+                    block=int(self.block_timeout_seconds * 1000),
+                )
             except redis_sync.RedisError:
-                log.exception("Redis error reading %s — retrying in %.1fs", self.key, self.block_timeout_seconds)
+                log.exception("Redis error reading %s — retrying in %.1fs", self.stream_key, self.block_timeout_seconds)
                 self._notify("reconnecting")
                 time.sleep(self.block_timeout_seconds)
                 continue
-            if item is None:
-                # No publisher has pushed a frame within the timeout — not an
-                # error (the list is simply empty right now), just means no
-                # Ingestion Layer/dev publisher is currently feeding this
-                # camera_id. Loop back and try again.
+
+            if not response:
                 continue
-            _key, payload = item
-            frame = cv2.imdecode(np.frombuffer(payload, dtype=np.uint8), cv2.IMREAD_COLOR)
-            if frame is None:
-                log.warning("Dropped undecodable frame from %s", self.key)
-                continue
-            if not announced_online:
-                self._notify("online")
-                announced_online = True
-            yield frame
+
+            for _s_key, messages in response:
+                for msg_id, fields in messages:
+                    raw_data = fields.get(b"data") or fields.get("data")
+                    if raw_data is None:
+                        log.warning("No 'data' field in message %s on %s", msg_id, self.stream_key)
+                        self._redis.xack(self.stream_key, self.group_name, msg_id)
+                        continue
+
+                    if isinstance(raw_data, bytes):
+                        raw_data = raw_data.decode("utf-8")
+
+                    try:
+                        event = FrameEvent.model_validate_json(raw_data)
+                    except Exception as e:
+                        log.error("Failed to parse FrameEvent from msg %s: %s", msg_id, e)
+                        self._redis.xack(self.stream_key, self.group_name, msg_id)
+                        continue
+
+                    now_utc = datetime.now(timezone.utc)
+                    msg_ts = event.timestamp
+                    if msg_ts.tzinfo is None:
+                        msg_ts = msg_ts.replace(tzinfo=timezone.utc)
+                    age_seconds = (now_utc - msg_ts).total_seconds()
+
+                    if age_seconds > 5.0:
+                        log.debug("Skipping stale frame msg_id=%s age=%.2fs > 5s", msg_id, age_seconds)
+                        self._redis.xack(self.stream_key, self.group_name, msg_id)
+                        continue
+
+                    jpeg_bytes = None
+                    if event.frame_provider == FrameProvider.REDIS:
+                        try:
+                            jpeg_bytes = self._redis.get(event.frame_reference)
+                        except Exception as e:
+                            log.warning("Failed GET for redis frame_reference %s: %s", event.frame_reference, e)
+
+                    if jpeg_bytes is None:
+                        minio_key = f"frames/{event.camera_id}/{event.frame_seq:08d}.jpg"
+                        try:
+                            res = self._minio_client.get_object("innovision-frames", minio_key)
+                            jpeg_bytes = res.read()
+                            res.close()
+                            res.release_conn()
+                        except Exception as e:
+                            log.warning("MinIO get_object failed for bucket 'innovision-frames' key %s: %s", minio_key, e)
+
+                    if jpeg_bytes is None:
+                        log.error("Both Redis GET and MinIO download failed for msg_id=%s frame_seq=%s", msg_id, event.frame_seq)
+                        self._redis.xack(self.stream_key, self.group_name, msg_id)
+                        continue
+
+                    frame = cv2.imdecode(np.frombuffer(jpeg_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
+                    if frame is None:
+                        log.warning("Dropped undecodable frame from %s msg_id=%s", self.stream_key, msg_id)
+                        self._redis.xack(self.stream_key, self.group_name, msg_id)
+                        continue
+
+                    if not announced_online:
+                        self._notify("online")
+                        announced_online = True
+
+                    try:
+                        yield frame
+                    finally:
+                        try:
+                            self._redis.xack(self.stream_key, self.group_name, msg_id)
+                        except Exception:
+                            log.exception("Failed to XACK message %s", msg_id)
 
     def cleanup(self) -> None:
         try:
             self._redis.close()
         except Exception:
             pass
+
