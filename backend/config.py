@@ -9,6 +9,7 @@ Backend configuration — all values overridable via environment variables.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 
 def _float(key: str, default: float) -> float:
@@ -247,12 +248,31 @@ PERSON_GATE_MODEL: str = os.environ.get("PPE_PERSON_GATE_MODEL", "yolo11n.pt")
 PERSON_GATE_CONF_THRESHOLD: float = _float("PPE_PERSON_GATE_CONF_THRESHOLD", 0.05)
 PERSON_GATE_IMAGE_SIZE: int = _int("PPE_PERSON_GATE_IMAGE_SIZE", 1280)
 
+# ── Mannequin exclusion (mannequin_gate.py) ───────────────────────────────────
+# 2-class (person, mannequin) detector that replaces the COCO person gate when its weights file
+# exists. Empty/missing file -> COCO gate, no masking (unchanged legacy behaviour).
+_default_pm = Path(__file__).parent / "models" / "person_mannequin.pt"
+PERSON_MANNEQUIN_MODEL: str = os.environ.get("PPE_PERSON_MANNEQUIN_MODEL", str(_default_pm))
+MANNEQUIN_CONF_THRESHOLD: float = _float("PPE_MANNEQUIN_CONF_THRESHOLD", 0.35)
+# Same object labelled both person and mannequin at >= this IoU -> keep the higher-confidence label.
+MANNEQUIN_CLASS_CONFLICT_IOU: float = _float("PPE_MANNEQUIN_CLASS_CONFLICT_IOU", 0.7)
+# A mannequin box is NOT painted out if a real person's box covers >= this fraction of it.
+MANNEQUIN_PERSON_OVERLAP: float = _float("PPE_MANNEQUIN_PERSON_OVERLAP", 0.3)
+MANNEQUIN_MASK_PAD_PX: int = _int("PPE_MANNEQUIN_MASK_PAD_PX", 4)
+
 # ── Motion gate — stage 2 of the presence cascade (see motion_gate.py) ────────
 # Runs after person_gate finds candidate boxes; rejects candidates that never
 # actually move (mannequins, posters, reflections) — this is what makes it
 # safe to loosen PERSON_GATE_* above for recall instead of leaving it tight
 # and missing real people.
 MOTION_GATE_ENABLED: bool = _bool("PPE_MOTION_GATE_ENABLED", True)
+# Whole-frame motion pre-gate (motion -> person -> PPE): runs BEFORE the person
+# model so the (expensive, 1280px) person pass is skipped on idle frames. Fails
+# open on warmup/exceptions and keeps the grace + force-run safety valves.
+MOTION_PREGATE_ENABLED: bool = _bool("PPE_MOTION_PREGATE", True)
+# Fraction of the whole frame's pixels that must change to count as motion.
+# Deliberately small so a distant person still trips it; tune with eval/eval_motion_gate.py.
+MOTION_GLOBAL_MIN_FRACTION: float = _float("PPE_MOTION_GLOBAL_MIN_FRACTION", 0.001)
 MOTION_GATE_METHOD: str = os.environ.get("PPE_MOTION_GATE_METHOD", "diff")  # "diff" | "mog2" | "knn"
 MOTION_DIFF_THRESHOLD: int = _int("PPE_MOTION_DIFF_THRESHOLD", 20)          # 0..255 grayscale abs-diff ("diff" only)
 MOTION_MOG2_HISTORY: int = _int("PPE_MOTION_MOG2_HISTORY", 500)

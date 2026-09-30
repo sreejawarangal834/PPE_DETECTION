@@ -258,3 +258,71 @@ def test_all_candidates_static_goes_quiet_without_waiting_for_force_valve(monkey
 
     assert result is False
     assert len(state.static_regions) == 2
+
+
+# ─── whole-frame pre-gate (motion -> person -> PPE) ───────────────────────────
+
+def _pregate_setup(monkeypatch):
+    monkeypatch.setattr(config, "MOTION_WARMUP_FRAMES", 0)
+    monkeypatch.setattr(config, "MOTION_GLOBAL_MIN_FRACTION", 0.001)
+    monkeypatch.setattr(config, "MOTION_GATE_GRACE_SECONDS", 0.0)
+    monkeypatch.setattr(config, "MOTION_GATE_FORCE_INTERVAL_SECONDS", 1000.0)
+    state = motion_gate.new_session_state()
+    state.last_motion_at = float("-inf")
+    return state
+
+
+def test_pregate_skips_static_frames_and_passes_moving_ones(monkeypatch):
+    state = _pregate_setup(monkeypatch)
+    still = np.zeros((200, 200, 3), dtype=np.uint8)
+    moved = still.copy()
+    moved[50:100, 50:100] = 255
+
+    assert motion_gate.frame_has_motion(state, still) is True    # first frame: warming up, fail open
+    assert motion_gate.frame_has_motion(state, still) is False   # identical -> skip person + PPE
+    assert motion_gate.frame_has_motion(state, moved) is True    # change -> proceed to person model
+
+
+def test_pregate_force_runs_stationary_scene(monkeypatch):
+    state = _pregate_setup(monkeypatch)
+    monkeypatch.setattr(config, "MOTION_GATE_FORCE_INTERVAL_SECONDS", 0.0)
+    still = np.zeros((200, 200, 3), dtype=np.uint8)
+
+    motion_gate.frame_has_motion(state, still)
+    assert motion_gate.frame_has_motion(state, still) is True    # force valve: stationary worker still checked
+
+
+def test_pregate_grace_window_keeps_running_after_motion(monkeypatch):
+    state = _pregate_setup(monkeypatch)
+    monkeypatch.setattr(config, "MOTION_GATE_GRACE_SECONDS", 1000.0)
+    state.last_motion_at = time_module.monotonic()
+    still = np.zeros((200, 200, 3), dtype=np.uint8)
+
+    motion_gate.frame_has_motion(state, still)
+    assert motion_gate.frame_has_motion(state, still) is True
+
+
+def test_pregate_mask_reused_by_per_box_gate_not_recomputed(monkeypatch):
+    """The diff mask advances prev_gray; recomputing on the same frame would diff
+    the frame against itself and wrongly report zero motion."""
+    state = _pregate_setup(monkeypatch)
+    monkeypatch.setattr(config, "MOTION_MIN_FRACTION", 0.02)
+    still = np.zeros((200, 200, 3), dtype=np.uint8)
+    moved = still.copy()
+    moved[50:100, 50:100] = 255
+    box = [(50, 50, 100, 100)]
+
+    motion_gate.frame_has_motion(state, still)
+    assert motion_gate.frame_has_motion(state, moved) is True
+    assert motion_gate.should_run_inference(state, moved, box) is True
+    assert state.cached_valid is False  # hand-off consumed, can't leak to next frame
+
+
+def test_pregate_fails_open_on_exception(monkeypatch):
+    state = _pregate_setup(monkeypatch)
+
+    def boom(*a, **k):
+        raise RuntimeError("x")
+
+    monkeypatch.setattr(motion_gate, "_compute_motion_mask", boom)
+    assert motion_gate.frame_has_motion(state, np.zeros((10, 10, 3), dtype=np.uint8)) is True

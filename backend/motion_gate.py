@@ -94,6 +94,13 @@ class MotionState:
     last_motion_at: float = float("-inf")
     last_forced_run_at: float = float("-inf")
     static_regions: list[_TrackedRegion] = field(default_factory=list)
+    # Pre-gate hand-off (frame_has_motion -> should_run_inference, same frame).
+    # The diff mask advances prev_gray, so it must be computed exactly once per
+    # frame and reused, never recomputed.
+    cached_mask: np.ndarray | None = None
+    cached_valid: bool = False
+    last_pregate_forced_at: float = float("-inf")
+    forced_pass: bool = False
 
 
 def new_session_state() -> MotionState:
@@ -101,7 +108,7 @@ def new_session_state() -> MotionState:
     # session hasn't gone MOTION_GATE_FORCE_INTERVAL_SECONDS without a check
     # yet, so the force valve shouldn't fire on its very first evaluation.
     now = time.monotonic()
-    return MotionState(last_motion_at=now, last_forced_run_at=now)
+    return MotionState(last_motion_at=now, last_forced_run_at=now, last_pregate_forced_at=now)
 
 
 def _get_bg_subtractor():
@@ -215,6 +222,37 @@ def _update_static_regions(
     return still_considered
 
 
+def frame_has_motion(state: MotionState, frame: np.ndarray) -> bool:
+    """Stage 1 of motion -> person -> PPE: cheap whole-frame check that runs
+    BEFORE the person model. False means skip person + PPE for this frame.
+    Fails open (True) on warmup and exceptions, and keeps the same safety
+    valves as should_run_inference: a grace window after the last per-box
+    motion, and an unconditional force-run every MOTION_GATE_FORCE_INTERVAL_SECONDS
+    so a stationary worker is never dropped. Stashes the mask on `state` so the
+    later per-box should_run_inference() reuses it instead of recomputing."""
+    now = time.monotonic()
+    state.cached_valid = False
+    state.forced_pass = False
+    try:
+        mask = _compute_motion_mask(frame, state)
+        state.cached_mask, state.cached_valid = mask, True
+        if mask is None:
+            return True  # warming up
+        if cv2.countNonZero(mask) / mask.size >= config.MOTION_GLOBAL_MIN_FRACTION:
+            return True
+        if now - state.last_motion_at <= config.MOTION_GATE_GRACE_SECONDS:
+            return True
+        if now - state.last_pregate_forced_at >= config.MOTION_GATE_FORCE_INTERVAL_SECONDS:
+            state.last_pregate_forced_at = now
+            state.forced_pass = True
+            return True
+        return False
+    except Exception:
+        log.exception("motion_pregate_failed — defaulting to has_motion=True (fail open)")
+        state.cached_mask, state.cached_valid = None, False
+        return True
+
+
 def should_run_inference(state: MotionState, frame: np.ndarray, candidate_boxes: list[Box]) -> bool:
     """Synchronous — called inline inside _run_inference (not via a separate
     asyncio.to_thread dispatch, since it's cheap enough not to warrant one and
@@ -224,15 +262,23 @@ def should_run_inference(state: MotionState, frame: np.ndarray, candidate_boxes:
     docstring: a real, stationary non-compliant worker must never be
     silently filtered out forever)."""
     if not candidate_boxes:
+        state.cached_valid = state.forced_pass = False
         return False
 
     now = time.monotonic()
+    # Consume the pre-gate hand-off (if any) so it never leaks to a later frame.
+    use_cached, cached = state.cached_valid, state.cached_mask
+    forced = state.forced_pass
+    state.cached_valid = state.forced_pass = False
     try:
-        mask = _compute_motion_mask(frame, state)
+        mask = cached if use_cached else _compute_motion_mask(frame, state)
         if mask is None:
             return True  # warming up — not enough history to judge yet
 
         effective_boxes = _update_static_regions(state, mask, candidate_boxes, now)
+        if forced and effective_boxes:
+            state.last_forced_run_at = now  # pre-gate's force-run: honour it end to end
+            return True
         if not effective_boxes:
             return False  # every candidate is presumed non-human — nothing worth checking this frame
 

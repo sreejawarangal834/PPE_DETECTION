@@ -63,6 +63,7 @@ from reid import resolver as reid_resolver
 from reid.embedder import OsnetEmbedder, get_embedder
 import person_gate
 import motion_gate
+import mannequin_gate
 from face.estimator import FaceEstimator
 from face.crop import FaceCropper
 from face.quality_gate import QualityGate
@@ -76,7 +77,7 @@ from config import (
     PACE_TO_SOURCE_FPS, FALLBACK_FPS,
     GHOST_GRACE_SECONDS, GHOST_SUPPRESS_IOU,
     RTSP_RECONNECT_DELAY_SECONDS, RTSP_MAX_RECONNECT_ATTEMPTS,
-    PERSON_GATE_ENABLED, MOTION_GATE_ENABLED,
+    PERSON_GATE_ENABLED, MOTION_GATE_ENABLED, MOTION_PREGATE_ENABLED,
     FACE_DETECT_ENABLED, FACE_REGION_RATIO, FACE_MIN_SIZE_PX, FACE_BLUR_THRESHOLD,
     FACE_POSE_YAW_MAX, FACE_POSE_PITCH_MAX, FACE_DETECTOR_CONF_MIN,
     FACE_SAMPLER_SWEEP_INTERVAL_SECONDS,
@@ -558,7 +559,9 @@ def _run_inference(frame: np.ndarray, model: YOLO, motion_state: motion_gate.Mot
     Tracker IDs are collected internally but NOT sent to the frontend
     (contract unchanged — only `compliant` is new in each detection).
 
-    Presence cascade (person -> motion -> this session's real PPE model):
+    Presence cascade (frame motion -> person+mannequin -> per-box motion -> PPE on non-mannequins):
+    0. Whole-frame motion pre-gate (motion_gate.frame_has_motion) skips the
+       person model on idle frames.
     1. A cheap, shared, lightweight person-only model (person_gate.py) finds
        candidate person-shaped boxes. None at all -> skip everything below
        (and, since the caller skips downstream steps on an empty result,
@@ -571,8 +574,23 @@ def _run_inference(frame: np.ndarray, model: YOLO, motion_state: motion_gate.Mot
     (bad); a false positive just costs one wasted call (cheap) — so both
     stages are tuned to fail open, not reject eagerly.
     """
+    # Stage 0 (motion -> person -> PPE): cheap whole-frame motion check before
+    # the expensive person model. Idle frames skip person AND PPE inference.
+    if MOTION_PREGATE_ENABLED and MOTION_GATE_ENABLED and not motion_gate.frame_has_motion(motion_state, frame):
+        return []
+
+    # Stage 1 (person + mannequin detector): mannequins are excluded from PPE inference.
+    mannequin_regions: list = []
     if PERSON_GATE_ENABLED:
-        candidates = person_gate.detect_persons(frame)
+        if mannequin_gate.enabled():
+            found = mannequin_gate.detect(frame)
+            if found is None:
+                candidates = None  # gate failed -> fail open, run everything unmasked
+            else:
+                candidates = found[0]
+                mannequin_regions = mannequin_gate.exclusion_regions(found[1], found[0])
+        else:
+            candidates = person_gate.detect_persons(frame)
         if candidates is not None:
             if not candidates:
                 return []
@@ -591,10 +609,13 @@ def _run_inference(frame: np.ndarray, model: YOLO, motion_state: motion_gate.Mot
         verbose=False,
     )
 
+    # Stage 2: PPE runs on everything except mannequins (painted out of the frame it sees).
+    ppe_frame = mannequin_gate.mask_regions(frame, mannequin_regions)
+
     try:
         # model.track() with persist=True maintains object IDs across frames
         results = model.track(
-            frame,
+            ppe_frame,
             persist=True,
             tracker=str(TRACKER_CONFIG_PATH),   # ByteTrack — reduces flicker
             **common_kwargs,
@@ -602,7 +623,7 @@ def _run_inference(frame: np.ndarray, model: YOLO, motion_state: motion_gate.Mot
     except Exception as track_exc:
         # Graceful fallback: if tracker isn't available, use predict
         log.debug("model.track() failed (%s), falling back to predict", track_exc)
-        results = model.predict(frame, **common_kwargs)
+        results = model.predict(ppe_frame, **common_kwargs)
 
     result = results[0]
     h, w   = frame.shape[:2]
@@ -626,7 +647,7 @@ def _run_inference(frame: np.ndarray, model: YOLO, motion_state: motion_gate.Mot
             # Internal tracker ID — used by compliance engine, NOT sent to frontend
             "_track_id":  track_id,
         })
-    return detections
+    return mannequin_gate.drop_in_regions(detections, mannequin_regions, w, h)
 
 
 # ─── API endpoints (unchanged contracts) ─────────────────────────────────────
