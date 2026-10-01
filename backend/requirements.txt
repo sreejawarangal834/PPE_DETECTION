@@ -27,3 +27,9 @@ prometheus-client>=0.20.0
 
 
 
+# ── Face detection & recognition (person_gate.py's nano model reuses ultralytics
+# above; SCRFD+ArcFace via InsightFace's FaceAnalysis pack — verified installs
+# and runs cleanly on this box's Python 3.14, CPU-only) ───────────────────────
+insightface>=2.0.0
+onnxruntime>=1.28.0
+

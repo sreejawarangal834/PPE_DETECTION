@@ -63,6 +63,14 @@ from config import (
 )
 from reid import resolver as reid_resolver
 from reid.embedder import OsnetEmbedder, get_embedder
+import person_gate
+import motion_gate
+import mannequin_gate
+from face.estimator import FaceEstimator
+from face.crop import FaceCropper
+from face.quality_gate import QualityGate
+from face.model_loader import get_face_model, extract_embedding
+from face.sampling import get_sampler as get_face_sampler
 from config import (
     CONF_THRESHOLD, IOU_THRESHOLD, IMAGE_SIZE,
     JPEG_QUALITY, MAX_SEND_WIDTH,
@@ -71,6 +79,10 @@ from config import (
     PACE_TO_SOURCE_FPS, FALLBACK_FPS,
     GHOST_GRACE_SECONDS, GHOST_SUPPRESS_IOU,
     RTSP_RECONNECT_DELAY_SECONDS, RTSP_MAX_RECONNECT_ATTEMPTS,
+    PERSON_GATE_ENABLED, MOTION_GATE_ENABLED, MOTION_PREGATE_ENABLED,
+    FACE_DETECT_ENABLED, FACE_REGION_RATIO, FACE_MIN_SIZE_PX, FACE_BLUR_THRESHOLD,
+    FACE_POSE_YAW_MAX, FACE_POSE_PITCH_MAX, FACE_DETECTOR_CONF_MIN,
+    FACE_SAMPLER_SWEEP_INTERVAL_SECONDS,
 )
 
 # ─── Logging ──────────────────────────────────────────────────────────────────
@@ -189,6 +201,25 @@ except Exception as exc:
     REID_ENABLED = False
 
 
+# ─── Face detection & recognition ──────────────────────────────────────────────
+# Detection-side objects (estimator/cropper/quality-gate) carry no per-track
+# state, so — same reasoning as OsnetEmbedder above — one shared instance
+# across every concurrent session is safe. The InsightFace pack itself is
+# loaded lazily by face/model_loader.get_face_model() the first time it's
+# actually needed, guarded by the same try/except-disables-without-failing-
+# startup pattern as Re-ID: a missing/broken pack must not take the backend
+# down, since Phase 1's PPE-detection/compliance path has no dependency on it.
+_face_estimator = FaceEstimator(face_region_ratio=FACE_REGION_RATIO)
+_face_cropper = FaceCropper()
+_face_quality_gate = QualityGate()
+if FACE_DETECT_ENABLED:
+    try:
+        get_face_model(use_gpu=(_device == 0))
+    except Exception as exc:
+        log.warning("Face detection disabled — could not load InsightFace pack: %s", exc)
+        FACE_DETECT_ENABLED = False
+
+
 def _reid_process_frame(
     frame: np.ndarray,
     detections: list[dict],
@@ -244,10 +275,90 @@ def _snapshot_crop_for_track(frame: np.ndarray, detections: list[dict], track_id
     return snapshots.crop_for_violation(frame, tuple(box) if box else None)
 
 
-# ─── FastAPI app ──────────────────────────────────────────────────────────────
+def _face_process_frame(
+    frame: np.ndarray,
+    detections: list[dict],
+    session_key: str,
+    frame_seq: int,
+) -> list[dict]:
+    """Synchronous — call via asyncio.to_thread, same as _reid_process_frame (it does its
+    own CPU/GPU forward pass on the InsightFace pack). For each person detection with a
+    tracker id: estimates the face region from geometry alone (face/estimator.py, no model
+    cost), asks face/sampling.py's FaceSampler whether THIS frame is worth a real model call
+    for that track — new track / periodic / quality-jump, not every frame — then crops,
+    cheaply prechecks size/blur, and only then runs the face model exactly once. Returns
+    samples ready to hand to writer.py's "face_resolve" event; the actual gallery
+    match/create runs there, off this hot path — same split as reid/resolver.py's
+    accumulate() (here) vs. resolve_or_create() (writer.py)."""
+    if not FACE_DETECT_ENABLED:
+        return []
+    sampler = get_face_sampler()
+    face_model = get_face_model()
+    ready: list[dict] = []
+    for d in detections:
+        if d.get("label") != "person":
+            continue
+        tid = d.get("_track_id")
+        if tid is None or tid < 0:
+            continue
+
+        estimate = _face_estimator.estimate(tuple(d["box"]))
+        if not estimate.has_face:
+            continue
+        if not sampler.should_sample(session_key, tid, frame_seq, d["conf"]):
+            continue
+
+        crop_result = _face_cropper.crop(frame, estimate.box)
+        if crop_result is None:
+            continue
+        precheck = _face_quality_gate.precheck_size_blur(
+            crop_result.image, min_face_size_px=FACE_MIN_SIZE_PX, blur_threshold=FACE_BLUR_THRESHOLD,
+        )
+        if not precheck.passes:
+            continue
+
+        face = face_model.detect_best_face(crop_result.image)
+        if face is None:
+            continue
+        quality_result = _face_quality_gate.evaluate_face(
+            face, precheck.blur_score, precheck.face_size_px,
+            pose_yaw_max=FACE_POSE_YAW_MAX, pose_pitch_max=FACE_POSE_PITCH_MAX,
+            detector_confidence_min=FACE_DETECTOR_CONF_MIN,
+        )
+        if not quality_result.passes:
+            continue
+
+        embedding = extract_embedding(face)
+        if embedding is None:
+            continue
+
+        # face.bbox is in the CROP's own pixel space (origin (0,0) = crop_result's
+        # top-left) — crop_result.x1/y1 is the exact offset FaceCropper sliced the crop
+        # from, so adding it back gives frame-pixel coordinates, normalized to 0..1.
+        h, w = frame.shape[:2]
+        fx1, fy1, fx2, fy2 = face.bbox
+        refined_face_bbox = {
+            "x1": max(0.0, min((crop_result.x1 + float(fx1)) / w, 1.0)),
+            "y1": max(0.0, min((crop_result.y1 + float(fy1)) / h, 1.0)),
+            "x2": max(0.0, min((crop_result.x1 + float(fx2)) / w, 1.0)),
+            "y2": max(0.0, min((crop_result.y1 + float(fy2)) / h, 1.0)),
+        }
+        ready.append({
+            "track_id": tid,
+            "embedding": embedding.tolist(),
+            "quality": quality_result.quality_score,
+            "refined_face_bbox": refined_face_bbox,
+        })
+    return ready
+
+
 _writer_task: asyncio.Task | None = None
 _escalation_task: asyncio.Task | None = None
 _camera_registry_sync_task: asyncio.Task | None = None
+_snapshot_cleanup_task: asyncio.Task | None = None
+_face_sampler_sweep_task: asyncio.Task | None = None
+
+
 def _bool(key: str, default: bool = False) -> bool:
     v = os.environ.get(key)
     if v is None:
@@ -325,20 +436,36 @@ async def _run_headless_camera_worker(camera_id: str) -> None:
             backoff = min(backoff * 2.0, 30.0)
 
 
+async def _face_sampler_sweep_loop() -> None:
+    """Periodically ages out face/sampling.py's per-track state — mirrors
+    snapshots.cleanup_task()'s own periodic-sweep shape. There's no "track
+    ended" signal from ByteTrack, so this is the only thing that reclaims
+    state for tracks that simply stopped appearing."""
+    while True:
+        try:
+            await asyncio.sleep(FACE_SAMPLER_SWEEP_INTERVAL_SECONDS)
+            get_face_sampler().sweep_stale()
+        except asyncio.CancelledError:
+            break
+        except Exception:
+            log.exception("face_sampler_sweep_failed")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Open the Postgres pool and start the single compliance-write consumer
     task (see repositories/writer.py) before accepting traffic; tear both down
     on shutdown. write_queue.init() must run on THIS event loop, since it's
     what submit_threadsafe() later hands work back to from other threads."""
-    global _writer_task, _escalation_task, _camera_registry_sync_task, _snapshot_cleanup_task, _headless_tasks
+    global _writer_task, _escalation_task, _camera_registry_sync_task, _snapshot_cleanup_task, _headless_tasks, _face_sampler_sweep_task
     pool = await db.connect()
     await redis_client.connect()
     write_queue.init(asyncio.get_running_loop())
     _writer_task = asyncio.create_task(write_queue.writer_task(pool))
     _escalation_task = asyncio.create_task(escalation.escalation_task())
     _snapshot_cleanup_task = asyncio.create_task(snapshots.cleanup_task())
-    log.info("Compliance writer + escalation + snapshot cleanup tasks started")
+    _face_sampler_sweep_task = asyncio.create_task(_face_sampler_sweep_loop())
+    log.info("Compliance writer + escalation + snapshot cleanup + face-sampler-sweep tasks started")
     try:
         await camera_registry_client.sync_cameras()
     except Exception:
@@ -364,7 +491,10 @@ async def lifespan(app: FastAPI):
                 await t
             except asyncio.CancelledError:
                 pass
-        for task in (_writer_task, _escalation_task, _camera_registry_sync_task, _snapshot_cleanup_task):
+        for task in (
+            _writer_task, _escalation_task, _camera_registry_sync_task,
+            _snapshot_cleanup_task, _face_sampler_sweep_task,
+        ):
             if task is not None:
                 task.cancel()
                 try:
@@ -589,7 +719,7 @@ def _put_sentinel(queue: "asyncio.Queue") -> None:
             pass
 
 
-def _run_inference(frame: np.ndarray, model: YOLO) -> list[dict]:
+def _run_inference(frame: np.ndarray, model: YOLO, motion_state: motion_gate.MotionState) -> list[dict]:
     """
     Synchronous tracking + inference — called via asyncio.to_thread.
 
@@ -598,7 +728,48 @@ def _run_inference(frame: np.ndarray, model: YOLO) -> list[dict]:
     ever touches the same instance.
     Tracker IDs are collected internally but NOT sent to the frontend
     (contract unchanged — only `compliant` is new in each detection).
+
+    Presence cascade (frame motion -> person+mannequin -> per-box motion -> PPE on non-mannequins):
+    0. Whole-frame motion pre-gate (motion_gate.frame_has_motion) skips the
+       person model on idle frames.
+    1. A cheap, shared, lightweight person-only model (person_gate.py) finds
+       candidate person-shaped boxes. None at all -> skip everything below
+       (and, since the caller skips downstream steps on an empty result,
+       face detection too).
+    2. Candidates found -> motion_gate.py checks whether any of them are
+       actually moving (a real person) rather than static (a mannequin,
+       poster, or reflection — see motion_gate.py's module docstring for why
+       this exists and why it fails open on a stationary-but-real worker).
+    A false negative anywhere in this cascade wrongly skips real inference
+    (bad); a false positive just costs one wasted call (cheap) — so both
+    stages are tuned to fail open, not reject eagerly.
     """
+    # Stage 0 (motion -> person -> PPE): cheap whole-frame motion check before
+    # the expensive person model. Idle frames skip person AND PPE inference.
+    if MOTION_PREGATE_ENABLED and MOTION_GATE_ENABLED and not motion_gate.frame_has_motion(motion_state, frame):
+        return []
+
+    # Stage 1 (person + mannequin detector): mannequins are excluded from PPE inference.
+    mannequin_regions: list = []
+    if PERSON_GATE_ENABLED:
+        if mannequin_gate.enabled():
+            found = mannequin_gate.detect(frame)
+            if found is None:
+                candidates = None  # gate failed -> fail open, run everything unmasked
+            else:
+                candidates = found[0]
+                mannequin_regions = mannequin_gate.exclusion_regions(found[1], found[0])
+        else:
+            candidates = person_gate.detect_persons(frame)
+        if candidates is not None:
+            if not candidates:
+                return []
+            if MOTION_GATE_ENABLED and not motion_gate.should_run_inference(motion_state, frame, candidates):
+                return []
+        # candidates is None -> person_gate itself failed; fall through and
+        # run real inference unconditionally (fail open), matching
+        # person_gate.has_person()'s own contract.
+
     common_kwargs = dict(
         conf=CONF_THRESHOLD,
         iou=IOU_THRESHOLD,
@@ -608,10 +779,13 @@ def _run_inference(frame: np.ndarray, model: YOLO) -> list[dict]:
         verbose=False,
     )
 
+    # Stage 2: PPE runs on everything except mannequins (painted out of the frame it sees).
+    ppe_frame = mannequin_gate.mask_regions(frame, mannequin_regions)
+
     try:
         # model.track() with persist=True maintains object IDs across frames
         results = model.track(
-            frame,
+            ppe_frame,
             persist=True,
             tracker=str(TRACKER_CONFIG_PATH),   # ByteTrack — reduces flicker
             **common_kwargs,
@@ -619,7 +793,7 @@ def _run_inference(frame: np.ndarray, model: YOLO) -> list[dict]:
     except Exception as track_exc:
         # Graceful fallback: if tracker isn't available, use predict
         log.debug("model.track() failed (%s), falling back to predict", track_exc)
-        results = model.predict(frame, **common_kwargs)
+        results = model.predict(ppe_frame, **common_kwargs)
 
     result = results[0]
     h, w   = frame.shape[:2]
@@ -643,7 +817,7 @@ def _run_inference(frame: np.ndarray, model: YOLO) -> list[dict]:
             # Internal tracker ID — used by compliance engine, NOT sent to frontend
             "_track_id":  track_id,
         })
-    return detections
+    return mannequin_gate.drop_in_regions(detections, mannequin_regions, w, h)
 
 
 # ─── API endpoints (unchanged contracts) ─────────────────────────────────────
@@ -1189,6 +1363,7 @@ async def detect_live_ws(websocket: WebSocket, camera_id: str | None = None):
     model = await asyncio.to_thread(_new_model)
     worker_states = new_session_state()
     ghost_cache   = _new_ghost_cache()
+    motion_state  = motion_gate.new_session_state()
     track_frame_counts: dict[int, int] = {}
 
     zone_id: str | None = None
@@ -1223,7 +1398,7 @@ async def detect_live_ws(websocket: WebSocket, camera_id: str | None = None):
 
             resized = _resize_keep_aspect(frame, IMAGE_SIZE)
             t0 = time.monotonic()
-            detections = await asyncio.to_thread(_run_inference, resized, model)
+            detections = await asyncio.to_thread(_run_inference, resized, model, motion_state)
             infer_times.append((time.monotonic() - t0) * 1000)
             now = time.monotonic()
             severity, violations, worker_violations = evaluate_compliance(
@@ -1249,6 +1424,15 @@ async def detect_live_ws(websocket: WebSocket, camera_id: str | None = None):
                 for r in reid_ready:
                     write_queue.submit({
                         "kind": "reid_resolve", "camera_code": camera_id or "unassigned",
+                        "session_id": session_uuid, "loop_index": 0, **r,
+                    })
+            if FACE_DETECT_ENABLED and session_uuid is not None:
+                face_ready = await asyncio.to_thread(
+                    _face_process_frame, resized, detections, f"{session_uuid}:0", frame_idx,
+                )
+                for r in face_ready:
+                    write_queue.submit({
+                        "kind": "face_resolve", "camera_code": camera_id or "unassigned",
                         "session_id": session_uuid, "loop_index": 0, **r,
                     })
             detections = _apply_ghost_boxes(detections, ghost_cache, now)
@@ -1289,6 +1473,7 @@ async def detect_live_ws(websocket: WebSocket, camera_id: str | None = None):
             log.exception("[%s] Failed to close detection_sessions row", session_id)
         if session_uuid is not None:
             reid_resolver.forget_session(str(session_uuid))
+            get_face_sampler().forget_session(str(session_uuid))
 
         elapsed   = max(time.monotonic() - session_start, 0.001)
         avg_fps   = frame_idx / elapsed
@@ -1420,6 +1605,7 @@ async def _run_detection_session(
     model = await asyncio.to_thread(_new_model)
     worker_states = new_session_state()
     ghost_cache   = _new_ghost_cache()
+    motion_state  = motion_gate.new_session_state()
     track_frame_counts: dict[int, int] = {}
 
     zone_id: str | None = None
@@ -1455,10 +1641,11 @@ async def _run_detection_session(
     # reload, unlike _new_model(). A lingering ghost box must not carry across
     # the loop seam either, so its cache resets here too.
     def _on_loop_restart() -> None:
-        nonlocal worker_states, ghost_cache, loop_index
+        nonlocal worker_states, ghost_cache, motion_state, loop_index
         model.predictor = None
         worker_states = new_session_state()
         ghost_cache   = _new_ghost_cache()
+        motion_state  = motion_gate.new_session_state()
         track_frame_counts.clear()
         loop_index   += 1
     source.on_loop = _on_loop_restart
@@ -1548,7 +1735,7 @@ async def _run_detection_session(
             frame_idx, frame = item
             try:
                 t0 = time.monotonic()
-                detections = await asyncio.to_thread(_run_inference, frame, model)
+                detections = await asyncio.to_thread(_run_inference, frame, model, motion_state)
                 latency_sec = time.monotonic() - t0
                 try:
                     from metrics import PROCESSING_LATENCY_SECONDS
@@ -1582,6 +1769,16 @@ async def _run_detection_session(
                     for r in reid_ready:
                         write_queue.submit({
                             "kind": "reid_resolve", "camera_code": camera_id or "unassigned",
+                            "session_id": session_uuid, "loop_index": loop_index, **r,
+                        })
+                if FACE_DETECT_ENABLED and session_uuid is not None:
+                    face_ready = await asyncio.to_thread(
+                        _face_process_frame, frame, detections,
+                        f"{session_uuid}:{loop_index}", frame_idx,
+                    )
+                    for r in face_ready:
+                        write_queue.submit({
+                            "kind": "face_resolve", "camera_code": camera_id or "unassigned",
                             "session_id": session_uuid, "loop_index": loop_index, **r,
                         })
                 detections = _apply_ghost_boxes(detections, ghost_cache, now)
@@ -1676,6 +1873,7 @@ async def _run_detection_session(
             log.exception("[%s] Failed to close detection_sessions row", session_id)
         if session_uuid is not None:
             reid_resolver.forget_session(str(session_uuid))
+            get_face_sampler().forget_session(str(session_uuid))
 
         # ── Session statistics ─────────────────────────────────────
         elapsed   = max(time.monotonic() - stats["session_start"], 0.001)

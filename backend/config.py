@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-
 try:
     from dotenv import load_dotenv
     _env_file = Path(__file__).resolve().parent / ".env"
@@ -18,7 +17,6 @@ try:
         load_dotenv(dotenv_path=_env_file)
 except ImportError:
     pass
-
 
 
 def _float(key: str, default: float) -> float:
@@ -235,3 +233,112 @@ CAMERA_REGISTRY_SYNC_INTERVAL_SECONDS: int = _int("PPE_CAMERA_REGISTRY_SYNC_INTE
 # local-disk fallback path (object storage has no such task, doesn't need one).
 SNAPSHOT_RETENTION_DAYS: int = _int("PPE_SNAPSHOT_RETENTION_DAYS", 90)
 SNAPSHOT_CLEANUP_INTERVAL_SECONDS: int = _int("PPE_SNAPSHOT_CLEANUP_INTERVAL_SECONDS", 6 * 3600)
+
+# ── Person-presence gate — skips the main PPE model entirely on frames with
+# nobody in them (see person_gate.py). Recall-biased: a missed person wrongly
+# skips real inference (bad), a false positive just costs one wasted call —
+# except a false positive is now cheap to absorb (one extra motion check, see
+# MOTION_GATE_* below), not one extra full PPE-model call, which is what lets
+# these defaults be this loose.
+#
+# Defaults revised from an original 320/0.15 after testing against real
+# retail CCTV imagery found that combo missed real (small/distant) people
+# entirely — a sweep on that same frame:
+#   imgsz=320  conf=0.15 -> 0 boxes | conf=0.05 -> 0 | conf=0.01 -> 2
+#   imgsz=640  conf=0.15 -> 0       | conf=0.05 -> 1 | conf=0.01 -> 9
+#   imgsz=1280 conf=0.15 -> 3       | conf=0.05 -> 12 | conf=0.01 -> 56
+# 1280/0.05 is the smallest combination that reliably recovers real people
+# without the 0.01 tier's excessive noise (56 boxes on that frame is mostly
+# mannequins/rack edges, not people) — validate this against
+# benchmark_latency.py-style measurement before assuming the extra pixels
+# are free, same as FRAME_SKIP's own default below.
+PERSON_GATE_ENABLED: bool = _bool("PPE_PERSON_GATE_ENABLED", True)
+PERSON_GATE_MODEL: str = os.environ.get("PPE_PERSON_GATE_MODEL", "yolo11n.pt")
+PERSON_GATE_CONF_THRESHOLD: float = _float("PPE_PERSON_GATE_CONF_THRESHOLD", 0.05)
+PERSON_GATE_IMAGE_SIZE: int = _int("PPE_PERSON_GATE_IMAGE_SIZE", 1280)
+
+# ── Mannequin exclusion (mannequin_gate.py) ───────────────────────────────────
+# 2-class (person, mannequin) detector that replaces the COCO person gate when its weights file
+# exists. Empty/missing file -> COCO gate, no masking (unchanged legacy behaviour).
+_default_pm = Path(__file__).parent / "models" / "person_mannequin.pt"
+PERSON_MANNEQUIN_MODEL: str = os.environ.get("PPE_PERSON_MANNEQUIN_MODEL", str(_default_pm))
+MANNEQUIN_CONF_THRESHOLD: float = _float("PPE_MANNEQUIN_CONF_THRESHOLD", 0.35)
+# Same object labelled both person and mannequin at >= this IoU -> keep the higher-confidence label.
+MANNEQUIN_CLASS_CONFLICT_IOU: float = _float("PPE_MANNEQUIN_CLASS_CONFLICT_IOU", 0.7)
+# A mannequin box is NOT painted out if a real person's box covers >= this fraction of it.
+MANNEQUIN_PERSON_OVERLAP: float = _float("PPE_MANNEQUIN_PERSON_OVERLAP", 0.3)
+MANNEQUIN_MASK_PAD_PX: int = _int("PPE_MANNEQUIN_MASK_PAD_PX", 4)
+
+# ── Motion gate — stage 2 of the presence cascade (see motion_gate.py) ────────
+# Runs after person_gate finds candidate boxes; rejects candidates that never
+# actually move (mannequins, posters, reflections) — this is what makes it
+# safe to loosen PERSON_GATE_* above for recall instead of leaving it tight
+# and missing real people.
+MOTION_GATE_ENABLED: bool = _bool("PPE_MOTION_GATE_ENABLED", True)
+# Whole-frame motion pre-gate (motion -> person -> PPE): runs BEFORE the person
+# model so the (expensive, 1280px) person pass is skipped on idle frames. Fails
+# open on warmup/exceptions and keeps the grace + force-run safety valves.
+MOTION_PREGATE_ENABLED: bool = _bool("PPE_MOTION_PREGATE", True)
+# Fraction of the whole frame's pixels that must change to count as motion.
+# Deliberately small so a distant person still trips it; tune with eval/eval_motion_gate.py.
+MOTION_GLOBAL_MIN_FRACTION: float = _float("PPE_MOTION_GLOBAL_MIN_FRACTION", 0.001)
+MOTION_GATE_METHOD: str = os.environ.get("PPE_MOTION_GATE_METHOD", "diff")  # "diff" | "mog2" | "knn"
+MOTION_DIFF_THRESHOLD: int = _int("PPE_MOTION_DIFF_THRESHOLD", 20)          # 0..255 grayscale abs-diff ("diff" only)
+MOTION_MOG2_HISTORY: int = _int("PPE_MOTION_MOG2_HISTORY", 500)
+MOTION_MOG2_VAR_THRESHOLD: float = _float("PPE_MOTION_MOG2_VAR_THRESHOLD", 16.0)
+MOTION_MOG2_DETECT_SHADOWS: bool = _bool("PPE_MOTION_MOG2_DETECT_SHADOWS", False)
+MOTION_MIN_FRACTION: float = _float("PPE_MOTION_MIN_FRACTION", 0.02)
+MOTION_WARMUP_FRAMES: int = _int("PPE_MOTION_WARMUP_FRAMES", 5)
+# > VIOLATION_WINDOW_SECONDS on purpose — a motion hiccup shouldn't create a
+# gap shorter than the compliance engine's own smoothing window.
+MOTION_GATE_GRACE_SECONDS: float = _float("PPE_MOTION_GATE_GRACE_SECONDS", 5.0)
+# Fires unconditionally once this much time passes with no detected motion at
+# all, regardless of the grace window — a real, STATIONARY non-compliant
+# worker is exactly the case this cascade must never silently stop checking
+# (unlike a background subtractor, which would eventually adapt them into
+# "background"). Matches MAX_SAMPLE_GAP_SECONDS's default so both tell a
+# consistent story about the system's worst-case blind spot.
+MOTION_GATE_FORCE_INTERVAL_SECONDS: float = _float("PPE_MOTION_GATE_FORCE_INTERVAL_SECONDS", 2.0)
+
+# Long-timescale static-object presumption (on top of the short force-run
+# valve above): a candidate that has shown literally zero motion for this
+# long is presumed non-human (mannequin/poster/fixture) — no real person,
+# however still, plausibly stays motionless this long — and is excluded from
+# the force-run valve entirely, rather than force-checked every 2s forever.
+# A schema default, not a measured constant: calibrate against real footage
+# (a careful/focused worker's true stillness duration) before trusting it —
+# same caveat this codebase already applies to Re-ID/face-match thresholds.
+MOTION_STATIC_OBJECT_SECONDS: float = _float("PPE_MOTION_STATIC_OBJECT_SECONDS", 300.0)
+# How often a presumed-static region is re-included for one check anyway, in
+# case a real person later stands exactly where it was (or it moves).
+MOTION_STATIC_REVERIFY_SECONDS: float = _float("PPE_MOTION_STATIC_REVERIFY_SECONDS", 600.0)
+# Cross-frame box matching for the above — this gate runs before the real
+# tracker assigns an ID, so a candidate is followed frame-to-frame by simple
+# IoU overlap instead.
+MOTION_STATIC_IOU_MATCH_THRESHOLD: float = _float("PPE_MOTION_STATIC_IOU_MATCH_THRESHOLD", 0.5)
+# A tracked region unmatched by any candidate for this long is dropped
+# (object left frame, or the person-gate stopped finding it) — bounds memory
+# over a long-running session.
+MOTION_STATIC_REGION_TTL_SECONDS: float = _float("PPE_MOTION_STATIC_REGION_TTL_SECONDS", 60.0)
+
+# ── Face detection & recognition (see face/*.py) — off by default, like
+# REID_ENABLED in main.py, until validated against this project's own footage.
+FACE_DETECT_ENABLED: bool = _bool("PPE_FACE_DETECT_ENABLED", False)
+FACE_REGION_RATIO: float = _float("PPE_FACE_REGION_RATIO", 0.35)           # face/estimator.py
+FACE_MODEL_PACK: str = os.environ.get("PPE_FACE_MODEL_PACK", "buffalo_s")  # insightface pack
+FACE_MIN_SIZE_PX: int = _int("PPE_FACE_MIN_SIZE_PX", 40)
+FACE_BLUR_THRESHOLD: float = _float("PPE_FACE_BLUR_THRESHOLD", 100.0)
+FACE_POSE_YAW_MAX: float = _float("PPE_FACE_POSE_YAW_MAX", 45.0)
+FACE_POSE_PITCH_MAX: float = _float("PPE_FACE_POSE_PITCH_MAX", 30.0)
+FACE_DETECTOR_CONF_MIN: float = _float("PPE_FACE_DETECTOR_CONF_MIN", 0.7)
+FACE_SAMPLE_RATE: int = _int("PPE_FACE_SAMPLE_RATE", 10)                    # every Nth frame, per track
+FACE_QUALITY_IMPROVEMENT_THRESHOLD: float = _float("PPE_FACE_QUALITY_IMPROVEMENT_THRESHOLD", 0.2)
+FACE_STALE_TRACK_TTL_SECONDS: float = _float("PPE_FACE_STALE_TRACK_TTL_SECONDS", 120.0)
+FACE_SAMPLER_SWEEP_INTERVAL_SECONDS: float = _float("PPE_FACE_SAMPLER_SWEEP_INTERVAL_SECONDS", 30.0)
+# Cosine-similarity thresholds — schema defaults, not measured constants (same
+# caveat as reid/resolver.py's own MATCH_THRESHOLD/NEW_THRESHOLD): recalibrate
+# against this project's enrolled-vs-impostor score distribution before
+# trusting identity_tag in production.
+FACE_ENROLLED_THRESHOLD: float = _float("PPE_FACE_ENROLLED_THRESHOLD", 0.75)
+FACE_VISITOR_THRESHOLD: float = _float("PPE_FACE_VISITOR_THRESHOLD", 0.60)
+FACE_MATCH_MARGIN: float = _float("PPE_FACE_MATCH_MARGIN", 0.08)
