@@ -52,7 +52,7 @@ ALWAYS_COMPLIANT: frozenset[str] = frozenset({
     "medical-suit", "medical_suit",
     "safety-suit", "safety_suit",
     "face-guard", "face_guard", "face-shield", "face_shield",
-    "face-mask", "face_mask", "mask",
+    "face-mask", "face_mask", "mask", "face-mask-medical",
     "glasses", "goggles", "safety-glasses", "safety_glasses",
 })
 
@@ -62,7 +62,7 @@ REQUIRED_PPE: dict[str, list[str]] = {
     "hands": ["gloves", "glove"],
     "foot":  ["shoes", "boot", "boots"],
     "face":  ["face-guard", "face_guard", "face-shield", "face_shield",
-              "face-mask", "face_mask", "mask"],
+              "face-mask", "face_mask", "mask", "face-mask-medical"],
 }
 
 # ── Map each check to the zone-policy PPE type id it corresponds to ───────────
@@ -271,51 +271,69 @@ def _get_worker_state(worker_id: int, worker_states: WorkerStates) -> _WorkerSta
 
 # ─── Worker grouping ───────────────────────────────────────────────────────────
 
+# A non-person box (helmet, vest, gloves, ...) belongs to a person when at least
+# this fraction of ITS area lies inside that person's box. Low on purpose:
+# gloves and shoes often stick out past a body box.
+_ASSIGN_MIN_CONTAINMENT = 0.30
+
+
+def _containment(inner: Box, outer: Box) -> float:
+    """Fraction of `inner`'s area that lies inside `outer` (0..1)."""
+    ix1 = max(inner[0], outer[0]); iy1 = max(inner[1], outer[1])
+    ix2 = min(inner[2], outer[2]); iy2 = min(inner[3], outer[3])
+    inter = max(0.0, ix2 - ix1) * max(0.0, iy2 - iy1)
+    a = _area(inner)
+    return inter / a if a > 0 else 0.0
+
+
 def _group_by_worker(detections: list[dict]) -> dict[int, list[dict]]:
     """
-    Group detections by tracker ID.
+    Group detections into workers. ONE worker == ONE `person` box.
 
-    If tracker IDs are present (det["_track_id"] is not None), use them.
-    Otherwise fall back to nearest-person association:
-      - person detections form the workers
-      - each non-person detection is assigned to the nearest person by centre distance
+    ByteTrack gives every detected object (person, helmet, vest, ...) its OWN
+    track id, so grouping by raw `_track_id` splits one worker into many
+    one-item groups and every PPE check then reports "missing". Instead:
+
+      - each `person` detection is a worker; its group key is the person's own
+        track id when it has one (stable across frames, so temporal state and
+        alerts follow the same worker), else a synthetic negative key
+      - every other detection is assigned to the person whose box contains the
+        largest share of it (ties -> nearest centre)
+      - detections that fit no person go to group -1 (no person => the
+        vest/eye checks are skipped for them, same as before)
     """
-    has_ids = any(d.get("_track_id") is not None for d in detections)
-
     groups: dict[int, list[dict]] = defaultdict(list)
 
-    if has_ids:
-        for d in detections:
-            tid = d.get("_track_id")
-            if tid is None:
-                # Assign untracked detections to worker group -1
-                groups[-1].append(d)
-            else:
-                groups[int(tid)].append(d)
-        return groups
-
-    # Fallback: nearest-person association
     persons = [d for d in detections if d["label"].lower() == "person"]
-    non_persons = [d for d in detections if d["label"].lower() != "person"]
+    others = [d for d in detections if d["label"].lower() != "person"]
 
     if not persons:
-        # No person detected — everything goes into group -1
         groups[-1].extend(detections)
         return groups
 
+    keys: list[int] = []
     for pi, p in enumerate(persons):
-        groups[pi].append(p)
+        tid = p.get("_track_id")
+        key = int(tid) if tid is not None else -(pi + 2)   # -1 is the orphan group
+        while key in groups:                               # defensive: duplicate ids
+            key -= 1000
+        keys.append(key)
+        groups[key].append(p)
 
-    for det in non_persons:
-        dc = _centre(tuple(det["box"]))  # type: ignore[arg-type]
-        best_pi = min(
-            range(len(persons)),
-            key=lambda i: (
-                (_centre(tuple(persons[i]["box"]))[0] - dc[0]) ** 2 +  # type: ignore[arg-type]
-                (_centre(tuple(persons[i]["box"]))[1] - dc[1]) ** 2    # type: ignore[arg-type]
-            ),
-        )
-        groups[best_pi].append(det)
+    for det in others:
+        box: Box = tuple(det["box"])  # type: ignore[assignment]
+        dcx, dcy = _centre(box)
+        best_key, best_rank = None, None
+        for key, p in zip(keys, persons):
+            pbox: Box = tuple(p["box"])  # type: ignore[assignment]
+            cont = _containment(box, pbox)
+            if cont < _ASSIGN_MIN_CONTAINMENT:
+                continue
+            pcx, pcy = _centre(pbox)
+            rank = (cont, -((pcx - dcx) ** 2 + (pcy - dcy) ** 2))
+            if best_rank is None or rank > best_rank:
+                best_key, best_rank = key, rank
+        groups[best_key if best_key is not None else -1].append(det)
 
     return groups
 
@@ -516,6 +534,13 @@ def _evaluate_worker(
                     })
         else:
             state.update("eye", covered=True, now=now)
+
+    # The person box carries the worker-level verdict: red while ANY of this
+    # worker's checks has an active (smoothed) violation.
+    if any(tl.violation_active for tl in state._parts.values()):
+        for d in worker_dets:
+            if d["label"].lower() == "person":
+                d["compliant"] = False
 
     # Default compliant=True for any detection not yet marked
     for d in worker_dets:

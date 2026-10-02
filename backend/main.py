@@ -544,8 +544,9 @@ def _update_latest_overlay_detections(camera_id: str | None, public_detections: 
     for d in public_detections:
         box = d.get("box") or [0.0, 0.0, 0.0, 0.0]
         label_str = str(d.get("label") or "person")
-        status_str = str(d.get("status") or "").lower()
-        is_viol = status_str == "violation" or label_str.startswith("NO ") or "missing" in label_str.lower()
+        # `compliant` is what evaluate_compliance() sets on every detection
+        # (the old code looked for a `status` key that never exists).
+        is_viol = d.get("compliant") is False
         color = "#FF0000" if is_viol else "#00FF00"
         x1, y1, x2, y2 = [float(b) for b in box[:4]]
         overlay_list.append({
