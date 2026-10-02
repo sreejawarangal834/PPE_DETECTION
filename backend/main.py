@@ -59,7 +59,7 @@ from compliance import evaluate_compliance, new_session_state, _iou, Box
 from frame_source import FrameSource, FileVideoSource, RTSPSource, RedisFrameSource
 from notifications import notifier
 from config import (
-    JWT_REFRESH_TTL_SECONDS, PASSWORD_RESET_TTL_SECONDS, FRONTEND_BASE_URL, REDIS_URL, CAMERA_REGISTRY_URL,
+    JWT_REFRESH_TTL_SECONDS, PASSWORD_RESET_TTL_SECONDS, FRONTEND_BASE_URL, REDIS_URL, CAMERA_REGISTRY_URL, CAMERA_REGISTRY_API_KEY,
 )
 from reid import resolver as reid_resolver
 from reid.embedder import OsnetEmbedder, get_embedder
@@ -384,26 +384,39 @@ class HeadlessWebSocket:
 async def _resolve_headless_camera_ids() -> list[str]:
     env_cams = os.environ.get("PPE_PLATFORM_CAMERA_IDS")
     if env_cams and env_cams.strip():
-        return [c.strip() for c in env_cams.split(",") if c.strip()]
+        ids = [c.strip() for c in env_cams.split(",") if c.strip()]
+        if ids:
+            log.info("Resolved headless camera IDs from PPE_PLATFORM_CAMERA_IDS: %s", ids)
+            return ids
 
     registry_url = CAMERA_REGISTRY_URL
     if registry_url:
         try:
             url = f"{registry_url.rstrip('/')}/cameras/by-uc/uc3"
+            headers = {"Authorization": f"Bearer {CAMERA_REGISTRY_API_KEY}"} if CAMERA_REGISTRY_API_KEY else {}
             async with httpx.AsyncClient(timeout=5.0) as client:
-                res = await client.get(url)
+                res = await client.get(url, headers=headers)
                 if res.status_code == 200:
                     data = res.json()
+                    raw_list = None
                     if isinstance(data, list):
-                        ids = [c["id"] if isinstance(c, dict) else str(c) for c in data]
+                        raw_list = data
+                    elif isinstance(data, dict) and "camera_ids" in data and isinstance(data["camera_ids"], list):
+                        raw_list = data["camera_ids"]
+
+                    if raw_list is not None:
+                        ids = [c["id"] if isinstance(c, dict) and "id" in c else str(c) for c in raw_list]
                         if ids:
+                            log.info("Resolved headless camera IDs from registry: %s", ids)
                             return ids
         except Exception as exc:
             log.warning("Failed to fetch camera list from camera registry URL %s: %s", registry_url, exc)
 
     try:
         cams = await cameras.list_cameras()
-        return [c["id"] for c in cams if c.get("id")]
+        ids = [c["id"] for c in cams if c.get("id")]
+        log.info("Resolved headless camera IDs from local DB: %s", ids)
+        return ids
     except Exception as exc:
         log.warning("Failed to list local cameras for headless mode: %s", exc)
         return []

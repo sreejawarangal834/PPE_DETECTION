@@ -38,12 +38,14 @@ _FETCH_RETRY_ATTEMPTS = 3
 _FETCH_RETRY_BASE_SECONDS = 1.0
 
 
-async def _upsert(pool, cam: dict[str, Any]) -> None:
-    code = cam.get("id") or cam.get("code")
+async def _upsert(pool, cam: dict[str, Any] | str) -> None:
+    code = (cam.get("id") or cam.get("code")) if isinstance(cam, dict) else str(cam)
     if not code:
         log.warning("Camera registry entry missing id/code, skipping: %r", cam)
         return
-    zone_slug = cam.get("zoneId") or cam.get("zone_id")
+    name = cam.get("name", code) if isinstance(cam, dict) else code
+    zone_slug = (cam.get("zoneId") or cam.get("zone_id")) if isinstance(cam, dict) else None
+    rtsp_url = (cam.get("rtspUrl") or cam.get("rtsp_url")) if isinstance(cam, dict) else None
     zone_id = await pool.fetchval("SELECT id FROM zones WHERE slug=$1", zone_slug) if zone_slug else None
     await pool.execute(
         """
@@ -55,11 +57,11 @@ async def _upsert(pool, cam: dict[str, Any]) -> None:
                 rtsp_url = COALESCE(EXCLUDED.rtsp_url, cameras.rtsp_url),
                 updated_at = now()
         """,
-        code, cam.get("name", code), zone_id, cam.get("rtspUrl") or cam.get("rtsp_url"),
+        code, name, zone_id, rtsp_url,
     )
 
 
-async def _fetch_cameras() -> list[dict[str, Any]] | None:
+async def _fetch_cameras() -> list[dict[str, Any] | str] | None:
     headers = {"Authorization": f"Bearer {CAMERA_REGISTRY_API_KEY}"} if CAMERA_REGISTRY_API_KEY else {}
     url = f"{CAMERA_REGISTRY_URL.rstrip('/')}/cameras/by-uc/uc3"
     for attempt in range(1, _FETCH_RETRY_ATTEMPTS + 1):
@@ -70,6 +72,8 @@ async def _fetch_cameras() -> list[dict[str, Any]] | None:
                 data = resp.json()
                 if isinstance(data, list):
                     return data
+                elif isinstance(data, dict) and "camera_ids" in data and isinstance(data["camera_ids"], list):
+                    return data["camera_ids"]
                 return []
         except Exception:
             if attempt == _FETCH_RETRY_ATTEMPTS:

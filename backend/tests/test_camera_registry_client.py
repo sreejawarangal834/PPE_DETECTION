@@ -43,7 +43,7 @@ async def test_sync_cameras_noop_when_url_unset(monkeypatch):
 
 @respx.mock
 async def test_sync_cameras_upserts_each_entry(monkeypatch):
-    respx.get("http://fake-registry.local/cameras").mock(
+    respx.get("http://fake-registry.local/cameras/by-uc/uc3").mock(
         return_value=httpx.Response(200, json=[
             {"id": "CAM-X1", "name": "Gate 1", "zoneId": "z-assembly"},
             {"id": "CAM-X2", "name": "Gate 2", "zoneId": "z-loading"},
@@ -63,7 +63,7 @@ async def test_sync_cameras_upserts_each_entry(monkeypatch):
 @respx.mock
 async def test_sync_cameras_sends_bearer_token_when_configured(monkeypatch):
     monkeypatch.setattr(crc, "CAMERA_REGISTRY_API_KEY", "secret-token")
-    route = respx.get("http://fake-registry.local/cameras").mock(
+    route = respx.get("http://fake-registry.local/cameras/by-uc/uc3").mock(
         return_value=httpx.Response(200, json=[])
     )
     monkeypatch.setattr(crc, "get_pool", lambda: _FakePool())
@@ -75,7 +75,7 @@ async def test_sync_cameras_sends_bearer_token_when_configured(monkeypatch):
 
 @respx.mock
 async def test_sync_cameras_omits_auth_header_when_unconfigured(monkeypatch):
-    route = respx.get("http://fake-registry.local/cameras").mock(
+    route = respx.get("http://fake-registry.local/cameras/by-uc/uc3").mock(
         return_value=httpx.Response(200, json=[])
     )
     monkeypatch.setattr(crc, "get_pool", lambda: _FakePool())
@@ -87,7 +87,7 @@ async def test_sync_cameras_omits_auth_header_when_unconfigured(monkeypatch):
 
 @respx.mock
 async def test_sync_cameras_retries_on_transient_failure_then_succeeds(monkeypatch):
-    route = respx.get("http://fake-registry.local/cameras").mock(
+    route = respx.get("http://fake-registry.local/cameras/by-uc/uc3").mock(
         side_effect=[
             httpx.Response(503),
             httpx.Response(503),
@@ -104,7 +104,7 @@ async def test_sync_cameras_retries_on_transient_failure_then_succeeds(monkeypat
 
 @respx.mock
 async def test_sync_cameras_gives_up_after_max_retries(monkeypatch):
-    respx.get("http://fake-registry.local/cameras").mock(return_value=httpx.Response(500))
+    respx.get("http://fake-registry.local/cameras/by-uc/uc3").mock(return_value=httpx.Response(500))
     monkeypatch.setattr(crc, "get_pool", lambda: _FakePool())
 
     n = await crc.sync_cameras()  # must not raise
@@ -114,7 +114,7 @@ async def test_sync_cameras_gives_up_after_max_retries(monkeypatch):
 
 @respx.mock
 async def test_sync_cameras_skips_entry_missing_code(monkeypatch):
-    respx.get("http://fake-registry.local/cameras").mock(
+    respx.get("http://fake-registry.local/cameras/by-uc/uc3").mock(
         return_value=httpx.Response(200, json=[{"name": "No ID Camera"}])
     )
     fake_pool = _FakePool()
