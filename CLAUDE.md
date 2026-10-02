@@ -7,8 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This repo contains **three separate, only loosely-connected pieces** — do not assume changes in one affect the others:
 
 1. **`app/`** — a minimal FastAPI service using an ONNX model (`model/best.onnx`) for single-image `/predict` inference, backed by SQLAlchemy (SQLite by default) and Prometheus metrics. This is what CI lints/tests and what `dockerfile` builds and deploys to Render.
-2. **`backend/`** — a separate, more fully-featured FastAPI service using Ultralytics YOLO (`backend/models/best.pt`) with CUDA/MPS/CPU auto-detection, ByteTrack object tracking, a PPE compliance engine, and WebSocket video/webcam streaming. This is what the frontend actually talks to during local development (`vite.config.ts` proxies `/api` and `/ws` to `localhost:8000`). It has its own `requirements.txt`, its own venv, and is **not** covered by the root CI workflow.
-3. **`src/`** — the React/TypeScript frontend (Vite). Most of its "backend" (auth, alerts, workers, zones, reports, cameras, admin) is a **mock in-memory API layer** under `src/api/*.ts` (simulated latency via `delay()`, no real HTTP calls). Only live video/webcam detection (`src/hooks/useDetectionSocket.ts`, `src/state/DetectionStore.tsx`) talks to a real backend, and that's `backend/`, not `app/`.
+2. **`backend/`** — a separate, more fully-featured FastAPI service using Ultralytics YOLO (`backend/models/best.pt`) with CUDA/MPS/CPU auto-detection, ByteTrack object tracking, a PPE compliance engine, Redis frame streaming, MinIO snapshot storage, and platform integration (UC3). It runs on port 8030 in headless/platform mode (`vite.config.ts` proxies `/api` and `/ws` to `localhost:8030`). It has its own `requirements.txt`, its own venv, and is **not** covered by the root CI workflow.
+3. **`src/`** — the React/TypeScript frontend (Vite). Interfaces with `backend/` on port 8030 for live video, camera management, alerts, and monitoring.
 
 When asked to "run the backend" or "the API," clarify/confirm which of `app/` or `backend/` is meant — they have different endpoints, different models, and different dependencies (`app/` has no `ultralytics`/`torch`; `backend/` doesn't use ONNX or SQLAlchemy).
 
@@ -18,7 +18,7 @@ When asked to "run the backend" or "the API," clarify/confirm which of `app/` or
 
 ```bash
 npm install
-npm run dev       # Vite dev server on :5173, proxies /api and /ws to :8000
+npm run dev       # Vite dev server on :5173, proxies /api and /ws to :8030
 npm run build      # tsc -b && vite build
 npm run lint       # oxlint (config: .oxlintrc.json)
 npm run preview
@@ -32,7 +32,7 @@ There is no frontend test runner configured (no vitest/jest).
 cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn main:app --reload --port 8000 --reload-exclude 'venv/*' --reload-exclude 'uploads/*'
+uvicorn main:app --reload --port 8030 --reload-exclude 'venv/*' --reload-exclude 'uploads/*'
 ```
 
 The `--reload-exclude` flags are required, not cosmetic: without them, `--reload` watches every `.py` file under the working directory including `venv/`. Ultralytics/torch touch `.py` mtimes in site-packages on first use of some code paths, triggering a full server restart mid-session that drops every active WebSocket.

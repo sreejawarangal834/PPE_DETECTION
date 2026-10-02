@@ -23,7 +23,7 @@ regular file since it's under GitHub's 100MB per-file limit.
 ## Run
 
 ```bash
-uvicorn main:app --reload --port 8000 --reload-exclude 'venv/*' --reload-exclude 'uploads/*'
+uvicorn main:app --reload --port 8030 --reload-exclude 'venv/*' --reload-exclude 'uploads/*'
 ```
 
 The `--reload-exclude` flags matter: without them, `--reload` watches every
