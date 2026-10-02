@@ -61,34 +61,45 @@ JPEG_QUALITY = 85
 # storage contracts and object key conventions"): uc3/snapshots/<date>/<event_id>.jpg,
 # mirroring SNAPSHOT_DIR's local-disk layout so relative_reference/resolve_reference
 # need only a storage-backend prefix change, not a redesign.
-MINIO_OBJECT_PREFIX = "uc3/snapshots"
+MINIO_OBJECT_PREFIX = "uc3/alerts"
 
 _minio_client: Minio | None = None
 
 
 def _apply_lifecycle_policy(client: Minio) -> None:
     """Server-side expiration for everything under MINIO_OBJECT_PREFIX — set once
-    (idempotent: re-applying the same rule on every startup is a no-op change-wise)
-    rather than relying on any application code running later to enforce it."""
+    (idempotent: re-applying the same rule on every startup updates or adds only UC3's
+    rule without overwriting other services' lifecycle rules)."""
     try:
-        client.set_bucket_lifecycle(
-            MINIO_BUCKET,
-            LifecycleConfig([
-                Rule(
-                    ENABLED,
-                    rule_filter=Filter(prefix=f"{MINIO_OBJECT_PREFIX}/"),
-                    rule_id="uc3-snapshot-retention",
-                    expiration=Expiration(days=SNAPSHOT_RETENTION_DAYS),
-                ),
-            ]),
+        existing_rules: list[Rule] = []
+        try:
+            cfg = client.get_bucket_lifecycle(MINIO_BUCKET)
+            if cfg and hasattr(cfg, "rules") and cfg.rules:
+                existing_rules = list(cfg.rules)
+        except S3Error as err:
+            if getattr(err, "code", None) not in ("NoSuchLifecycleConfiguration", "NoSuchLifecycle"):
+                log.warning("Could not read existing MinIO lifecycle config (%s) — proceeding to set UC3 rule", err)
+        except Exception as exc:
+            log.warning("Could not read existing MinIO lifecycle config (%s) — proceeding to set UC3 rule", exc)
+
+        our_rule_id = "uc3-snapshot-retention"
+        our_rule = Rule(
+            ENABLED,
+            rule_filter=Filter(prefix=f"{MINIO_OBJECT_PREFIX}/"),
+            rule_id=our_rule_id,
+            expiration=Expiration(days=SNAPSHOT_RETENTION_DAYS),
         )
+
+        merged_rules = [
+            r for r in existing_rules
+            if getattr(r, "rule_id", getattr(r, "id", None)) != our_rule_id
+        ]
+        merged_rules.append(our_rule)
+
+        client.set_bucket_lifecycle(MINIO_BUCKET, LifecycleConfig(merged_rules))
         log.info("MinIO lifecycle policy applied: expire %s/* after %d day(s)",
                  MINIO_OBJECT_PREFIX, SNAPSHOT_RETENTION_DAYS)
     except S3Error:
-        # Non-fatal — uploads still work without a lifecycle policy, they just
-        # won't auto-expire. Some S3-compatible backends (or a locked-down
-        # MinIO deployment where UC3's credentials aren't lifecycle-admin)
-        # may reject this; that must not block snapshot capture from working.
         log.exception("Failed to apply MinIO bucket lifecycle policy (uploads still work, just won't auto-expire)")
 
 
