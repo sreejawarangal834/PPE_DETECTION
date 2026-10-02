@@ -32,7 +32,7 @@ import cv2
 import numpy as np
 import torch
 from fastapi import (
-    Depends, FastAPI, File, Form, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect,
+    Depends, FastAPI, File, Form, HTTPException, Query, Response, UploadFile, WebSocket, WebSocketDisconnect,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -531,8 +531,36 @@ app.add_middleware(
 
 @app.get("/health")
 @app.get("/api/health")
-def health():
-    return {"status": "ok", "service": "uc3"}
+async def health(response: Response):
+    postgres_ok = False
+    redis_ok = False
+    try:
+        pool = db.get_pool()
+        if pool is not None:
+            val = await pool.fetchval("SELECT 1")
+            postgres_ok = (val == 1)
+    except Exception as exc:
+        log.warning("Health check Postgres check failed: %s", exc)
+
+    try:
+        rc = redis_client.get_client()
+        if rc is not None and await rc.ping():
+            redis_ok = True
+    except Exception as exc:
+        log.warning("Health check Redis check failed: %s", exc)
+
+    all_ok = postgres_ok and redis_ok
+    if not all_ok:
+        response.status_code = 503
+
+    return {
+        "status": "ok" if all_ok else "error",
+        "service": "uc3",
+        "checks": {
+            "postgres": "ok" if postgres_ok else "error",
+            "redis": "ok" if redis_ok else "error",
+        },
+    }
 
 
 @app.get("/metrics")
@@ -835,15 +863,6 @@ def _run_inference(frame: np.ndarray, model: YOLO, motion_state: motion_gate.Mot
 
 
 # ─── API endpoints (unchanged contracts) ─────────────────────────────────────
-
-@app.get("/api/health")
-async def health():
-    return {
-        "status": "ok",
-        "model":  MODEL_PATH.name,
-        "device": "cuda" if _cuda_available else ("mps" if _mps_available else "cpu"),
-        "fp16":   _fp16,
-    }
 
 
 @app.get("/api/model/info")
