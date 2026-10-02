@@ -537,14 +537,14 @@ async def health(response: Response):
     try:
         pool = db.get_pool()
         if pool is not None:
-            val = await pool.fetchval("SELECT 1")
+            val = await asyncio.wait_for(pool.fetchval("SELECT 1"), timeout=2.0)
             postgres_ok = (val == 1)
     except Exception as exc:
         log.warning("Health check Postgres check failed: %s", exc)
 
     try:
         rc = redis_client.get_client()
-        if rc is not None and await rc.ping():
+        if rc is not None and await asyncio.wait_for(rc.ping(), timeout=2.0):
             redis_ok = True
     except Exception as exc:
         log.warning("Health check Redis check failed: %s", exc)
@@ -556,6 +556,9 @@ async def health(response: Response):
     return {
         "status": "ok" if all_ok else "error",
         "service": "uc3",
+        "model": MODEL_PATH.name,
+        "device": "cuda" if _cuda_available else ("mps" if _mps_available else "cpu"),
+        "fp16": _fp16,
         "checks": {
             "postgres": "ok" if postgres_ok else "error",
             "redis": "ok" if redis_ok else "error",

@@ -29,11 +29,12 @@ def test_health_ok(monkeypatch, client):
     res = client.get("/health")
     assert res.status_code == 200
     data = res.json()
-    assert data == {
-        "status": "ok",
-        "service": "uc3",
-        "checks": {"postgres": "ok", "redis": "ok"},
-    }
+    assert data["status"] == "ok"
+    assert data["service"] == "uc3"
+    assert "model" in data
+    assert "device" in data
+    assert "fp16" in data
+    assert data["checks"] == {"postgres": "ok", "redis": "ok"}
 
     res_api = client.get("/api/health")
     assert res_api.status_code == 200
