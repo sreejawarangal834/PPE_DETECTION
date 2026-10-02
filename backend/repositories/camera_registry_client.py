@@ -24,6 +24,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from typing import Any
+from uuid import UUID
 
 import httpx
 
@@ -47,18 +48,40 @@ async def _upsert(pool, cam: dict[str, Any] | str) -> None:
     zone_slug = (cam.get("zoneId") or cam.get("zone_id")) if isinstance(cam, dict) else None
     rtsp_url = (cam.get("rtspUrl") or cam.get("rtsp_url")) if isinstance(cam, dict) else None
     zone_id = await pool.fetchval("SELECT id FROM zones WHERE slug=$1", zone_slug) if zone_slug else None
-    await pool.execute(
-        """
-        INSERT INTO cameras (code, name, zone_id, rtsp_url)
-        VALUES ($1, $2, $3, $4)
-        ON CONFLICT (code) DO UPDATE
-            SET name = EXCLUDED.name,
-                zone_id = COALESCE(EXCLUDED.zone_id, cameras.zone_id),
-                rtsp_url = COALESCE(EXCLUDED.rtsp_url, cameras.rtsp_url),
-                updated_at = now()
-        """,
-        code, name, zone_id, rtsp_url,
-    )
+
+    cam_uuid: UUID | None = None
+    try:
+        cam_uuid = UUID(code)
+    except (ValueError, TypeError, AttributeError):
+        pass
+
+    if cam_uuid is not None:
+        await pool.execute(
+            """
+            INSERT INTO cameras (id, code, name, zone_id, rtsp_url)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (code) DO UPDATE
+                SET id = EXCLUDED.id,
+                    name = EXCLUDED.name,
+                    zone_id = COALESCE(EXCLUDED.zone_id, cameras.zone_id),
+                    rtsp_url = COALESCE(EXCLUDED.rtsp_url, cameras.rtsp_url),
+                    updated_at = now()
+            """,
+            cam_uuid, code, name, zone_id, rtsp_url,
+        )
+    else:
+        await pool.execute(
+            """
+            INSERT INTO cameras (code, name, zone_id, rtsp_url)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (code) DO UPDATE
+                SET name = EXCLUDED.name,
+                    zone_id = COALESCE(EXCLUDED.zone_id, cameras.zone_id),
+                    rtsp_url = COALESCE(EXCLUDED.rtsp_url, cameras.rtsp_url),
+                    updated_at = now()
+            """,
+            code, name, zone_id, rtsp_url,
+        )
 
 
 async def _fetch_cameras() -> list[dict[str, Any] | str] | None:

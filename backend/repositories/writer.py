@@ -70,6 +70,7 @@ from shared.contracts.enums import AlertSeverity, AlertStatus, FrameProvider, So
 from shared.platform_client.alert_publisher import AlertPublisher
 
 log = logging.getLogger("ppe_backend.writer")
+_warned_non_uuid_cameras: set[str] = set()
 
 _queue: asyncio.Queue[dict[str, Any]] | None = None
 _loop: asyncio.AbstractEventLoop | None = None
@@ -262,33 +263,48 @@ async def _persist_violation(conn: asyncpg.Connection, event: dict[str, Any]) ->
 
     # Build and publish shared AlertEvent (Task 3)
     pub_severity = AlertSeverity.MEDIUM if alert_severity == "medium" else AlertSeverity.HIGH
-    try:
-        publisher = get_alert_publisher()
-        alert_evt = AlertEvent(
-            alert_id=alert_uuid if isinstance(alert_uuid, UUID) else UUID(str(alert_uuid)),
-            camera_id=camera_id if isinstance(camera_id, UUID) else UUID(str(camera_id)),
-            timestamp=datetime.now(timezone.utc),
-            severity=pub_severity,
-            alert_type="ppe_violation",
-            title=alert_title[:200],
-            description=alert_desc[:2000],
-            source_event_id=event_id if isinstance(event_id, UUID) else UUID(str(event_id)),
-            source_uc=SourceUC.UC3,
-            frame_reference=frame_reference if frame_provider == FrameProvider.MINIO else None,
-            frame_provider=frame_provider if frame_provider == FrameProvider.MINIO else None,
-            status=AlertStatus.PENDING,
-            metadata={
-                "person_label": str(label),
-                "missing_ppe": [str(event["ppe_type"])],
-                "track_id": str(track_id) if track_id is not None else "",
-                "zone": str(zone_name),
-                "confidence": float(confidence or 0.0),
-                "compliance_score": 0.0,
-            },
-        )
-        await publisher.publish(alert_evt)
-    except Exception:
-        log.exception("Failed to publish platform AlertEvent for alert_uuid=%s", alert_uuid)
+    camera_code = event.get("camera_code")
+    pub_camera_uuid: UUID | None = None
+    if camera_code:
+        try:
+            pub_camera_uuid = UUID(camera_code)
+        except (ValueError, TypeError, AttributeError):
+            if camera_code not in _warned_non_uuid_cameras:
+                _warned_non_uuid_cameras.add(camera_code)
+                log.warning("Camera code %r is not a valid UUID; falling back to local camera ID %s for AlertEvent", camera_code, camera_id)
+            if camera_id is not None:
+                pub_camera_uuid = camera_id if isinstance(camera_id, UUID) else UUID(str(camera_id))
+    elif camera_id is not None:
+        pub_camera_uuid = camera_id if isinstance(camera_id, UUID) else UUID(str(camera_id))
+
+    if pub_camera_uuid is not None:
+        try:
+            publisher = get_alert_publisher()
+            alert_evt = AlertEvent(
+                alert_id=alert_uuid if isinstance(alert_uuid, UUID) else UUID(str(alert_uuid)),
+                camera_id=pub_camera_uuid,
+                timestamp=datetime.now(timezone.utc),
+                severity=pub_severity,
+                alert_type="ppe_violation",
+                title=alert_title[:200],
+                description=alert_desc[:2000],
+                source_event_id=event_id if isinstance(event_id, UUID) else UUID(str(event_id)),
+                source_uc=SourceUC.UC3,
+                frame_reference=frame_reference if frame_provider == FrameProvider.MINIO else None,
+                frame_provider=frame_provider if frame_provider == FrameProvider.MINIO else None,
+                status=AlertStatus.PENDING,
+                metadata={
+                    "person_label": str(label),
+                    "missing_ppe": [str(event["ppe_type"])],
+                    "track_id": str(track_id) if track_id is not None else "",
+                    "zone": str(zone_name),
+                    "confidence": float(confidence or 0.0),
+                    "compliance_score": 0.0,
+                },
+            )
+            await publisher.publish(alert_evt)
+        except Exception:
+            log.exception("Failed to publish platform AlertEvent for alert_uuid=%s", alert_uuid)
 
 
 

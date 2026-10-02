@@ -98,14 +98,30 @@ async def create_camera(data: dict[str, Any]) -> dict[str, Any]:
             next_n += 1
             code = f"CAM-{next_n:02d}"
     zone_id = await pool.fetchval("SELECT id FROM zones WHERE slug=$1", data.get("zoneId"))
-    row = await pool.fetchrow(
-        """
-        INSERT INTO cameras (code, name, zone_id, rtsp_url)
-        VALUES ($1, $2, $3, $4)
-        RETURNING id
-        """,
-        code, data["name"], zone_id, data.get("rtspUrl"),
-    )
+    cam_uuid: UUID | None = None
+    try:
+        cam_uuid = UUID(code)
+    except (ValueError, TypeError, AttributeError):
+        pass
+
+    if cam_uuid is not None:
+        row = await pool.fetchrow(
+            """
+            INSERT INTO cameras (id, code, name, zone_id, rtsp_url)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id
+            """,
+            cam_uuid, code, data["name"], zone_id, data.get("rtspUrl"),
+        )
+    else:
+        row = await pool.fetchrow(
+            """
+            INSERT INTO cameras (code, name, zone_id, rtsp_url)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id
+            """,
+            code, data["name"], zone_id, data.get("rtspUrl"),
+        )
     return await get_camera(code)  # type: ignore[return-value]
 
 
