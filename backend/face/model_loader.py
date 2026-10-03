@@ -20,29 +20,37 @@ from __future__ import annotations
 
 import logging
 
-from insightface.app import FaceAnalysis
-from insightface.app.common import Face
+from typing import TYPE_CHECKING
 
 import config
+
+# insightface is imported lazily (inside preload) so that a missing/broken
+# install can never stop the backend from starting. Face detection is off by
+# default (PPE_FACE_DETECT_ENABLED=false); main.py already catches a failed
+# preload and disables the feature instead of crashing.
+if TYPE_CHECKING:  # pragma: no cover - type hints only
+    from insightface.app import FaceAnalysis
+    from insightface.app.common import Face
 
 log = logging.getLogger("ppe_backend.face.model_loader")
 
 
 class FaceModelLoader:
     def __init__(self) -> None:
-        self._app: FaceAnalysis | None = None
+        self._app: "FaceAnalysis | None" = None
 
     def preload(self, use_gpu: bool = False) -> None:
         """Loads the configured pack. Blocks until complete. Idempotent."""
         if self._app is not None:
             return
+        from insightface.app import FaceAnalysis  # lazy: see module header
         providers = ["CUDAExecutionProvider", "CPUExecutionProvider"] if use_gpu else ["CPUExecutionProvider"]
         app = FaceAnalysis(name=config.FACE_MODEL_PACK, providers=providers)
         app.prepare(ctx_id=0 if use_gpu else -1, det_size=(640, 640))
         self._app = app
         log.info("face_model_loaded pack=%s gpu=%s", config.FACE_MODEL_PACK, use_gpu)
 
-    def detect_best_face(self, face_crop) -> Face | None:
+    def detect_best_face(self, face_crop) -> "Face | None":
         """
         Runs the full SCRFD + ArcFace pipeline ONCE on a face crop and
         returns the highest-confidence Face — bbox, 5-point landmarks,
@@ -71,7 +79,7 @@ def get_face_model(use_gpu: bool = False) -> FaceModelLoader:
     return _loader
 
 
-def extract_embedding(face: Face):
+def extract_embedding(face: "Face"):
     """Unit-normalized 512-d ArcFace embedding already sitting on `face` —
     no model call happens here, app.get() computed it. Ported from
     Innovision-multiAnalytics' embedding_extractor.py."""
