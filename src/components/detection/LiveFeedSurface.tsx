@@ -20,34 +20,68 @@ function isViolationDetection(det: Detection): boolean {
 // ── BoundingBoxCanvas ───────────────────────────────────────────────────────
 // Memoised — only redraws when detections or container size changes.
 // Uses devicePixelRatio for crisp rendering on HiDPI/Retina displays.
+//
+// The backend JPEG is rendered with object-contain, which letterboxes the
+// image inside the container (adds bars on the sides or top/bottom so the
+// full frame is visible without cropping). The normalized box coordinates
+// (0..1) are relative to the frame, not the container. We must apply the
+// same letterbox offset and scale so boxes align with what is actually drawn.
 
 interface BBCanvasProps {
   detections: Detection[];
   containerW: number;
   containerH: number;
+  /** Intrinsic pixel dimensions of the source JPEG, if known.
+   *  When provided the canvas corrects for object-contain letterboxing.
+   *  When absent the canvas falls back to filling the whole container
+   *  (correct for webcam/video feeds that fill without bars). */
+  imageW?: number;
+  imageH?: number;
+}
+
+/**
+ * Compute the rendered rect of an object-contain image inside a container.
+ * Returns { left, top, width, height } in CSS pixels.
+ */
+function containRect(
+  containerW: number, containerH: number,
+  imageW: number, imageH: number,
+): { left: number; top: number; width: number; height: number } {
+  const containerAR = containerW / containerH;
+  const imageAR     = imageW / imageH;
+  let width: number, height: number;
+  if (imageAR > containerAR) {
+    // Image is wider relative to container → pillarbox (bars top/bottom)
+    width  = containerW;
+    height = containerW / imageAR;
+  } else {
+    // Image is taller relative to container → letterbox (bars left/right)
+    height = containerH;
+    width  = containerH * imageAR;
+  }
+  return {
+    left:   (containerW - width)  / 2,
+    top:    (containerH - height) / 2,
+    width,
+    height,
+  };
 }
 
 export const BoundingBoxCanvas = memo(function BoundingBoxCanvas({
-  detections, containerW, containerH,
+  detections, containerW, containerH, imageW, imageH,
 }: BBCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Resizes the drawing buffer only when the container's actual size
-  // changes — NOT on every detection frame. Resetting canvas.width/height
-  // clears the buffer and (pre-fix) was doing so on every WebSocket frame,
-  // which visually read as the feed "resizing" whenever boxes appeared.
+  // changes — NOT on every detection frame.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || containerW === 0 || containerH === 0) return;
-
-    // HiDPI: set logical canvas size to container size,
-    // but internal pixel buffer at devicePixelRatio * container size
     const dpr = window.devicePixelRatio ?? 1;
     canvas.width  = Math.round(containerW * dpr);
     canvas.height = Math.round(containerH * dpr);
     canvas.style.width  = `${containerW}px`;
     canvas.style.height = `${containerH}px`;
-
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.scale(dpr, dpr);
@@ -56,22 +90,26 @@ export const BoundingBoxCanvas = memo(function BoundingBoxCanvas({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || containerW === 0 || containerH === 0) return;
-
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, containerW, containerH);
 
-    const W = containerW;
-    const H = containerH;
+    // If we have intrinsic image dimensions, correct for object-contain bars.
+    // Otherwise use the full container (webcam / video sources fill it edge-to-edge).
+    const rect = (imageW && imageH && imageW > 0 && imageH > 0)
+      ? containRect(containerW, containerH, imageW, imageH)
+      : { left: 0, top: 0, width: containerW, height: containerH };
+
+    const { left: ox, top: oy, width: W, height: H } = rect;
 
     ctx.font = 'bold 11px IBM Plex Mono, monospace';
 
     detections.forEach(det => {
       const [nx1, ny1, nx2, ny2] = det.box;
 
-      // Scale normalised coords to pixel coords
-      const bx = nx1 * W;
-      const by = ny1 * H;
+      // Map normalized 0..1 coords → pixel coords within the rendered image rect
+      const bx = ox + nx1 * W;
+      const by = oy + ny1 * H;
       const bw = (nx2 - nx1) * W;
       const bh = (ny2 - ny1) * H;
 
@@ -178,7 +216,7 @@ export const FeedImage = memo(function FeedImage({ jpeg }: { jpeg: string }) {
     <img
       src={`data:image/jpeg;base64,${jpeg}`}
       alt="Live YOLO26 detection frame"
-      className="absolute inset-0 w-full h-full object-cover"
+      className="absolute inset-0 w-full h-full object-contain"
       draggable={false}
     />
   );

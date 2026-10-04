@@ -7,6 +7,10 @@ export interface LiveCamera {
   name: string;
   status: SocketState;
   jpeg?: string;
+  /** Intrinsic pixel dimensions of the latest JPEG frame — used by
+   *  BoundingBoxCanvas to correct for object-contain letterboxing. */
+  imageW?: number;
+  imageH?: number;
   /** Set for browser-webcam sessions — rendered directly via <video>, no jpeg round-trip */
   stream?: MediaStream;
   detections: Detection[];

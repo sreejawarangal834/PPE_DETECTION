@@ -50,13 +50,15 @@ interface LiveFeedProps {
   severity: string;
   containerW: number;
   containerH: number;
+  imageW?: number;
+  imageH?: number;
   cameraId: string;
   zoneName: string;
 }
 
 const LiveFeed = memo(function LiveFeed({
   jpeg, stream, frameIndex, detections, violations, severity,
-  containerW, containerH, cameraId, zoneName,
+  containerW, containerH, imageW, imageH, cameraId, zoneName,
 }: LiveFeedProps) {
   return (
     <>
@@ -66,11 +68,13 @@ const LiveFeed = memo(function LiveFeed({
         <FeedImage jpeg={jpeg} />
       ) : null}
 
-      {/* Bounding boxes — only re-renders when detections or size changes */}
+      {/* Bounding boxes — corrected for object-contain letterboxing */}
       <BoundingBoxCanvas
         detections={detections}
         containerW={containerW}
         containerH={containerH}
+        imageW={imageW}
+        imageH={imageH}
       />
 
       {/* Overlay badges — stable unless violations/severity change */}
@@ -331,6 +335,8 @@ export default function CameraDetailPanel({
             severity={liveCamera.severity}
             containerW={containerSize.w}
             containerH={containerSize.h}
+            imageW={liveCamera.imageW}
+            imageH={liveCamera.imageH}
             cameraId={selectedCamera.id}
             zoneName={selectedCamera.zoneName}
           />

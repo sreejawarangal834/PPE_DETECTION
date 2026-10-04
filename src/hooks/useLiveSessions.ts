@@ -27,42 +27,28 @@ function teardown(handle: SessionHandle): void {
     // already closed
   }
   if (handle.videoId) {
-    // Cancel inference and delete the uploaded file server-side immediately
-    // — "Remove" — rather than relying on the server noticing the closed
-    // socket on its next send attempt. 404s if the file is already gone
-    // (e.g. the video finished normally and the backend already cleaned up
-    // itself) are expected and harmless.
     fetch(`/api/videos/${handle.videoId}`, { method: "DELETE" }).catch(() => {});
   }
 }
 
 /**
- * Manages any number of concurrent detection sessions — multiple uploaded
- * videos, multiple RTSP streams, plus (at most) one browser-webcam session —
- * each with its own WebSocket connection. Every session writes its frames
- * into DetectionStore under its own id, so they render independently (e.g. one card per session
- * in Grid View) instead of one session overwriting another.
- *
- * Each `start*Session` registers its `SessionHandle` in `handlesRef`
- * *synchronously*, before any `await` — every subsequent resume point
- * re-checks `isCurrent()` (handlesRef still holds *this* handle for this id)
- * before touching the store or acquiring more resources. This is what makes
- * "stop a session that's still uploading/connecting" and "double-click
- * start a new webcam session before the first finishes" both safe: a
- * superseded call finds itself no longer current, releases anything it just
- * acquired (e.g. a MediaStream), and quietly stops instead of clobbering
- * whatever replaced it or writing into a session the user already dismissed.
+ * Decode the intrinsic pixel dimensions of a base64 JPEG string.
+ * Fires the callback asynchronously once the Image has loaded.
+ * Used so BoundingBoxCanvas can correct for object-contain letterboxing.
  */
+function decodeJpegDimensions(
+  b64: string,
+  cb: (w: number, h: number) => void,
+): void {
+  const img = new Image();
+  img.onload = () => cb(img.naturalWidth, img.naturalHeight);
+  img.src = `data:image/jpeg;base64,${b64}`;
+}
+
 export function useLiveSessions() {
   const { upsertSession, removeSession, removeAllSessions } = useDetectionStore();
   const handlesRef = useRef<Map<string, SessionHandle>>(new Map());
 
-  /**
-   * Tear down the session at `id`. When `expected` is given, only tears it
-   * down if it's still the same handle — a closed/replaced socket's late
-   * `onclose`/`onerror` firing after a *newer* session has already taken
-   * over that id must not reap the new one.
-   */
   const stopSession = useCallback((id: string, expected?: SessionHandle) => {
     const handle = handlesRef.current.get(id);
     if (!handle) return;
@@ -78,10 +64,6 @@ export function useLiveSessions() {
     removeAllSessions();
   }, [removeAllSessions]);
 
-  /** Upload a video file and start an independent detection session for it,
-   * bound to `cameraId` (a camera slot from the picker — see
-   * CameraSlotPicker) so the compliance engine applies that camera's zone
-   * policy. Returns its session id. */
   const startVideoSession = useCallback(async (file: File, cameraId?: string): Promise<string> => {
     const id = `video-${crypto.randomUUID()}`;
     const handle: SessionHandle = {};
@@ -98,10 +80,10 @@ export function useLiveSessions() {
       form.append("file", file);
       if (cameraId) form.append("camera_id", cameraId);
       const res = await fetch("/api/videos/upload", { method: "POST", body: form });
-      if (!isCurrent()) return id; // stopped while uploading
+      if (!isCurrent()) return id;
       if (!res.ok) throw new Error(`Upload failed (${res.status})`);
       const { video_id } = (await res.json()) as { video_id: string };
-      if (!isCurrent()) return id; // stopped while parsing the response
+      if (!isCurrent()) return id;
       handle.videoId = video_id;
 
       upsertSession(id, (prev) => ({ ...prev!, status: "connecting" }));
@@ -115,6 +97,14 @@ export function useLiveSessions() {
         const data = JSON.parse(ev.data) as FrameMessage | { type: "done" | "error"; message?: string };
         if (data.type === "frame") {
           const frame = data as FrameMessage;
+          // Decode intrinsic JPEG dimensions so BoundingBoxCanvas can correct
+          // for object-contain letterboxing. Done async — a frame or two
+          // behind is fine because dimensions are stable for a whole video.
+          if (frame.jpeg) {
+            decodeJpegDimensions(frame.jpeg, (w, h) => {
+              if (isCurrent()) upsertSession(id, (prev) => ({ ...prev!, imageW: w, imageH: h }));
+            });
+          }
           upsertSession(id, (prev) => ({
             ...prev!,
             status:     "streaming",
@@ -138,12 +128,8 @@ export function useLiveSessions() {
     return id;
   }, [upsertSession, stopSession]);
 
-  /** Capture the browser's own webcam and stream frames to the backend for
-   * inference, bound to `cameraId` (a camera slot — see CameraSlotPicker) so
-   * the compliance engine applies that camera's zone policy. Returns its
-   * session id. */
   const startWebcamSession = useCallback(async (cameraId?: string): Promise<string> => {
-    stopSession(WEBCAM_SESSION_ID); // supersede whatever's currently there — real session or a racing in-flight attempt
+    stopSession(WEBCAM_SESSION_ID);
     const id = WEBCAM_SESSION_ID;
     const handle: SessionHandle = {};
     handlesRef.current.set(id, handle);
@@ -160,7 +146,6 @@ export function useLiveSessions() {
         audio: false,
       });
       if (!isCurrent()) {
-        // Superseded while the permission prompt was open — release the camera we just acquired.
         mediaStream.getTracks().forEach((t) => t.stop());
         return id;
       }
@@ -209,9 +194,13 @@ export function useLiveSessions() {
         const data = JSON.parse(ev.data) as FrameMessage | { type: "error"; message?: string };
         if (data.type === "frame") {
           const frame = data as FrameMessage;
+          // Webcam: backend sends back the inferred frame as jpeg too —
+          // use known capture dimensions directly (no async decode needed).
           upsertSession(id, (prev) => ({
             ...prev!,
             status:     "streaming",
+            imageW:     LIVE_CAPTURE_WIDTH,
+            imageH:     LIVE_CAPTURE_HEIGHT,
             detections: frame.detections,
             severity:   frame.severity,
             violations: frame.violations,
@@ -232,14 +221,6 @@ export function useLiveSessions() {
     return id;
   }, [upsertSession, stopSession]);
 
-  /** Connect to a live RTSP stream (an IP camera, or a phone running an
-   * RTSP-server app on the same network) via the backend's /ws/detect/rtsp,
-   * bound to `cameraId` (a camera slot — see CameraSlotPicker) so the
-   * compliance engine applies that camera's zone policy. The backend itself
-   * owns reconnect-on-drop (RTSPSource in frame_source.py), so unlike the
-   * webcam this doesn't need any client-side capture loop — frames arrive
-   * as jpeg over the WebSocket exactly like an uploaded video. Returns its
-   * session id. */
   const startRtspSession = useCallback(async (url: string, cameraId?: string): Promise<string> => {
     const id = `rtsp-${crypto.randomUUID()}`;
     const handle: SessionHandle = {};
@@ -266,6 +247,12 @@ export function useLiveSessions() {
         const data = JSON.parse(ev.data) as FrameMessage | { type: "done" | "error"; message?: string };
         if (data.type === "frame") {
           const frame = data as FrameMessage;
+          // Decode intrinsic JPEG dimensions for object-contain correction.
+          if (frame.jpeg) {
+            decodeJpegDimensions(frame.jpeg, (w, h) => {
+              if (isCurrent()) upsertSession(id, (prev) => ({ ...prev!, imageW: w, imageH: h }));
+            });
+          }
           upsertSession(id, (prev) => ({
             ...prev!,
             status:     "streaming",

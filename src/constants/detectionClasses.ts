@@ -1,17 +1,19 @@
 /**
- * Detection class registry — mirrors the YOLO model's class list
- * (see backend/main.py → model.names / app/main.py → CLASS_NAMES).
+ * Detection class registry — mirrors best.pt's exact 13-class schema.
  *
- * Each class gets a fixed, visually distinct color used for both its
- * bounding-box outline and its label pill on the live feed canvas, and
- * for the color swatch in the detection-class filter control. Colors
- * are chosen to stay legible against dark video frames.
+ * Classes:
+ *   0 gloves  1 goggles  2 helmet  3 mask  4 no-gloves  5 no-goggles
+ *   6 no-helmet  7 no-mask  8 no-shoe  9 no-vest  10 person  11 shoe  12 vest
+ *
+ * Each class gets a fixed, visually distinct color for its bounding-box
+ * outline, label pill, and filter swatch. `no-*` classes use red variants
+ * so violation boxes are immediately visually distinct.
  */
 
-export type DetectionCategory = 'ppe' | 'body' | 'other';
+export type DetectionCategory = 'ppe' | 'violation' | 'body' | 'other';
 
 export interface DetectionClassDef {
-  /** Raw label the model / backend emits (lower-case, hyphenated) */
+  /** Raw label the model / backend emits */
   id: string;
   /** Human-readable name shown in the UI */
   label: string;
@@ -21,52 +23,49 @@ export interface DetectionClassDef {
 }
 
 export const DETECTION_CLASSES: DetectionClassDef[] = [
-  // ── PPE items ──────────────────────────────────────────────────
-  { id: 'helmet',              label: 'Helmet',            color: '#FFC53D', category: 'ppe' },
-  { id: 'safety-vest',         label: 'Safety Vest',       color: '#FF8A3D', category: 'ppe' },
-  { id: 'gloves',               label: 'Gloves',             color: '#4ADE80', category: 'ppe' },
-  { id: 'shoes',                 label: 'Safety Shoes',       color: '#38BDF8', category: 'ppe' },
-  { id: 'glasses',               label: 'Safety Glasses',     color: '#F472B6', category: 'ppe' },
-  { id: 'face-mask-medical',     label: 'Face Mask',          color: '#2DD4BF', category: 'ppe' },
-  { id: 'face-guard',            label: 'Face Guard',         color: '#34D399', category: 'ppe' },
-  { id: 'ear-mufs',               label: 'Ear Muffs',          color: '#EAB308', category: 'ppe' },
-  { id: 'medical-suit',           label: 'Medical Suit',       color: '#22D3EE', category: 'ppe' },
-  { id: 'safety-suit',            label: 'Safety Suit',        color: '#FB7185', category: 'ppe' },
+  // ── Positive PPE detections (class present = compliant) ───────────────
+  { id: 'helmet',   label: 'Helmet',        color: '#FFC53D', category: 'ppe' },
+  { id: 'vest',     label: 'Safety Vest',   color: '#FF8A3D', category: 'ppe' },
+  { id: 'gloves',   label: 'Gloves',        color: '#4ADE80', category: 'ppe' },
+  { id: 'shoe',     label: 'Safety Shoe',   color: '#38BDF8', category: 'ppe' },
+  { id: 'goggles',  label: 'Goggles',       color: '#F472B6', category: 'ppe' },
+  { id: 'mask',     label: 'Mask',          color: '#2DD4BF', category: 'ppe' },
 
-  // ── Body parts (used for compliance association, not PPE itself) ─
+  // ── Violation classes (no-* = PPE absent = non-compliant) ────────────
+  { id: 'no-helmet',  label: 'No Helmet',      color: '#EF4444', category: 'violation' },
+  { id: 'no-vest',    label: 'No Vest',         color: '#F97316', category: 'violation' },
+  { id: 'no-gloves',  label: 'No Gloves',       color: '#EF4444', category: 'violation' },
+  { id: 'no-shoe',    label: 'No Safety Shoe',  color: '#EF4444', category: 'violation' },
+  { id: 'no-goggles', label: 'No Goggles',      color: '#EF4444', category: 'violation' },
+  { id: 'no-mask',    label: 'No Mask',         color: '#EF4444', category: 'violation' },
+
+  // ── Body / person ─────────────────────────────────────────────────────
   { id: 'person', label: 'Person', color: '#94A3B8', category: 'body' },
-  { id: 'head',    label: 'Head',   color: '#C084FC', category: 'body' },
-  { id: 'face',    label: 'Face',   color: '#818CF8', category: 'body' },
-  { id: 'ear',     label: 'Ear',    color: '#FB923C', category: 'body' },
-  { id: 'hands',   label: 'Hands',  color: '#60A5FA', category: 'body' },
-  { id: 'foot',    label: 'Foot',   color: '#F87171', category: 'body' },
-
-  // ── Other ──────────────────────────────────────────────────────
-  { id: 'tools', label: 'Tools / Equipment', color: '#A78BFA', category: 'other' },
 ];
 
 const BY_ID: Record<string, DetectionClassDef> = Object.fromEntries(
   DETECTION_CLASSES.map(c => [c.id, c])
 );
 
-/** Normalise a raw model label ("Safety_Vest", "SAFETY-VEST", …) to a lookup key */
+/** Normalise a raw model label to a lookup key.
+ *  Handles underscore variants (no_helmet → no-helmet) the model may emit. */
 function normaliseLabel(label: string): string {
   return label.trim().toLowerCase().replace(/_/g, '-');
 }
 
-/** Fallback palette for any label not in the registry (keeps rendering stable) */
+/** Fallback palette for any label not in the registry */
 const FALLBACK_COLOR = '#A8A296';
 
 export function getDetectionClass(label: string): DetectionClassDef | undefined {
   return BY_ID[normaliseLabel(label)];
 }
 
-/** Color for a detection's bounding box / label pill, keyed by its raw label. */
+/** Color for a detection's bounding box / label pill. */
 export function detectionClassColor(label: string): string {
   return getDetectionClass(label)?.color ?? FALLBACK_COLOR;
 }
 
-/** Human-readable name for a detection's raw label, falling back to the raw text. */
+/** Human-readable name for a detection's raw label. */
 export function detectionClassLabel(label: string): string {
   return getDetectionClass(label)?.label ?? label;
 }
@@ -76,9 +75,8 @@ export const ALL_DETECTION_CLASS_IDS = DETECTION_CLASSES.map(c => c.id);
 export const DETECTION_FILTER_STORAGE_KEY = 'monitoring_detection_filter';
 
 /**
- * True if a raw detection label falls inside the currently-selected class
- * set. Labels not present in the registry (unknown/future classes) are
- * shown by default so nothing silently disappears.
+ * True if a raw detection label falls inside the currently-selected class set.
+ * Labels not in the registry are shown by default.
  */
 export function isDetectionClassVisible(label: string, selected: Set<string>): boolean {
   const cls = getDetectionClass(label);
